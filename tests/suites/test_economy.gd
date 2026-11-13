@@ -137,3 +137,17 @@ func run(t) -> void:
 	EconomyLogic.refuge_buy(m13, "gold", BigNumber.from_float(1.0))
 	EconomyLogic.ensure_fresh(m13)
 	t.near(m13.refuge_mult, 1.0, "ahorros mínimos no dan bono")
+	# tutorial: los pasos se deducen del estado de la partida
+	var mt: GameModel = _fresh()
+	t.eq(EconomyLogic.tutorial_step(mt), 0, "tutorial: empieza por el clic")
+	for i in range(3):
+		EconomyLogic.do_click(mt)
+	t.eq(EconomyLogic.tutorial_step(mt), 1, "tutorial: luego comprar el carrito")
+	mt.money = BigNumber.from_float(100.0)
+	EconomyLogic.buy_business(mt, "empanadas", 1)
+	t.eq(EconomyLogic.tutorial_step(mt), 2, "tutorial: luego mirar la inflación")
+	EconomyLogic.month_end(mt)
+	t.eq(EconomyLogic.tutorial_step(mt), 3, "tutorial: luego remarcar")
+	mt.remark_window = 5.0
+	EconomyLogic.remark(mt, true)
+	t.eq(EconomyLogic.tutorial_step(mt), EconomyLogic.TUTORIAL_STEPS, "tutorial: completado")

@@ -9,6 +9,7 @@ static var music: float = 0.35
 static var language: String = ""
 static var notation: int = 0
 static var fullscreen: bool = false
+static var tutorial_done: bool = false
 
 
 static func load_settings() -> void:
@@ -18,6 +19,7 @@ static func load_settings() -> void:
 	music = float(cfg.get_value("audio", "music", 0.35)) if ok else 0.35
 	notation = int(cfg.get_value("game", "notation", 0)) if ok else 0
 	fullscreen = bool(cfg.get_value("display", "fullscreen", false)) if ok else false
+	tutorial_done = bool(cfg.get_value("game", "tutorial_done", false)) if ok else false
 	language = str(cfg.get_value("game", "language", "")) if ok else ""
 	if language == "":
 		language = "es" if OS.get_locale_language() == "es" else "en"
@@ -30,6 +32,7 @@ static func save_settings() -> void:
 	cfg.set_value("game", "notation", notation)
 	cfg.set_value("game", "language", language)
 	cfg.set_value("display", "fullscreen", fullscreen)
+	cfg.set_value("game", "tutorial_done", tutorial_done)
 	cfg.save(path)
 
 

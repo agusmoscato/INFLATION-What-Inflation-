@@ -39,6 +39,7 @@ func _ready() -> void:
 	tag = "%dx%d" % [sz.x, sz.y]
 	steps = [
 		["menu", _menu],
+		["00_tutorial", _tut],
 		["01_juego_era1", _early],
 		["02_negocios_era3", _mid],
 		["02b_remarcando", _remark],
@@ -86,7 +87,13 @@ func _menu() -> void:
 	pass
 
 
+func _tut() -> void:
+	Settings.tutorial_done = false
+	main.start_game(false)
+
+
 func _early() -> void:
+	Settings.tutorial_done = false
 	Settings.language = "es"
 	Settings.apply()
 	main.start_game(false)

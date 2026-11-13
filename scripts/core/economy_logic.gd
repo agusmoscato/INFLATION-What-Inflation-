@@ -713,3 +713,22 @@ static func stats(m: GameModel) -> Dictionary:
 		"money_log10": ml if not is_inf(ml) else -1.0,
 		"power_log10": pl if not is_inf(pl) else -1.0,
 	}
+
+
+# =====================================================================
+#  Tutorial (los pasos se deducen del estado de la partida)
+# =====================================================================
+const TUTORIAL_STEPS: int = 4
+
+
+## 0 clic, 1 comprar el carrito, 2 mirar la inflación, 3 remarcar; TUTORIAL_STEPS = completado.
+static func tutorial_step(m: GameModel) -> int:
+	if m.clicks < 3:
+		return 0
+	if m.total_businesses() < 1:
+		return 1
+	if m.month_count < 1:
+		return 2
+	if m.remarks < 1:
+		return 3
+	return TUTORIAL_STEPS

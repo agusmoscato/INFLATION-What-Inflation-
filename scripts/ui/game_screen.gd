@@ -104,6 +104,7 @@ func _ready() -> void:
 	_last_era = gm().era
 	_select_tab(0)
 	_next_headline()
+	_start_tutorial()
 	Economy.running = true
 	_refresh_all()
 
@@ -1232,3 +1233,41 @@ func _chalk_chips(pos: Vector2, parent: Control) -> void:
 	p.color = Chalk.WHITE
 	parent.add_child(p)
 	get_tree().create_timer(1.6).timeout.connect(p.queue_free)
+
+
+# ---- tutorial de los primeros 2 minutos ----
+var _guide: TutorialGuide
+
+
+func _start_tutorial() -> void:
+	if Settings.tutorial_done:
+		return
+	if EconomyLogic.tutorial_step(gm()) >= EconomyLogic.TUTORIAL_STEPS or gm().era > 1:
+		Settings.tutorial_done = true
+		Settings.save_settings()
+		return
+	_guide = TutorialGuide.new(_tutorial_target)
+	_guide.finished.connect(_on_tutorial_finished)
+	fx_layer.add_child(_guide)
+
+
+func _tutorial_target(step: int) -> Control:
+	match step:
+		0:
+			return empanada
+		1:
+			return biz_rows[0]["btn"] if _tab == 0 else tab_buttons[0]
+		2:
+			return rate_label
+		_:
+			return remark_btn
+
+
+func _on_tutorial_finished(skipped: bool) -> void:
+	Settings.tutorial_done = true
+	Settings.save_settings()
+	if _guide != null:
+		_guide.queue_free()
+		_guide = null
+	if not skipped:
+		_toast(tr("tut.done"), UIKit.C_GOLD)

@@ -12,10 +12,12 @@ extends SceneTree
 ## No usa refugios (solo su arrastre en reformas): documentado en README.
 
 const REFORM_MIN_GAIN: int = 4
-const REFORM_RATIO: float = 0.8
-const PLAN_ORDER: Array = ["emission", "stabilization", "emission", "stabilization"]
+const REFORM_RATIO: float = 1.0
+const REFORM_MIN_RUN_MIN: float = 40.0
+const PLAN_ORDER: Array = ["emission", "convertibility", "stabilization"]
 
 var rows: Array = []   # [evento, minuto, detalle]
+var no_prestige: bool = false
 
 
 func _init() -> void:
@@ -24,6 +26,8 @@ func _init() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--hours="):
 			hours = a.get_slice("=", 1).to_float()
+		elif a == "--noprestige":
+			no_prestige = true
 		elif a.begins_with("--seed="):
 			seed_value = a.get_slice("=", 1).to_int()
 	var started: int = Time.get_ticks_msec()
@@ -37,7 +41,12 @@ func _init() -> void:
 		EconomyLogic.do_click(m)
 		if m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
 			EconomyLogic.remark(m, true)
-		if t % 2 == 0:
+		var saving: bool = false
+		if m.era >= 5 and m.measures < EconomyLogic.measure_count_total():
+			if EconomyLogic.buy_measure(m):
+				rows.append(["medida", float(t) / 60.0, "medidas=%d" % m.measures])
+			saving = EconomyLogic.income_per_sec(m).mul_f(900.0).ge(EconomyLogic.measure_cost(m))
+		if t % 2 == 0 and not saving:
 			var guard: int = 0
 			var bought_any: bool = false
 			while guard < 40 and EconomyLogic.smart_buy(m):
@@ -49,14 +58,16 @@ func _init() -> void:
 				last_purchase_t = t
 		if m.era >= 5:
 			EconomyLogic.buy_measure(m)
-		if EconomyLogic.can_plan(m):
-			var plan: String = PLAN_ORDER[mini(m.plans_done, PLAN_ORDER.size() - 1)]
+		if no_prestige:
+			pass
+		elif EconomyLogic.can_plan(m):
+			var plan: String = PLAN_ORDER[m.plans_used.size()]
 			var minute_p: float = float(t) / 60.0
 			EconomyLogic.do_plan(m, plan)
 			rows.append(["plan", minute_p, "plan=%s n=%d" % [plan, m.plans_done]])
-		elif EconomyLogic.can_reform(m):
+		elif EconomyLogic.can_reform(m) and not saving:
 			var gain: int = EconomyLogic.reform_gain(m)
-			if gain >= maxi(REFORM_MIN_GAIN, int(float(m.credibility) * REFORM_RATIO)):
+			if m.run_time >= REFORM_MIN_RUN_MIN * 60.0 and gain >= maxi(REFORM_MIN_GAIN, int(float(m.credibility) * REFORM_RATIO)):
 				var minute_r: float = float(t) / 60.0
 				var p_log: float = m.price_level.log10()
 				EconomyLogic.do_reform(m)
@@ -69,17 +80,16 @@ func _init() -> void:
 		if m.won:
 			rows.append(["victoria", float(t) / 60.0, "inflación 0 (medidas=%d)" % m.measures])
 			break
-		if t % 1800 == 0:
-			print("  t=%4.0f min era=%d cred=%d money=%s P=%s inc/s=%s" % [float(t) / 60.0, m.era, m.credibility,
+		if t % 900 == 0:
+			print("  t=%4.0f min era=%d cred=%d life=1e%.1f money=%s P=%s inc/s=%s" % [float(t) / 60.0, m.era, m.credibility, m.lifetime_real.log10(),
 				m.money.format(), m.price_level.format(), EconomyLogic.income_per_sec(m).format()])
 	rows.append(["fin", float(total) / 60.0 if not m.won else rows[rows.size() - 1][1],
-		"era=%d cred=%d reformas=%d planes=%d compras=%d max_espera_s=%.0f" % [m.era, m.credibility, m.reforms, m.plans_done, purchases, max_gap]])
+		"era=%d cred=%d reformas=%d planes=%d compras=%d max_espera_s=%.0f medidas=%d" % [m.era, m.credibility, m.reforms, m.plans_done, purchases, max_gap, m.measures]])
 	_report(started)
 	quit(0)
 
 
 func _report(started: int) -> void:
-	var table: Dictionary = {"era": 2, "reforma": 1}
 	print("")
 	print("%-10s %10s  %s" % ["evento", "minuto", "detalle"])
 	var csv: String = "evento,minuto,detalle\n"
@@ -91,5 +101,3 @@ func _report(started: int) -> void:
 		f.store_string(csv)
 		f.close()
 	print("Simulación en %.1f s reales. CSV: docs/balance.csv" % [float(Time.get_ticks_msec() - started) / 1000.0])
-	if table.is_empty():
-		return

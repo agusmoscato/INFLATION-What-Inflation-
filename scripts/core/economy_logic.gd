@@ -530,14 +530,15 @@ static func buy_measure(m: GameModel) -> bool:
 # =====================================================================
 #  Reforma monetaria (prestige 1) y Plan económico (prestige 2)
 # =====================================================================
+## Credibilidad que daría reformar ahora: depende de lo ganado (en términos reales) en ESTA vuelta.
 static func credibility_possible(m: GameModel) -> int:
-	if m.cycle_real.lt(GameData.cred_base):
+	if m.run_real.lt(GameData.cred_base):
 		return 0
-	return m.cycle_real.div(GameData.cred_base).pow_f(B("cred_exp")).floor_to_int()
+	return m.run_real.div(GameData.cred_base).pow_f(B("cred_exp")).floor_to_int()
 
 
 static func reform_gain(m: GameModel) -> int:
-	return maxi(0, credibility_possible(m) - m.credibility)
+	return credibility_possible(m)
 
 
 static func can_reform(m: GameModel) -> bool:
@@ -578,18 +579,24 @@ static func do_reform(m: GameModel) -> bool:
 	return true
 
 
+static func plan_min_cred(m: GameModel) -> int:
+	var lst: Array = GameData.balance["plan_min_cred"]
+	return int(lst[mini(m.plans_done, lst.size() - 1)])
+
+
 static func can_plan(m: GameModel) -> bool:
-	return m.era >= int(B("plan_min_era")) and m.credibility >= int(B("plan_min_cred"))
+	return m.era >= int(B("plan_min_era")) and m.plans_used.size() < GameData.plans.size() and m.credibility >= plan_min_cred(m)
 
 
 static func do_plan(m: GameModel, plan: String) -> bool:
-	if not can_plan(m) or not GameData.plan_idx.has(plan):
+	if not can_plan(m) or not GameData.plan_idx.has(plan) or m.plans_used.has(plan):
 		return false
 	m.legacy_cred += float(m.credibility) * B("plan_legacy_frac")
 	m.credibility = 0
 	m.cycle_real = BigNumber.zero()
 	m.plans_done += 1
 	m.plan_id = plan
+	m.plans_used.append(plan)
 	for r in GameData.refuges:
 		m.refuge_units[r["id"]] = m.refuge_units[r["id"]].mul_f(B("refuge_carry"))
 	_reset_run(m)

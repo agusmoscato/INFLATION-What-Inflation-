@@ -22,6 +22,7 @@ var legacy_cred: float = 0.0
 var reforms: int = 0
 var plans_done: int = 0
 var plan_id: String = ""
+var plans_used: Array = []
 var album: Array = []
 var zeros_cut: int = 0
 var measures: int = 0
@@ -100,7 +101,7 @@ func to_dict() -> Dictionary:
 		"refuge_units": units, "refuge_price": refuge_price.duplicate(),
 		"lifetime_real": lifetime_real.to_save(), "cycle_real": cycle_real.to_save(), "run_real": run_real.to_save(),
 		"era": era, "credibility": credibility, "legacy_cred": legacy_cred,
-		"reforms": reforms, "plans_done": plans_done, "plan_id": plan_id,
+		"reforms": reforms, "plans_done": plans_done, "plan_id": plan_id, "plans_used": plans_used.duplicate(),
 		"album": album.duplicate(), "zeros_cut": zeros_cut, "measures": measures,
 		"won": won, "won_notified": won_notified,
 		"clicks": clicks, "remarks": remarks, "events_seen": events_seen,
@@ -138,6 +139,9 @@ func from_dict(d: Dictionary) -> void:
 	reforms = int(d.get("reforms", 0))
 	plans_done = int(d.get("plans_done", 0))
 	plan_id = str(d.get("plan_id", ""))
+	plans_used = []
+	for p in d.get("plans_used", []):
+		plans_used.append(str(p))
 	album = []
 	for n in d.get("album", []):
 		album.append(int(n))

@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://b7tcs1g04n1da"
+
+[deps]
+
+files=["res://docs/balance.minuto.translation", "res://docs/balance.detalle.translation"]
+
+source_file="res://docs/balance.csv"
+dest_files=["res://docs/balance.minuto.translation", "res://docs/balance.detalle.translation"]
+
+[params]
+
+compress=true
+delimiter=0

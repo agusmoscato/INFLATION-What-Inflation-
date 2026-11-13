@@ -51,13 +51,24 @@ func _ready() -> void:
 		["06b_sobre_rasgando", _pack, 20],
 		["06c_sobre_figuritas", _noop, 150],
 		["06d_sobre_dorada", _noop, 60],
-		["07_logros", _tab.bind(5)],
+		["06e_timba", _timba],
+		["06f_raspadita_rascando", _scratch, 45],
+		["06g_raspadita_pozo", _noop, 150],
+		["06h_bolillero", _bolillero, 330],
+		["07_logros", _tab.bind(6)],
 		["08_hiperinflacion", _hyper],
 		["09_reforma_tijera", _reform_anim],
 		["10_opciones", _options],
 		["11_creditos", _credits],
 		["12_demo_fin", _demo_end],
 	]
+	var only: String = OS.get_environment("TOUR_ONLY")
+	if only != "":
+		var keep: Array = []
+		for st in steps:
+			if str(st[0]).begins_with("00_") or only.split(",").has(str(st[0]).get_slice("_", 0)):
+				keep.append(st)
+		steps = keep
 
 
 var _next_at: int = STEP
@@ -221,3 +232,25 @@ func _pack() -> void:
 	var res: Array = StickerLogic.gift_pack(m, ["common", "rare", "common", "golden", "common"])
 	var ov: PackOpening = _g()._open_pack_overlay(res)
 	ov.auto_open(0.3)
+
+
+func _timba() -> void:
+	var m: GameModel = GameState.m
+	m.era = 3
+	m.money = BigNumber.from_string("2.5e14")
+	m.base_income = BigNumber.from_float(5e9)
+	m.pool_real = BigNumber.from_float(4.2e11)
+	m.dirty = true
+	_g()._select_tab(5)
+
+
+func _scratch() -> void:
+	var ov: ScratchOverlay = _g()._open_scratch(0.05, "pozo")
+	if ov != null:
+		ov.auto_scratch(1.5)
+
+
+func _bolillero() -> void:
+	if _g()._scratch_overlay != null and is_instance_valid(_g()._scratch_overlay):
+		_g()._scratch_overlay.queue_free()
+	_g()._on_quiniela_drawn({"number": 37, "winning": 37, "stake": BigNumber.from_float(1e9), "payout": BigNumber.from_float(4.9e10), "kind": "exact"})

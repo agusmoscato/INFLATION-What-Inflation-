@@ -39,6 +39,7 @@ var ref_note: Label
 var reform_labels: Dictionary = {}
 var plan_buttons: Dictionary = {}
 var album_page: AlbumPage
+var timba_page: TimbaPage
 var ach_list: VBoxContainer
 var ach_info: Label
 var event_panel: PanelContainer
@@ -137,6 +138,8 @@ func _connect_bus() -> void:
 	EventBus.objective_done.connect(_on_objective_done)
 	EventBus.unlock.connect(func(f: String) -> void: _unlock_queue.append(f))
 	EventBus.page_done.connect(_on_page_done)
+	EventBus.quiniela_drawn.connect(_on_quiniela_drawn)
+	EventBus.dollar_settled.connect(_on_dollar_settled)
 	EventBus.sticker_won.connect(_on_sticker_won)
 	EventBus.secret_end.connect(_show_secret)
 	EventBus.achievement_unlocked.connect(_on_achievement)
@@ -474,10 +477,11 @@ func _build_album_page() -> Control:
 
 
 func _build_timba_page() -> Control:
-	var pr: Array = _scroll_page()
-	var v: VBoxContainer = pr[1]
-	v.add_child(UIKit.label(tr("tip.tab_timba"), 18, UIKit.C_DIM))
-	return pr[0]
+	timba_page = TimbaPage.new()
+	timba_page.scratch_requested.connect(_open_scratch)
+	timba_page.message.connect(func(text: String) -> void: _toast(text, UIKit.C_GOLD))
+	return timba_page
+
 
 
 func _build_ach_page() -> Control:
@@ -620,7 +624,7 @@ func _refresh_page() -> void:
 		2: _refresh_refuges()
 		3: _refresh_reform()
 		4: _refresh_album()
-		5: pass
+		5: timba_page.refresh(gm())
 		6: _refresh_ach()
 
 
@@ -1529,3 +1533,52 @@ func _demo_gift(m: GameModel) -> void:
 	var res: Array = StickerLogic.gift_pack(m)
 	_toast(tr("toast.gift_pack"), UIKit.C_GOLD)
 	_open_pack_overlay(res)
+
+
+# =====================================================================
+#  Parte C: timba (raspadita, quiniela, timba del dólar)
+# =====================================================================
+var _scratch_overlay: ScratchOverlay
+var _bolillero: BolilleroOverlay
+
+
+func _open_scratch(pct: float, force: String = "") -> ScratchOverlay:
+	var res: Dictionary = Economy.play_scratch(pct, force)
+	if not bool(res.get("ok", false)):
+		_toast(tr("timba.nomoney"), UIKit.C_GOLD)
+		_play("error")
+		return null
+	if _scratch_overlay != null and is_instance_valid(_scratch_overlay):
+		_scratch_overlay.queue_free()
+	_scratch_overlay = ScratchOverlay.new(res, pct)
+	add_child(_scratch_overlay)
+	_scratch_overlay.closed.connect(func() -> void:
+		var pack: Array = res.get("pack", [])
+		_scratch_overlay.queue_free()
+		_scratch_overlay = null
+		if not pack.is_empty():
+			_open_pack_overlay(pack))
+	_scratch_overlay.again.connect(func(p: float) -> void:
+		_scratch_overlay.queue_free()
+		_scratch_overlay = null
+		_open_scratch(p))
+	return _scratch_overlay
+
+
+func _on_quiniela_drawn(res: Dictionary) -> void:
+	if _bolillero != null and is_instance_valid(_bolillero):
+		_bolillero.queue_free()
+	_bolillero = BolilleroOverlay.new(res)
+	add_child(_bolillero)
+	_bolillero.closed.connect(func() -> void:
+		_bolillero.queue_free()
+		_bolillero = null)
+
+
+func _on_dollar_settled(res: Dictionary) -> void:
+	if bool(res["won"]):
+		_play("coin")
+		_toast(tr("timba.d.win") % UIKit.money(res["payout"]), UIKit.C_GREEN)
+	else:
+		_play("lose")
+		_toast(tr("timba.d.lose") % BigNumber.from_float(float(res["official"]) * 100.0).format(1), UIKit.C_RED)

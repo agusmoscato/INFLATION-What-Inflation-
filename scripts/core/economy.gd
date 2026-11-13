@@ -128,3 +128,24 @@ func trade_sticker(id: String) -> bool:
 	var ok: bool = StickerLogic.trade(GameState.m, id)
 	flush()
 	return ok
+
+
+# ---- timba ----
+func play_scratch(pct: float, force: String = "") -> Dictionary:
+	var res: Dictionary = GambleLogic.play_scratch(GameState.m, pct, force)
+	flush()
+	return res
+
+
+func place_quiniela(number: int, pct: float) -> bool:
+	var m: GameModel = GameState.m
+	var ok: bool = GambleLogic.place_quiniela(m, number, GambleLogic.stake_for(m, pct, GambleLogic.quiniela_stake_max(m)))
+	flush()
+	return ok
+
+
+func place_dollar(dir: String, pct: float) -> bool:
+	var m: GameModel = GameState.m
+	var ok: bool = GambleLogic.place_dollar(m, dir, GambleLogic.stake_for(m, pct, GambleLogic.dollar_stake_max(m)))
+	flush()
+	return ok

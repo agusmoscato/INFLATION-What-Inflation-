@@ -20,6 +20,7 @@ var rows: Array = []   # [evento, minuto, detalle]
 var no_prestige: bool = false
 var use_refuges: bool = true
 var qa_newplayer: bool = false
+var timbero: bool = false
 var do_park: bool = true
 var do_events: bool = true       ## false = siempre la opción por defecto de los eventos (--defaultevents)
 var refuge_stats: Dictionary = {"parked": 0, "sold": 0, "event_sells": 0, "strikes": 0}
@@ -41,6 +42,8 @@ func _init() -> void:
 			do_events = false
 		elif a == "--norefuges":
 			use_refuges = false
+		elif a == "--timbero":
+			timbero = true
 		elif a == "--qa-newplayer":
 			qa_newplayer = true
 		elif a == "--noprestige":
@@ -64,6 +67,8 @@ func _init() -> void:
 		_event_policy(m)
 		var saving: bool = false
 		var port_saving: bool = false
+		if timbero and t % 30 == 0:
+			_timba_policy(m)
 		if m.era >= 5 and m.measures < EconomyLogic.measure_count_total():
 			if EconomyLogic.buy_measure(m):
 				rows.append(["medida", float(t) / 60.0, "medidas=%d" % m.measures])
@@ -274,3 +279,14 @@ func _qa_newplayer(seed_value: int) -> void:
 		f.store_string(csv)
 		f.close()
 	quit(0 if ok else 1)
+
+
+## Modo "timbero": juega todo el tiempo a la timba (raspadita 5 %, quiniela y dólar al azar, 5 % de su plata cada 30 s).
+func _timba_policy(m: GameModel) -> void:
+	if Unlocks.has(m, "timba"):
+		GambleLogic.play_scratch(m, 0.05)
+	if Unlocks.has(m, "quiniela"):
+		GambleLogic.place_quiniela(m, m.rng.randi_range(0, 99), GambleLogic.stake_for(m, 0.05, GambleLogic.quiniela_stake_max(m)))
+	if Unlocks.has(m, "dollar"):
+		GambleLogic.place_dollar(m, "up" if m.rng.randf() < 0.5 else "down", GambleLogic.stake_for(m, 0.05, GambleLogic.dollar_stake_max(m)))
+	m.notifications.clear()

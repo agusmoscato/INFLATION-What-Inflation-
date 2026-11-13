@@ -1,25 +1,24 @@
 evento,minuto,detalle
 era,27.2,era=2
-reforma,40.0,n=1 cred=9 P=1e1.5
-era,73.5,era=3
-reforma,80.0,n=2 cred=55 P=1e2.7
-reforma,120.0,n=3 cred=258 P=1e3.0
-reforma,160.0,n=4 cred=1379 P=1e2.2
-era,168.8,era=4
-plan,168.8,plan=emission n=1
-reforma,208.8,n=5 cred=27826 P=1e6.7
-plan,208.8,plan=convertibility n=2
-reforma,248.8,n=6 cred=69012 P=1e3.4
-plan,248.8,plan=stabilization n=3
-reforma,288.8,n=7 cred=109074 P=1e1.9
-reforma,328.8,n=8 cred=291496 P=1e1.9
-era,352.1,era=5
-medida,353.0,medidas=1
-medida,374.0,medidas=2
-reforma,381.1,n=9 cred=3173466 P=1e4.7
-medida,388.0,medidas=3
-medida,400.0,medidas=4
-reforma,421.7,n=10 cred=12194425 P=1e2.1
-medida,434.5,medidas=5
-victoria,435.0,inflación 0 (medidas=5)
-fin,435.0,era=5 cred=12194425 reformas=10 planes=3 compras=940 max_espera_s=2392 medidas=5 refugios={ "parked": 2209; "sold": 0; "event_sells": 0; "strikes": 0; "events": 181; "event_aguinaldo_1": 44; "event_cepo_1": 31; "event_corrida_0": 10; "event_paro_1": 22; "event_feriado_1": 41; "event_corrida_1": 25; "event_paro_0": 8 }
+reforma,40.0,n=1 cred=6 P=1e1.7
+reforma,80.0,n=2 cred=34 P=1e2.3
+era,97.4,era=3
+reforma,120.0,n=3 cred=177 P=1e2.6
+reforma,160.0,n=4 cred=1043 P=1e2.1
+era,176.5,era=4
+plan,176.5,plan=emission n=1
+reforma,216.5,n=5 cred=25387 P=1e6.5
+plan,216.5,plan=convertibility n=2
+reforma,256.5,n=6 cred=73194 P=1e3.3
+plan,256.6,plan=stabilization n=3
+reforma,296.6,n=7 cred=126112 P=1e1.8
+reforma,336.6,n=8 cred=367170 P=1e2.0
+era,338.0,era=5
+medida,339.0,medidas=1
+medida,351.0,medidas=2
+medida,371.5,medidas=3
+reforma,376.6,n=9 cred=4952275 P=1e3.9
+medida,389.5,medidas=4
+medida,402.0,medidas=5
+victoria,402.5,inflación 0 (medidas=5)
+fin,402.5,era=5 cred=4952275 reformas=9 planes=3 compras=921 max_espera_s=1320 medidas=5 refugios={ "parked": 1957; "sold": 0; "event_sells": 0; "strikes": 0; "events": 164; "event_feriado_1": 40; "event_paro_1": 23; "event_corrida_1": 24; "event_cepo_1": 26; "event_paro_0": 15; "event_aguinaldo_1": 34; "event_corrida_0": 2 }

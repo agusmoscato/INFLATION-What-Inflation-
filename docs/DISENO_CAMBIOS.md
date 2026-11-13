@@ -68,3 +68,26 @@ Con la cadena de objetivos actual el jugador nuevo siempre tiene algo alcanzable
 - Los eventos dejan una figurita de premio el 30 % de las veces (rareza 78 % común, 20 % rara, 2 % dorada).
 - La demo regala un sobre una sola vez al abrirse el álbum.
 - La timba (parte C) también da sobres y doradas.
+
+## Parte C: timba (siempre con plata del juego)
+
+Nunca hay dinero real ni microtransacciones; hay un cartel fijo que lo dice en la pestaña. Balance y números: [docs/balance_timba.md](balance_timba.md). La demo incluye la raspadita pero no la quiniela ni la timba del dólar.
+
+### C1. Raspadita del kiosco (Era 2)
+- Se compra por 1 %, 5 % o 10 % de tu plata actual (acotado por el tope de premios) y se **raspa con el mouse**: polvo de tiza que salta de la tarjeta, sonido de raspado, auto-revelado al 55 % raspado y reacciones según el premio (monedas, lluvia de tiza dorada, temblor de pantalla, fanfarria especial para el pozo).
+- Premios: nada, x2, x10, un sobre de figuritas, una figurita dorada o el **pozo** que crece con cada raspadita.
+
+### C2. Quiniela del mes (Era 3)
+- Elegís un número del 00 al 99 y cuánto apostar. Al cerrar el mes se sortea con una animación de **bolillero** en tiza (bombo con bolillas, salen dos bolillas con la decena y la unidad). 2 cifras pagan x70 y la última cifra x7, sobre lo que juega después de la comisión del 30 % del quinielero (esa comisión es lo que mantiene el valor esperado en -7 %).
+
+### C3. Timba del dólar (Era 3)
+- Antes de cada mes apostás si el dato oficial de inflación queda arriba o abajo de la tasa de hoy (paga x1,9). El dato oficial tiene ruido; hay **pistas reales** de los eventos activos (por ejemplo, "Corrida cambiaria termina en 12 s, antes del cierre: la inflación va a bajar").
+
+### C4. Balance
+- Valor esperado -5,9 % (raspadita), -6,9 % (quiniela) y -5 % (dólar); con las 6 páginas del álbum la raspadita queda cerca de 0. Tope: ningún premio supera 10 minutos de tus ingresos. El simulador tiene el modo `--timbero`.
+
+### C5. Rachas y estadísticas
+- Tras 5 pérdidas seguidas la próxima raspadita paga seguro (x1,5). El álbum muestra ganado, perdido y mejor premio.
+
+### C6. Logros de timba
+- "Timbero" (10 raspaditas), "Raspador serial" (50), "¡El pozo!", "Me salió la quiniela", "Dólar sabio" (3 apuestas ganadas), "Lo perdí todo (y está bien)" (8 pérdidas seguidas) y "Rasqué una dorada". Más los de figuritas: primer sobre, mitad del álbum, página completa, brillo de tiza, el chupi y El Gran Coleccionista.

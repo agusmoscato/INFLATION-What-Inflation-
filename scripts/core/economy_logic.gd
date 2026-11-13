@@ -715,6 +715,8 @@ static func _update_era(m: GameModel) -> void:
 static func month_end(m: GameModel) -> void:
 	m.real_ref = income_per_sec(m).div(m.price_level)      # ingreso real al cierre del mes, antes del aumento
 	var rate: float = inflation_rate(m)
+	GambleLogic.settle_dollar(m, rate)         # la timba del dólar se resuelve con la tasa del mes que cierra
+	GambleLogic.draw_quiniela(m)               # y se sortea la quiniela
 	m.month_count += 1
 	m.price_level = m.price_level.mul_f(1.0 + rate)
 	var pd: Dictionary = plan_def(m)

@@ -143,3 +143,22 @@ Idle, Incremental, Clicker, Economía, Comedia, Sátira, Casual, Relajante, Un j
 - **Duración prometida:** "6–10 horas" sale del simulador (bot de ~8-9 h sin refugios, ~8 h con refugios); falta validar con jugadores reales antes de decirlo en la página.
 - **Demo:** el diseño propone cubrir Era 1 y la primera reforma; no hay build de demo recortado todavía.
 - **Descripciones de tienda y términos:** revisar que "sátira" no se lea como política (el diseño exige cero políticos, partidos o billetes reales).
+
+---
+
+## Imágenes de la página (generadas con `tools/steam_assets.ps1` en `export/steam_assets/`)
+
+| Archivo | Tamaño | Dónde va en Steamworks (Store Page → Graphical Assets) |
+|---|---|---|
+| `header_capsule_920x430.png` | 920x430 | Header Capsule |
+| `small_capsule_462x174.png` | 462x174 | Small Capsule (el logo se lee a este tamaño) |
+| `main_capsule_1232x706.png` | 1232x706 | Main Capsule |
+| `vertical_capsule_748x896.png` | 748x896 | Vertical Capsule |
+| `library_capsule_600x900.png` | 600x900 | Library Capsule |
+| `library_hero_3840x1240.png` | 3840x1240 | Library Hero (sin texto: el logo va aparte) |
+| `library_logo_1280x720.png` | 1280x720, PNG transparente | Library Logo |
+| `screenshots/01…08_*.png` | 1920x1080 | Screenshots, en este orden: tutorial, era 3, indicador "la inflación te está comiendo", evento con decisión, álbum, sobre abierto con dorada, raspadita con el pozo, hiperinflación |
+| `achievements/<id>.png` y `<id>_locked.png` | 256x256 | Ícono desbloqueado / bloqueado de cada logro (ver STEAM.md) |
+
+Los clips (`export/clips/*_h.avi` 1920x1080 y `*_v.avi` 1080x1920) sirven para el tráiler y redes; convertirlos a MP4 con ffmpeg antes de subir.
+Todo es arte provisorio generado por código: conviene reemplazar las cápsulas por arte hecho a mano antes del lanzamiento.

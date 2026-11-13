@@ -43,6 +43,7 @@ func flush() -> void:
 			"reform_done": EventBus.reform_done.emit(n["args"][0], n["args"][1])
 			"plan_done": EventBus.plan_done.emit(n["args"][0])
 			"victory": EventBus.victory.emit()
+			"demo_end": EventBus.demo_end.emit()
 			"toast": EventBus.toast.emit(n["args"][0])
 
 

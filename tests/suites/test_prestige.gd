@@ -85,3 +85,26 @@ func run(t) -> void:
 	m7.money = BigNumber.from_string("1e40")
 	t.check(EconomyLogic.buy_measure(m7), "compra medida")
 	t.eq(m7.measures, 1, "1 medida")
+	# modo demo: límite en Era 2 y fin tras la primera reforma
+	var md: GameModel = GameModel.new(3)
+	md.demo_mode = true
+	EconomyLogic.earn(md, BigNumber.from_string("1e30"))
+	EconomyLogic.tick(md, 0.1)
+	t.eq(md.era, 2, "demo: la era no pasa de 2 aunque haya ganancias de Era 5")
+	t.check(not md.demo_finished, "demo: todavía no terminó")
+	t.check(EconomyLogic.can_reform(md), "demo: se puede hacer la primera reforma")
+	EconomyLogic.do_reform(md)
+	t.check(md.demo_finished, "demo: terminó tras la primera reforma")
+	var has_end: bool = false
+	for n in md.notifications:
+		if n["sig"] == "demo_end":
+			has_end = true
+	t.check(has_end, "demo: avisa el fin de la demo")
+	var md2: GameModel = GameModel.new(3)
+	md2.from_dict(md.to_dict())
+	t.check(md2.demo_finished, "demo: el fin se guarda")
+	var mfull: GameModel = GameModel.new(3)
+	EconomyLogic.earn(mfull, BigNumber.from_string("1e30"))
+	EconomyLogic.tick(mfull, 0.1)
+	t.eq(mfull.era, 5, "juego completo: sin límite de era")
+	t.check(DemoMode.STEAM_URL == "", "la URL de Steam queda vacía hasta tener el AppID")

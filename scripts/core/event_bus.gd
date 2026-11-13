@@ -17,6 +17,7 @@ signal reform_done(banknote_id: int, cut_zeros: int)
 signal plan_done(plan_id: String)
 signal achievement_unlocked(id: String)
 signal victory
+signal demo_end                              ## la demo llegó a su límite
 signal headline(text_key: String)
 signal offline_report(report: Dictionary)
 signal game_loaded

@@ -658,6 +658,9 @@ static func do_reform(m: GameModel) -> bool:
 	m.reforms += 1
 	_reset_run(m)
 	m.push("reform_done", [note, cut])
+	if m.demo_mode:
+		m.demo_finished = true
+		m.push("demo_end")
 	return true
 
 
@@ -691,6 +694,8 @@ static func do_plan(m: GameModel, plan: String) -> bool:
 # =====================================================================
 static func _update_era(m: GameModel) -> void:
 	while m.era < GameData.eras.size() and m.lifetime_real.ge(GameData.eras[m.era]["threshold"]):
+		if m.demo_mode and m.era >= DemoMode.MAX_ERA:
+			break      # la demo llega hasta la Era 2
 		m.era += 1
 		m.dirty = true
 		m.push("era_changed", [m.era])

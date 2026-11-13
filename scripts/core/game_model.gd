@@ -28,6 +28,8 @@ var zeros_cut: int = 0
 var measures: int = 0
 var won: bool = false
 var won_notified: bool = false
+var demo_finished: bool = false                 # la demo llegó a su límite (primera reforma hecha)
+var demo_mode: bool = false                     # no se guarda: lo decide el build
 
 var clicks: int = 0
 var remarks: int = 0
@@ -105,7 +107,7 @@ func to_dict() -> Dictionary:
 		"era": era, "credibility": credibility, "legacy_cred": legacy_cred,
 		"reforms": reforms, "plans_done": plans_done, "plan_id": plan_id, "plans_used": plans_used.duplicate(),
 		"album": album.duplicate(), "zeros_cut": zeros_cut, "measures": measures,
-		"won": won, "won_notified": won_notified,
+		"won": won, "won_notified": won_notified, "demo_finished": demo_finished,
 		"clicks": clicks, "remarks": remarks, "events_seen": events_seen,
 		"time_played": time_played, "run_time": run_time,
 		"month_progress": month_progress, "month_count": month_count,
@@ -151,6 +153,7 @@ func from_dict(d: Dictionary) -> void:
 	measures = int(d.get("measures", 0))
 	won = bool(d.get("won", false))
 	won_notified = bool(d.get("won_notified", false))
+	demo_finished = bool(d.get("demo_finished", false))
 	clicks = int(d.get("clicks", 0))
 	remarks = int(d.get("remarks", 0))
 	events_seen = int(d.get("events_seen", 0))

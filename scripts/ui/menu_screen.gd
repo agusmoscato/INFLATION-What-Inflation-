@@ -45,6 +45,8 @@ func _ready() -> void:
 	sub.add_theme_color_override("font_outline_color", Color.BLACK)
 	sub.add_theme_constant_override("outline_size", 8)
 	center.add_child(sub)
+	if DemoMode.is_demo():
+		center.add_child(UIKit.label(tr("demo.badge"), 44, Chalk.PINK, HORIZONTAL_ALIGNMENT_CENTER, true))
 
 	var note_row: CenterContainer = CenterContainer.new()
 	center.add_child(note_row)

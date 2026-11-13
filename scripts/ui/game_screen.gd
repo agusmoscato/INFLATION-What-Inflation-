@@ -4,6 +4,7 @@ extends Control
 
 signal request_menu
 signal request_credits
+signal request_demo_end
 
 const TABS: Array = ["ui.tab.biz", "ui.tab.upg", "ui.tab.ref", "ui.tab.reform", "ui.tab.album", "ui.tab.ach"]
 
@@ -131,6 +132,7 @@ func _connect_bus() -> void:
 	EventBus.reform_done.connect(_on_reform_done)
 	EventBus.plan_done.connect(_on_plan_done)
 	EventBus.victory.connect(_on_victory)
+	EventBus.demo_end.connect(_on_demo_end)
 	EventBus.toast.connect(func(key: String) -> void: _toast(tr(key), UIKit.C_GOLD))
 	EventBus.headline.connect(func(key: String) -> void: _headline_queue.push_front(key))
 
@@ -1312,3 +1314,10 @@ func _on_tutorial_finished(skipped: bool) -> void:
 		_guide = null
 	if not skipped:
 		_toast(tr("tut.done"), UIKit.C_GOLD)
+
+
+## La demo llegó a su límite (primera reforma): se deja ver la animación y se muestra la pantalla final.
+func _on_demo_end() -> void:
+	await get_tree().create_timer(3.4).timeout
+	if is_inside_tree():
+		request_demo_end.emit()

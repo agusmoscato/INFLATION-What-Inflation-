@@ -53,6 +53,7 @@ func _ready() -> void:
 		["09_reforma_tijera", _reform_anim],
 		["10_opciones", _options],
 		["11_creditos", _credits],
+		["12_demo_fin", _demo_end],
 	]
 
 
@@ -171,6 +172,10 @@ func _reform_anim() -> void:
 
 func _options() -> void:
 	main.show_options()
+
+
+func _demo_end() -> void:
+	main.show_demo_end()
 
 
 func _credits() -> void:

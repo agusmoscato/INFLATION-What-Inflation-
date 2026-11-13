@@ -90,11 +90,16 @@ func start_game(continue_save: bool, resume_memory: bool = false) -> void:
 	g.request_menu.connect(func() -> void:
 		SaveSystem.save_game()
 		show_menu())
+	g.request_demo_end.connect(show_demo_end)
 	g.request_credits.connect(func() -> void:
 		if not GameState.m.won_notified:
 			GameState.m.won_notified = true
 			SaveSystem.save_game()
 			show_credits(true))
+	if GameState.m.demo_finished:
+		g.free()
+		show_demo_end()
+		return
 	_set_screen(g)
 	if not _pending_offline.is_empty():
 		g.show_offline_report(_pending_offline)
@@ -105,3 +110,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _game != null and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SPACE:
 		Economy.click()
 		_game.empanada.poke()
+
+
+func show_demo_end() -> void:
+	Economy.running = false
+	SaveSystem.save_game()
+	var s: DemoEndScreen = DemoEndScreen.new()
+	s.back_to_menu.connect(show_menu)
+	_set_screen(s)

@@ -9,6 +9,8 @@ var _timer: float = 0.0
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
+	if DemoMode.is_demo():
+		save_path = DemoMode.SAVE_PATH       # la demo no comparte partida con el juego completo
 
 
 func _process(delta: float) -> void:

@@ -46,3 +46,7 @@ Registro de decisiones tomadas de forma autónoma (más reciente al final).
 - Cada evento plantea 2 opciones con costo y beneficio, 10 s para elegir y una opción por defecto (ver `docs/balance_eventos.md`). El paro ya no se "negocia": se decide entre cerrar y pagar horas extra.
 - Resultado del simulador: jugar bien los eventos acelera ~7 % (5-9 %) frente a elegir siempre la opción por defecto.
 - "Dólar blue (+40 %)" se implementó como +40 puntos absolutos de comisión sobre la del refugio.
+
+## Modo demo (tanda 4)
+- Feature tag `demo` (presets "Windows Demo" y "Web Demo") o argumento `--demo`. Límite: Era 1, Era 2 y la primera reforma; tras la reforma se muestra la pantalla "¡Esto fue la demo!".
+- La demo guarda en `user://save_demo.json`: su progreso no se transfiere al juego completo. `DemoMode.STEAM_URL` queda vacía hasta tener el AppID (el botón avisa que la página no está publicada).

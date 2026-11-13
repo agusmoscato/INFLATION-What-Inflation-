@@ -128,3 +128,20 @@ static func clear_children(n: Node) -> void:
 	for c in n.get_children():
 		n.remove_child(c)
 		c.queue_free()
+
+
+## Pestaña bloqueada: el nombre tachado y "PRÓXIMAMENTE" debajo.
+static func style_tab_locked(b: Button, font_size: int = 20) -> void:
+	var seed_v: int = 40 + b.get_index() * 5
+	var st: ChalkStyle = chalk_box(Chalk.RED, Color(0, 0, 0, 0), 2.4, seed_v)
+	st.mode = ChalkStyle.Mode.STRIKE
+	st.stroke = Color(Chalk.RED, 0.8)
+	for k in ["normal", "hover", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(k, st)
+	b.add_theme_color_override("font_color", Color(Chalk.WHITE, 0.4))
+	b.add_theme_color_override("font_hover_color", Color(Chalk.WHITE, 0.55))
+	b.add_theme_color_override("font_disabled_color", Color(Chalk.WHITE, 0.4))
+	b.add_theme_font_size_override("font_size", int(font_size * FS))
+	if Chalk.title_font != null:
+		b.add_theme_font_override("font", Chalk.title_font)
+	b.focus_mode = Control.FOCUS_NONE

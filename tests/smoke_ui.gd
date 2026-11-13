@@ -37,8 +37,8 @@ func _process(_delta: float) -> void:
 			for def in GameData.businesses:
 				Economy.buy_business(def["id"], 1)
 			EconomyLogic.smart_buy(m)
-		if frame >= 30 and frame < 30 + 6 * 12:
-			g._select_tab(((frame - 30) / 12) % 6)
+		if frame >= 30 and frame < 30 + 7 * 12:
+			g._select_tab(((frame - 30) / 12) % 7)
 		if frame == 60:
 			Economy.remark()
 			Economy.refuge_buy("gold", 0.25)

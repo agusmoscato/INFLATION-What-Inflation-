@@ -7,6 +7,7 @@ signal new_game
 signal open_options
 signal open_credits
 signal quit_game
+signal open_howto
 
 var _bills: Array = []
 var _note: BanknoteView
@@ -71,6 +72,7 @@ func _ready() -> void:
 		btns.add_child(_button(tr("ui.continue"), UIKit.C_GREEN.darkened(0.2), func() -> void: continue_game.emit()))
 	_confirm_btn = _button(tr("ui.new_game"), UIKit.C_BLUE, _on_new_pressed)
 	btns.add_child(_confirm_btn)
+	btns.add_child(_button(tr("ui.howto"), UIKit.C_PANEL2, func() -> void: open_howto.emit()))
 	btns.add_child(_button(tr("ui.options"), UIKit.C_PANEL2, func() -> void: open_options.emit()))
 	btns.add_child(_button(tr("ui.credits"), UIKit.C_PANEL2, func() -> void: open_credits.emit()))
 	if not OS.has_feature("web"):

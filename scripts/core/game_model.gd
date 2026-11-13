@@ -48,6 +48,31 @@ var pending_choice: Dictionary = {}            # decisión abierta: {id, remaini
 var achievements: Dictionary = {}
 var saved_unix: float = 0.0
 
+# ---- objetivos, desbloqueos y coleccionables ----
+var obj_index: int = 0                          # objetivo actual de la cadena (solo avanza)
+var unlocked: Dictionary = {}                   # mecánicas ya anunciadas: id -> true
+var real_ref: BigNumber = BigNumber.zero()      # ingreso real/s al cierre del mes anterior (para "¿le ganás a la inflación?")
+var stickers: Dictionary = {}                   # id de figurita -> cantidad (más de 1 = repetidas)
+var packs_opened: int = 0
+var trades: int = 0
+var gift_given: bool = false                    # sobre de regalo de la demo
+var secret_seen: bool = false                   # final secreto del álbum completo
+
+# ---- timba (siempre con plata del juego) ----
+var pool_real: BigNumber = BigNumber.zero()     # "pozo" de la raspadita, en pesos reales (se ajusta con la inflación)
+var gamble_won: BigNumber = BigNumber.zero()    # ganado/perdido/mejor premio, en pesos reales
+var gamble_lost: BigNumber = BigNumber.zero()
+var gamble_best: BigNumber = BigNumber.zero()
+var scratches: int = 0
+var loss_streak: int = 0
+var loss_streak_max: int = 0
+var quiniela_wins: int = 0
+var dollar_wins: int = 0
+var pozo_wins: int = 0
+var gold_scratches: int = 0
+var quiniela: Dictionary = {}                   # boleta: {number:int, stake:String}
+var dollar_bet: Dictionary = {}                 # apuesta: {dir:"up"/"down", threshold:float, stake:String}
+
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # ---- derivados (no se guardan; se recalculan con EconomyLogic.recalc) ----
@@ -113,6 +138,13 @@ func to_dict() -> Dictionary:
 		"month_progress": month_progress, "month_count": month_count,
 		"remark_window": remark_window, "auto_timer": auto_timer, "auto_buy_timer": auto_buy_timer,
 		"event_timer": event_timer, "active_events": active_events.duplicate(true),
+		"obj_index": obj_index, "unlocked": unlocked.duplicate(), "real_ref": real_ref.to_save(),
+		"stickers": stickers.duplicate(), "packs_opened": packs_opened, "trades": trades,
+		"gift_given": gift_given, "secret_seen": secret_seen,
+		"pool_real": pool_real.to_save(), "gamble_won": gamble_won.to_save(), "gamble_lost": gamble_lost.to_save(),
+		"gamble_best": gamble_best.to_save(), "scratches": scratches, "loss_streak": loss_streak,
+		"loss_streak_max": loss_streak_max, "quiniela_wins": quiniela_wins, "dollar_wins": dollar_wins,
+		"pozo_wins": pozo_wins, "gold_scratches": gold_scratches, "quiniela": quiniela.duplicate(), "dollar_bet": dollar_bet.duplicate(),
 		"achievements": achievements.duplicate(), "saved_unix": Time.get_unix_time_from_system(),
 	}
 
@@ -176,4 +208,29 @@ func from_dict(d: Dictionary) -> void:
 	for k in d.get("achievements", {}):
 		achievements[k] = true
 	saved_unix = float(d.get("saved_unix", 0.0))
+	obj_index = int(d.get("obj_index", 0))
+	unlocked = {}
+	for k in d.get("unlocked", {}):
+		unlocked[k] = true
+	real_ref = BigNumber.from_string(str(d.get("real_ref", "0")))
+	stickers = {}
+	for k in d.get("stickers", {}):
+		stickers[k] = int(d["stickers"][k])
+	packs_opened = int(d.get("packs_opened", 0))
+	trades = int(d.get("trades", 0))
+	gift_given = bool(d.get("gift_given", false))
+	secret_seen = bool(d.get("secret_seen", false))
+	pool_real = BigNumber.from_string(str(d.get("pool_real", "0")))
+	gamble_won = BigNumber.from_string(str(d.get("gamble_won", "0")))
+	gamble_lost = BigNumber.from_string(str(d.get("gamble_lost", "0")))
+	gamble_best = BigNumber.from_string(str(d.get("gamble_best", "0")))
+	scratches = int(d.get("scratches", 0))
+	loss_streak = int(d.get("loss_streak", 0))
+	loss_streak_max = int(d.get("loss_streak_max", 0))
+	quiniela_wins = int(d.get("quiniela_wins", 0))
+	dollar_wins = int(d.get("dollar_wins", 0))
+	pozo_wins = int(d.get("pozo_wins", 0))
+	gold_scratches = int(d.get("gold_scratches", 0))
+	quiniela = d.get("quiniela", {}).duplicate()
+	dollar_bet = d.get("dollar_bet", {}).duplicate()
 	dirty = true

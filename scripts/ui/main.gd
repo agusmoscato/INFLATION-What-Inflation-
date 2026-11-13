@@ -49,6 +49,7 @@ func show_menu() -> void:
 	s.continue_game.connect(func() -> void: start_game(true))
 	s.new_game.connect(func() -> void: start_game(false))
 	s.open_options.connect(show_options)
+	s.open_howto.connect(show_howto)
 	s.open_credits.connect(func() -> void: show_credits(false))
 	s.quit_game.connect(func() -> void:
 		SaveSystem.save_game()
@@ -117,4 +118,10 @@ func show_demo_end() -> void:
 	SaveSystem.save_game()
 	var s: DemoEndScreen = DemoEndScreen.new()
 	s.back_to_menu.connect(show_menu)
+	_set_screen(s)
+
+
+func show_howto() -> void:
+	var s: HowToScreen = HowToScreen.new()
+	s.closed.connect(show_menu)
 	_set_screen(s)

@@ -50,4 +50,13 @@ static func build() -> Theme:
 	t.set_stylebox("grabber_highlight", "VScrollBar", sb)
 	t.set_stylebox("grabber_pressed", "VScrollBar", sb)
 	t.set_stylebox("scroll", "VScrollBar", StyleBoxEmpty.new())
+	# tooltips de tiza
+	var tip: ChalkStyle = UIKit.chalk_box(Chalk.YELLOW, Color(0.07, 0.12, 0.09, 0.96), 2.2)
+	tip.content_margin_left = 12.0
+	tip.content_margin_right = 12.0
+	tip.content_margin_top = 8.0
+	tip.content_margin_bottom = 8.0
+	t.set_stylebox("panel", "TooltipPanel", tip)
+	t.set_color("font_color", "TooltipLabel", Chalk.WHITE)
+	t.set_font_size("font_size", "TooltipLabel", int(18.0 * UIKit.FS))
 	return t

@@ -19,6 +19,7 @@ const PLAN_ORDER: Array = ["emission", "convertibility", "stabilization"]
 var rows: Array = []   # [evento, minuto, detalle]
 var no_prestige: bool = false
 var use_refuges: bool = true
+var qa_newplayer: bool = false
 var do_park: bool = true
 var do_events: bool = true       ## false = siempre la opción por defecto de los eventos (--defaultevents)
 var refuge_stats: Dictionary = {"parked": 0, "sold": 0, "event_sells": 0, "strikes": 0}
@@ -40,11 +41,16 @@ func _init() -> void:
 			do_events = false
 		elif a == "--norefuges":
 			use_refuges = false
+		elif a == "--qa-newplayer":
+			qa_newplayer = true
 		elif a == "--noprestige":
 			no_prestige = true
 		elif a.begins_with("--seed="):
 			seed_value = a.get_slice("=", 1).to_int()
 	var started: int = Time.get_ticks_msec()
+	if qa_newplayer:
+		_qa_newplayer(seed_value)
+		return
 	var m: GameModel = GameModel.new(seed_value)
 	var total: int = int(hours * 3600.0)
 	var last_era: int = 1
@@ -195,3 +201,76 @@ func _event_policy(m: GameModel) -> void:
 	EconomyLogic.choose(m, pick)
 	refuge_stats["events"] = int(refuge_stats.get("events", 0)) + 1
 	refuge_stats["event_" + id + "_" + str(pick)] = int(refuge_stats.get("event_" + id + "_" + str(pick), 0)) + 1
+
+
+# =====================================================================
+#  QA de jugador nuevo: los primeros 15 minutos con las acciones más obvias
+# =====================================================================
+## El jugador nuevo hace clic todo el tiempo, compra lo que pide el objetivo (o lo más rentable) y remarca cuando puede.
+func _qa_newplayer(seed_value: int) -> void:
+	const MAX_GAP: float = 60.0
+	const TOTAL: int = 900
+	var m: GameModel = GameModel.new(seed_value)
+	var done: Array = []     # [[segundo, id], ...]
+	var last_t: float = 0.0
+	var max_gap: float = 0.0
+	var streak: int = 0          # segundos seguidos sin nada alcanzable
+	var max_streak: int = 0
+	var streak_at: int = 0
+	var micro_secs: int = 0
+	for t in range(TOTAL):
+		EconomyLogic.do_click(m)
+		if m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
+			EconomyLogic.remark(m, true)
+		if t % 2 == 0:
+			var cur: Dictionary = ObjectiveLogic.current(m)
+			if not cur["done"]:
+				var o: Dictionary = ObjectiveLogic.LIST[m.obj_index]
+				match str(o["kind"]):
+					"money_biz", "own":
+						EconomyLogic.buy_business(m, str(o["biz"]), 1)
+					"upg_id":
+						EconomyLogic.buy_upgrade(m, str(o["upg"]))
+			var guard: int = 0
+			while guard < 20 and EconomyLogic.smart_buy(m):
+				guard += 1
+		EconomyLogic.tick(m, 1.0)
+		for n in m.notifications:
+			if n["sig"] == "objective_done":
+				max_gap = maxf(max_gap, float(t) - last_t)
+				done.append([t, str(n["args"][0])])
+				last_t = float(t)
+		m.notifications.clear()
+		# ¿hay algo alcanzable? (objetivo actual en <= 60 s o una meta chica)
+		var cur2: Dictionary = ObjectiveLogic.current(m)
+		var ok_now: bool = true
+		if not cur2["done"]:
+			var eta: float = ObjectiveLogic.eta(m, ObjectiveLogic.LIST[m.obj_index])
+			if eta > MAX_GAP:
+				if ObjectiveLogic.micro(m).is_empty():
+					ok_now = false
+				else:
+					micro_secs += 1
+		if ok_now:
+			streak = 0
+		else:
+			streak += 1
+			if streak > max_streak:
+				max_streak = streak
+				streak_at = t
+	print("")
+	print("QA jugador nuevo (%d min simulados, semilla %d)" % [TOTAL / 60, seed_value])
+	var csv: String = "segundo,objetivo\n"
+	for d in done:
+		print("  %4d s  %s" % [d[0], d[1]])
+		csv += "%d,%s\n" % [d[0], d[1]]
+	print("Objetivos cumplidos: %d | mayor espera entre objetivos cumplidos: %.0f s" % [done.size(), max_gap])
+	print("Segundos en los que el objetivo tardaba mas de 60 s y se mostro una 'meta chica': %d" % micro_secs)
+	print("Mayor tramo SIN nada alcanzable: %d s (en el segundo %d)" % [max_streak, streak_at])
+	var ok: bool = max_streak <= int(MAX_GAP)
+	print("RESULTADO: %s (limite %d s sin objetivo alcanzable)" % ["PASA" if ok else "FALLA", int(MAX_GAP)])
+	var f: FileAccess = FileAccess.open("res://docs/qa_newplayer.csv", FileAccess.WRITE)
+	if f != null:
+		f.store_string(csv)
+		f.close()
+	quit(0 if ok else 1)

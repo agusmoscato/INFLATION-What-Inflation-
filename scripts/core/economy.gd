@@ -38,6 +38,8 @@ func flush() -> void:
 				EventBus.headline.emit(GameData.events[GameData.event_idx[n["args"][0]]]["headline_key"])
 			"event_ended": EventBus.event_ended.emit(n["args"][0])
 			"event_choice": EventBus.event_choice.emit(n["args"][0])
+			"objective_done": EventBus.objective_done.emit(n["args"][0])
+			"unlock": EventBus.unlock.emit(n["args"][0])
 			"event_choice_done": EventBus.event_choice_done.emit(n["args"][0], n["args"][1])
 			"refuge_changed": EventBus.refuge_changed.emit()
 			"reform_done": EventBus.reform_done.emit(n["args"][0], n["args"][1])

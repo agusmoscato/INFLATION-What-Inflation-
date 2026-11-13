@@ -3,7 +3,7 @@ extends StyleBox
 ## Recuadro dibujado a mano con tiza: polilíneas con jitter estable, doble trazo y una rotación mínima.
 ## Pressed: trazo grueso y relleno hachurado. Disabled: trazo tenue y salteado (medio borrado).
 
-enum Mode { BOX, UNDERLINE, ELLIPSE, NONE }
+enum Mode { BOX, UNDERLINE, ELLIPSE, NONE, STRIKE }
 
 var stroke: Color = Chalk.WHITE
 var fill: Color = Color(0, 0, 0, 0.14)
@@ -60,6 +60,9 @@ func _rebuild(sz: Vector2) -> void:
 	if mode == Mode.UNDERLINE:
 		_extra = Chalk.jitter_line(Vector2(2, sz.y - 2), Vector2(sz.x - 2, sz.y - 3), seed_v + 5, 2.2, 14.0)
 		_extra2 = Chalk.jitter_line(Vector2(6, sz.y + 1), Vector2(sz.x - 8, sz.y), seed_v + 9, 2.0, 14.0)
+	elif mode == Mode.STRIKE:
+		_extra = Chalk.jitter_line(Vector2(-2, sz.y * 0.5 + 2), Vector2(sz.x + 2, sz.y * 0.5 - 3), seed_v + 5, 2.4, 12.0)
+		_extra2 = Chalk.jitter_line(Vector2(4, sz.y * 0.5 + 8), Vector2(sz.x - 6, sz.y * 0.5 + 3), seed_v + 9, 2.2, 12.0)
 	elif mode == Mode.ELLIPSE:
 		_extra = Chalk.ellipse_pts(sz / 2.0, sz.x / 2.0 + 6.0, sz.y / 2.0 + 3.0, seed_v + 5, 3.0, 1.12)
 		_extra2 = Chalk.ellipse_pts(sz / 2.0 + Vector2(1, 1), sz.x / 2.0 + 8.0, sz.y / 2.0 + 5.0, seed_v + 9, 3.0, 1.05)

@@ -6,7 +6,9 @@ signal request_menu
 signal request_credits
 signal request_demo_end
 
-const TABS: Array = ["ui.tab.biz", "ui.tab.upg", "ui.tab.ref", "ui.tab.reform", "ui.tab.album", "ui.tab.ach"]
+const TABS: Array = ["ui.tab.biz", "ui.tab.upg", "ui.tab.ref", "ui.tab.reform", "ui.tab.album", "ui.tab.timba", "ui.tab.ach"]
+## Mecánica que desbloquea cada pestaña ("" = siempre disponible).
+const TAB_FEATURE: Array = ["", "upgrades", "refuges", "reform", "album", "timba", ""]
 
 var world: MarginContainer
 var fx_layer: Control
@@ -57,6 +59,8 @@ var _clock: float = 0.0
 var _rate: float = 0.03
 var _upg_dirty: bool = true
 var _album_dirty: bool = true
+var race_meter: RaceMeter
+var objective_note: ObjectiveNote
 var _ach_dirty: bool = true
 var _bills_active: int = 0
 var _bill_timer: float = 0.0
@@ -111,6 +115,7 @@ func _ready() -> void:
 	_last_era = gm().era
 	_select_tab(0)
 	_next_headline()
+	_silent_catchup()
 	_start_tutorial()
 	Economy.running = true
 	_refresh_all()
@@ -130,6 +135,8 @@ func _connect_bus() -> void:
 	EventBus.event_started.connect(_on_event_started)
 	EventBus.event_ended.connect(func(_id: String) -> void: pass)
 	EventBus.event_choice.connect(func(_id: String) -> void: _play("event"))
+	EventBus.objective_done.connect(_on_objective_done)
+	EventBus.unlock.connect(func(f: String) -> void: _unlock_queue.append(f))
 	EventBus.achievement_unlocked.connect(_on_achievement)
 	EventBus.reform_done.connect(_on_reform_done)
 	EventBus.plan_done.connect(_on_plan_done)
@@ -159,8 +166,11 @@ func _build_header() -> Control:
 	left.add_child(money_label)
 	power_label = UIKit.label("", 15, UIKit.C_DIM)
 	left.add_child(power_label)
+	race_meter = RaceMeter.new()
+	race_meter.custom_minimum_size = Vector2(300, 84)
+	h.add_child(race_meter)
 	var mid: VBoxContainer = VBoxContainer.new()
-	mid.custom_minimum_size = Vector2(260, 0)
+	mid.custom_minimum_size = Vector2(230, 0)
 	h.add_child(mid)
 	mid.add_child(UIKit.label(tr("ui.inflation"), 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	rate_label = UIKit.label("3 %", 32, UIKit.C_RED, HORIZONTAL_ALIGNMENT_CENTER, true)
@@ -176,7 +186,7 @@ func _build_header() -> Control:
 	mid.add_child(month_label)
 	# pila de notitas (avisos) arriba a la derecha: no tapa la empanada ni el panel central
 	var notes: Control = Control.new()
-	notes.custom_minimum_size = Vector2(340, 84)
+	notes.custom_minimum_size = Vector2(300, 84)
 	notes.clip_contents = true
 	notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(notes)
@@ -215,6 +225,8 @@ func _build_left() -> Control:
 	v.add_child(empanada)
 	click_label = UIKit.label("", 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	v.add_child(click_label)
+	objective_note = ObjectiveNote.new()
+	col.add_child(objective_note)
 	var rp: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	col.add_child(rp)
 	var rv: VBoxContainer = VBoxContainer.new()
@@ -260,7 +272,7 @@ func _build_right() -> Control:
 	col.add_child(holder)
 	var stack: Control = Control.new()
 	holder.add_child(stack)
-	pages = [_build_biz_page(), _build_upg_page(), _build_refuge_page(), _build_reform_page(), _build_album_page(), _build_ach_page()]
+	pages = [_build_biz_page(), _build_upg_page(), _build_refuge_page(), _build_reform_page(), _build_album_page(), _build_timba_page(), _build_ach_page()]
 	for pg in pages:
 		stack.add_child(pg)
 		pg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -465,6 +477,13 @@ func _build_album_page() -> Control:
 	return pr[0]
 
 
+func _build_timba_page() -> Control:
+	var pr: Array = _scroll_page()
+	var v: VBoxContainer = pr[1]
+	v.add_child(UIKit.label(tr("tip.tab_timba"), 18, UIKit.C_DIM))
+	return pr[0]
+
+
 func _build_ach_page() -> Control:
 	var pr: Array = _scroll_page()
 	var v: VBoxContainer = pr[1]
@@ -592,6 +611,7 @@ func _refresh_all() -> void:
 		if ChalkPost.instance != null:
 			ChalkPost.instance.set_strength(1.0 - smudge * 0.3)
 	click_label.text = tr("ui.click_hint") + "  +" + UIKit.money(EconomyLogic.click_value(m))
+	_refresh_hud_extras(m)
 	_refresh_remark()
 	_refresh_events()
 	_refresh_page()
@@ -604,7 +624,8 @@ func _refresh_page() -> void:
 		2: _refresh_refuges()
 		3: _refresh_reform()
 		4: _refresh_album()
-		5: _refresh_ach()
+		5: pass
+		6: _refresh_ach()
 
 
 func _refresh_remark() -> void:
@@ -677,6 +698,11 @@ func _refresh_biz() -> void:
 			qty = maxi(1, EconomyLogic.max_affordable(m, def))
 		var cost: BigNumber = EconomyLogic.business_cost(m, def, qty)
 		e["cost"].set_text(UIKit.money(cost))
+		var ug: BigNumber = EconomyLogic.unit_gain(m, def).mul(m.my_prices).mul_f(EconomyLogic.event_income_mult(m) * m.refuge_mult)
+		var lost: BigNumber = EconomyLogic.lag_loss(m, ug)
+		var tip: String = (tr("tip.biz") % [UIKit.money(ug), UIKit.money(lost)]) if not lost.is_zero() else (tr("tip.biz_ok") % UIKit.money(ug))
+		e["btn"].tooltip_text = tip
+		e["row"].tooltip_text = tip
 		e["btn"].text = "%s x%d" % [tr("ui.buy"), qty]
 		e["btn"].disabled = cost.gt(m.money)
 
@@ -730,6 +756,7 @@ func _rebuild_upgrades() -> void:
 		var btn: Button = Button.new()
 		btn.custom_minimum_size = Vector2(170, 40)
 		UIKit.style_button(btn, UIKit.C_GOLD.darkened(0.45), 15)
+		btn.tooltip_text = _upgrade_tip(u)
 		var uid: String = u["id"]
 		btn.pressed.connect(func() -> void: Economy.buy_upgrade(uid))
 		h.add_child(btn)
@@ -759,6 +786,9 @@ func _refresh_refuges() -> void:
 		e["value"].add_theme_color_override("font_color", UIKit.C_GREEN if (not real_have.is_zero() and real_have.ge(m.base_income.mul_f(EconomyLogic.B("refuge_bonus_seconds")))) else UIKit.C_GOLD)
 		var can: bool = unlocked and not blocked
 		e["b25"].disabled = not can or m.money.is_zero()
+		var rtip: String = tr("tip.refuge") % ["%d %%" % int(round(EconomyLogic.refuge_fee(m, id) * 100.0)), BigNumber.from_float(float(m.refuge_price[id])).format(2)]
+		e["b25"].tooltip_text = rtip
+		e["b100"].tooltip_text = rtip
 		e["b100"].disabled = not can or m.money.is_zero()
 		e["sell"].disabled = not can or value.is_zero()
 
@@ -781,6 +811,7 @@ func _refresh_reform() -> void:
 		reform_labels["gain"].text = tr("ui.reform.gain") % gain
 		rb.disabled = false
 	rb.text = tr("ui.reform.confirm") if _reform_armed > 0.0 else tr("ui.reform.btn")
+	rb.tooltip_text = tr("tip.reform") % [str(maxi(0, floori(m.price_level.log10()))), str(gain), "%d %%" % int(round(float(gain) * EconomyLogic.B("cred_bonus") * 100.0))]
 	# plan
 	var plan_name: String = tr("plan." + m.plan_id) if m.plan_id != "" else "-"
 	if m.era < int(EconomyLogic.B("plan_min_era")):
@@ -1327,3 +1358,114 @@ func _on_demo_end() -> void:
 	await get_tree().create_timer(3.4).timeout
 	if is_inside_tree():
 		request_demo_end.emit()
+
+
+# =====================================================================
+#  Parte A: objetivo, "¿le ganás a la inflación?", pestañas bloqueadas, tooltips y carteles de desbloqueo
+# =====================================================================
+const TAB_TIPS: Array = ["tip.tab_biz", "tip.tab_upgrades", "tip.tab_refuges", "tip.tab_reform", "tip.tab_album", "tip.tab_timba", "tip.tab_ach"]
+
+var _unlock_queue: Array = []
+var _unlock_sign: UnlockSign
+var _tab_locked: Array = [false, false, false, false, false, false, false]
+
+
+## Al cargar una partida avanzada no se anuncia todo de golpe.
+func _silent_catchup() -> void:
+	var m: GameModel = gm()
+	if m.obj_index > 0 or m.era > 1 or m.reforms > 0:
+		Unlocks.sync_silent(m)
+		ObjectiveLogic.update(m)
+		m.notifications = m.notifications.filter(func(n: Dictionary) -> bool: return n["sig"] != "objective_done" and n["sig"] != "unlock")
+
+
+func _on_objective_done(_id: String) -> void:
+	_play("coin", 1.2)
+	_toast(tr("ui.obj.done"), UIKit.C_GOLD)
+	_burst(objective_note.global_position + Vector2(120, 20), UIKit.C_GOLD, 16)
+
+
+func _refresh_hud_extras(m: GameModel) -> void:
+	# ¿le ganás a la inflación?
+	var race: Dictionary = EconomyLogic.race(m)
+	race_meter.set_state(bool(race["winning"]))
+	var rn: String = UIKit.money(race["real_now"])
+	var rr: String = UIKit.money(race["real_ref"])
+	race_meter.set_numbers(rn, rr)
+	race_meter.tooltip_text = tr("tip.race") % [rn, rr]
+	# objetivo
+	objective_note.refresh(m)
+	# tooltips generales
+	var r: float = _rate
+	money_label.tooltip_text = tr("tip.money") % UIKit.money(m.money.mul_f(r / (1.0 + r)))
+	money_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	rate_label.tooltip_text = tr("tip.rate")
+	rate_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	empanada.tooltip_text = tr("tip.empanada") % UIKit.money(EconomyLogic.click_value(m))
+	var inc: BigNumber = EconomyLogic.income_per_sec(m)
+	if EconomyLogic.needs_remark(m):
+		remark_btn.tooltip_text = tr("tip.remark") % [UIKit.money(inc), UIKit.money(inc.mul(m.price_level.div(m.my_prices)))]
+	else:
+		remark_btn.tooltip_text = tr("tip.remark_ok")
+	# pestañas: bloqueadas (tachadas con PRÓXIMAMENTE) o abiertas
+	for i in range(TABS.size()):
+		var feat: String = TAB_FEATURE[i]
+		var locked: bool = feat != "" and not Unlocks.has(m, feat)
+		var b: Button = tab_buttons[i]
+		if locked != _tab_locked[i] or b.text == "":
+			_tab_locked[i] = locked
+			if locked:
+				b.text = tr(TABS[i]) + "\n" + tr("ui.soon")
+				UIKit.style_tab_locked(b)
+			else:
+				b.text = tr(TABS[i])
+				UIKit.style_tab(b, i == _tab)
+		b.tooltip_text = (tr("tip.tab_locked") % tr("tip.locked_" + feat)) if locked else tr(TAB_TIPS[i])
+	_pump_unlock_queue()
+
+
+func _pump_unlock_queue() -> void:
+	if (_unlock_sign != null and is_instance_valid(_unlock_sign)) or _unlock_queue.is_empty():
+		return
+	var f: String = _unlock_queue.pop_front()
+	var target: Control = tab_buttons[0]
+	if Unlocks.TAB_OF.has(f):
+		target = tab_buttons[int(Unlocks.TAB_OF[f])]
+	elif f == "events":
+		target = rate_label
+	_unlock_sign = UnlockSign.new()
+	fx_layer.add_child(_unlock_sign)
+	_unlock_sign.show_for(f, target)
+	_play("win")
+
+
+func _upgrade_tip(u: Dictionary) -> String:
+	var m: GameModel = gm()
+	var ef: Dictionary = u["effect"]
+	var v: float = float(ef["value"])
+	var vs: String = BigNumber.from_float(v).format(2)
+	var base_inc: BigNumber = m.base_income
+	match str(ef["type"]):
+		"business_mult":
+			var bid: String = str(ef["biz"])
+			var bdef: Dictionary = GameData.businesses[GameData.business_idx[bid]]
+			var n: int = m.owned_count(bid)
+			var contrib: BigNumber = bdef["base_income"].mul_f(float(n) * float(m.biz_up_mult.get(bid, 1.0)) * EconomyLogic.milestone_mult(n) * m.global_mult).mul(m.my_prices)
+			return tr("tip.upg_biz") % [tr(bdef["name_key"]), vs, UIKit.money(contrib.mul_f(v - 1.0))]
+		"all_mult":
+			return tr("tip.upg_all") % [vs, UIKit.money(base_inc.mul(m.my_prices).mul_f(v - 1.0))]
+		"click_mult":
+			return tr("tip.upg_click_mult") % [vs, UIKit.money(EconomyLogic.click_value(m).mul_f(v))]
+		"click_pct":
+			return tr("tip.upg_click_pct") % ("%d %%" % int(round(v * 100.0)))
+		"auto_remark":
+			return tr("tip.upg_auto_remark") % str(int(v))
+		"auto_buy":
+			return tr("tip.upg_auto_buy") % str(int(v))
+		"inflation_mult":
+			return tr("tip.upg_inflation") % ("%d %%" % int(round((1.0 - v) * 100.0)))
+		"fee_mult":
+			return tr("tip.upg_fee")
+		"remark_bonus":
+			return tr("tip.upg_remark") % vs
+	return ""

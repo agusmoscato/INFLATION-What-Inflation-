@@ -702,6 +702,7 @@ static func _update_era(m: GameModel) -> void:
 
 
 static func month_end(m: GameModel) -> void:
+	m.real_ref = income_per_sec(m).div(m.price_level)      # ingreso real al cierre del mes, antes del aumento
 	var rate: float = inflation_rate(m)
 	m.month_count += 1
 	m.price_level = m.price_level.mul_f(1.0 + rate)
@@ -746,6 +747,8 @@ static func tick(m: GameModel, dt: float, offline: bool = false) -> void:
 			while smart_buy(m) and guard < 20:
 				guard += 1
 	_update_era(m)
+	ObjectiveLogic.update(m)
+	Unlocks.update(m)
 
 
 ## Progreso offline: la inflación corre igual, pero no hay clics ni eventos.
@@ -804,3 +807,27 @@ static func tutorial_step(m: GameModel) -> int:
 	if m.remarks < 1:
 		return 3
 	return TUTORIAL_STEPS
+
+
+# =====================================================================
+#  ¿Le ganás a la inflación?
+# =====================================================================
+## Compara tu ingreso REAL por segundo (lo que compra) con el del cierre del mes anterior.
+## Si cae, la inflación te está comiendo; se recupera remarcando o comprando negocios.
+static func race(m: GameModel) -> Dictionary:
+	ensure_fresh(m)
+	var real_now: BigNumber = income_per_sec(m).div(m.price_level)
+	var winning: bool = true
+	if not m.real_ref.is_zero():
+		winning = real_now.ge(m.real_ref.mul_f(0.995))
+	var lost: BigNumber = BigNumber.zero()
+	if needs_remark(m):
+		lost = income_per_sec(m).mul(m.price_level.div(m.my_prices).sub(BigNumber.one()))
+	return {"winning": winning, "real_now": real_now, "real_ref": m.real_ref, "lost_ps": lost, "rate": inflation_rate(m)}
+
+
+## Cuánto te come la inflación de un ingreso nominal por segundo (por tener precios desactualizados).
+static func lag_loss(m: GameModel, income_nominal: BigNumber) -> BigNumber:
+	if not needs_remark(m):
+		return BigNumber.zero()
+	return income_nominal.mul(m.price_level.div(m.my_prices).sub(BigNumber.one()))

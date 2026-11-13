@@ -37,6 +37,8 @@ func _ready() -> void:
 	var ua: PackedStringArray = OS.get_cmdline_user_args()
 	if ua.has("--record-clip") and ua.find("--record-clip") + 1 < ua.size():
 		call_deferred("_start_clip", ua[ua.find("--record-clip") + 1])
+	if OS.get_cmdline_user_args().has("--qa-newplayer-shots"):
+		call_deferred("_qa_newplayer_shots")
 	if OS.get_cmdline_user_args().has("--qa-windows"):
 		call_deferred("_qa_windows_only")
 	if OS.get_cmdline_user_args().has("--qa-screenshot"):
@@ -398,3 +400,72 @@ func _qa_windows_only() -> void:
 	SaveSystem.delete_save()
 	print("QA ventanas: %d problemas" % failures.size())
 	get_tree().quit(1 if not failures.is_empty() else 0)
+
+
+# =====================================================================
+#  QA de la primera partida de un jugador nuevo: godot -- --qa-newplayer-shots
+#  Un "jugador que hace lo que le marca la pantalla" (sigue la acción destacada) juega 5 minutos a velocidad x10 y se saca
+#  una captura cada 15 s de juego en user://qa/newplayer/. tools/qa_newplayer.ps1 las junta en docs/qa/primeros_5_min.jpg.
+# =====================================================================
+const NP_SECONDS: float = 300.0
+const NP_SHOT_EVERY: float = 15.0
+const NP_SPEED: float = 10.0
+
+
+func _qa_newplayer_shots() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://qa/newplayer"))
+	SaveSystem.save_path = "user://qa_np_save.json"
+	get_window().borderless = true
+	get_window().size = Vector2i(1280, 720)      # ventana sin bordes: si no, Windows puede dejar de dibujarla y las capturas salen viejas
+	Settings.path = "user://qa_np_settings.cfg"
+	Settings.language = "es"
+	Settings.tutorial_done = false
+	Settings.apply()
+	start_game(false)
+	await _qa_wait(0.5)
+	Economy.time_scale = NP_SPEED
+	var gt: float = 0.0
+	var next_shot: float = 0.0
+	var next_act: float = 0.0
+	var seen: Array = [0]
+	var last_us: int = Time.get_ticks_usec()
+	var log: Array = ["t_seg,plata,tipo_destacado,id,objetivo,tutorial,real_ms,pestana,cartel_desbloqueo"]
+	while gt <= NP_SECONDS + 0.01:
+		await get_tree().process_frame
+		var now_us: int = Time.get_ticks_usec()
+		gt += minf(float(now_us - last_us) / 1e6, 0.2) * NP_SPEED
+		last_us = now_us
+		var m: GameModel = GameState.m
+		if gt >= next_act:
+			next_act = gt + 0.4
+			var rec: Dictionary = Advisor.recommend(m, seen)
+			match str(rec["kind"]):
+				"buy":
+					_game._select_tab(0)
+					Economy.buy_business(str(rec["id"]), 1)
+				"upgrade":
+					_game._select_tab(1)
+					Economy.buy_upgrade(str(rec["id"]))
+				"remark":
+					Economy.remark()
+				"tab":
+					seen.append(int(rec["id"]))
+					_game._select_tab(int(rec["id"]))
+				"decision":
+					Economy.choose_event(0)
+				_:
+					for i in range(2):
+						Economy.click()           # sin nada destacado, un jugador nuevo toca la empanada
+		if gt >= next_shot:
+			await RenderingServer.frame_post_draw      # sin esto la captura puede ser de un cuadro viejo
+			var tag: String = "%03d" % int(round(next_shot))
+			get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%s.png" % tag))
+			var rec2: Dictionary = Advisor.recommend(m, seen)
+			log.append("%s,%s,%s,%s,%s,%d,%d,%d,%s" % [tag, UIKit.money(m.money), str(rec2["kind"]), str(rec2["id"]), str(ObjectiveLogic.current(m)["id"]), EconomyLogic.tutorial_step(m), Time.get_ticks_msec(), _game._tab, str(is_instance_valid(_game._unlock_sign))])
+			next_shot += NP_SHOT_EVERY
+	var f: FileAccess = FileAccess.open("user://qa/newplayer/log.csv", FileAccess.WRITE)
+	f.store_string("\n".join(log) + "\n")
+	f.close()
+	SaveSystem.delete_save()
+	print("QA newplayer: %d capturas" % (log.size() - 1))
+	get_tree().quit(0)

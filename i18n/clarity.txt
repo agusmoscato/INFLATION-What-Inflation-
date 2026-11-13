@@ -13,6 +13,7 @@
 "ui.adv.tab","¡Mirá esta pestaña!","Check this tab!"
 "ui.adv.decision","¡Elegí una opción!","Pick an option!"
 "ui.adv.obj","¡Tu objetivo!","Your goal!"
+"ui.adv.wait","Juntá plata para tu objetivo","Save up for your goal"
 "ui.offline.away","Estuviste afuera %s.","You were away for %s."
 "ui.offline.gain","Mientras no estabas ganaste %s,","While you were away you earned %s,"
 "ui.offline.prices","pero los precios subieron %s.","but prices went up %s."

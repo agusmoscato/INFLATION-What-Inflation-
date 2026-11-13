@@ -996,7 +996,8 @@ func _on_month_passed(rate: float) -> void:
 		hud_bottom = money_label.get_global_rect().end.y + 70.0
 	raise_sign.size = Vector2(size.x, 170.0)
 	raise_sign.position = Vector2(0.0, hud_bottom + (size.y - hud_bottom) * 0.22)
-	raise_sign.font_size = 104 if size.x > 900.0 else 70
+	raise_sign.font_size = 84 if size.x > 900.0 else 60
+	raise_sign.modulate.a = 0.8
 	raise_sign.show_text(tr("ui.raise") % BigNumber.from_float(rate * 100.0).format(1), int(rate * 1000.0) + 1)
 	Chalk.wobble(rate_label, 0.12, 0.6)
 	_upg_dirty = true
@@ -1139,7 +1140,7 @@ func _toast(text: String, color: Color) -> void:
 	p.add_child(l)
 	toast_box.add_child(p)
 	toast_box.move_child(p, 0)
-	while toast_box.get_child_count() > 3:
+	while toast_box.get_child_count() > 2:
 		var old: Node = toast_box.get_child(toast_box.get_child_count() - 1)
 		toast_box.remove_child(old)
 		old.queue_free()
@@ -1475,7 +1476,7 @@ func _refresh_hud_extras(m: GameModel) -> void:
 
 
 func _pump_unlock_queue() -> void:
-	if (_unlock_sign != null and is_instance_valid(_unlock_sign)) or _unlock_queue.is_empty():
+	if (_unlock_sign != null and is_instance_valid(_unlock_sign)) or _unlock_queue.is_empty() or (_guide != null and is_instance_valid(_guide)):
 		return
 	var f: String = _unlock_queue.pop_front()
 	var target: Control = tab_buttons[0]
@@ -1710,6 +1711,8 @@ func _advice_target(a: Dictionary) -> Dictionary:
 	match str(a["kind"]):
 		"click":
 			return {"ctl": empanada, "side": "right"}
+		"objective":
+			return {"ctl": objective_note, "side": "right"}
 		"remark":
 			return {"ctl": remark_btn, "side": "right"}
 		"decision":

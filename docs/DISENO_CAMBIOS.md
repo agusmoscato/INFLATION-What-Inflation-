@@ -115,3 +115,29 @@ Nunca hay dinero real ni microtransacciones; hay un cartel fijo que lo dice en l
   - Las posiciones del mouse las calcula el propio juego (transformada de pantalla) y las imprime, así el QA sigue funcionando si cambia el tamaño de la ventana. Chrome headless con WebGL por software corre a pocos cuadros por segundo, por eso el modo QA desactiva la acumulación de entrada del mouse.
 - **QA Linux:** `tools/export_all.sh` corre el binario con `--qa-screenshot` (con `xvfb-run` si no hay pantalla) cuando se ejecuta en Linux. **En este PC (Windows, sin WSL) no se puede correr el binario de Linux, así que ese control no se ejecutó**: el export de Linux se genera pero no se probó. En Windows el script lo saltea y lo avisa.
 - **Clips a MP4:** `tools/record_clips.ps1` convierte solo (H.264 `-preset veryfast`, CRF 20, AAC; los verticales se reconvierten con CRF más alto si pasan de 50 MB) y borra el AVI; `-ConvertOnly` convierte los AVI que ya existan. La conversión vive en el script y no dentro de `--record-clip`, porque el archivo de video recién se cierra cuando el motor termina. No encontré `ffmpeg` en este PC (ni en el PATH ni en WinGet/Chocolatey/Scoop), así que los clips siguen en AVI hasta que se pase la ruta (`-Ffmpeg ruta` o variable `FFMPEG`).
+
+## Parte E: legibilidad y claridad (prioridad sobre los efectos)
+
+Después de ver el juego en una ventana real de Windows (~1350x750) donde se cortaban cosas y no se entendía qué tocar.
+
+### E1. Que entre y se lea
+- **Escalado:** el proyecto pasa a base 1920x1080 con `display/window/stretch/scale = 1.5` (modo `canvas_items`, aspecto `expand`). El diseño sigue pensado en 1280x720 lógicos, que a 1080p son 1,5x píxeles reales; así el texto mínimo es **15 unidades = 22 px a 1080p** (`UIKit.MIN_FONT`). Ventana inicial: 1600x900 o el 80 % de la pantalla (la menor, en 16:9), centrada y redimensionable (mínimo 960x540).
+- **QA de la ventana real** (`--qa-screenshot` lo hace; `--qa-windows` solo esta parte): se agranda/achica la ventana a 1280x720, 1366x768, 1600x900 y 1920x1080 y en cada una se recorre menú, juego en Era 1 y las 7 pestañas. `QaCheck.layout` **falla** si algún botón o texto queda fuera de la ventana, se corta en las listas, se superpone con otro control o tiene menos de 22 px. Lo que se mueve a propósito (cinta de titulares, efectos) se marca con `qa_ignore`. Capturas en `user://qa/win_<tamaño>_<pantalla>.png`.
+- **Menú** en dos columnas (logo a la izquierda, botones a la derecha con aire entre ellos) y el billete de ceros se abrevia (`$1e34`) cuando no entra.
+- **Pestañas bloqueadas:** candado de tiza + nombre; "Próximamente" va en el tooltip.
+
+### E2. Contraste y ruido
+- El efecto de tiza ahora actúa solo en los **bordes** (el shader mira el contraste con los vecinos): el relleno de los números queda sólido. La plata es 64 px de título, amarillo brillante con borde oscuro: lo más grande de la pantalla. El texto secundario es casi blanco (`C_DIM`), nunca gris sobre verde.
+- Menos ruido: ceros del menú casi invisibles y pocos; sin billetes voladores (eran los cuadrados sobre la empanada); sin la tiza y el borrador de la repisa (los rectángulos blancos de abajo).
+
+### E3. Que se entienda
+- **Una sola acción destacada** (`Advisor` + `ActionHighlight`): aro de tiza que late y flecha con frase corta ("¡Tocá la empanada!", "¡Comprá esto!", "¡Remarcá ahora!", "¡Mirá esta pestaña!", "¡Tu objetivo!", "Juntá plata para tu objetivo"). Prioridad: evento pendiente, empanada (primeros clics), remarcar si los precios están viejos, pestaña recién desbloqueada, el objetivo si ya alcanza, la mejor compra, juntar plata. A los 10 s sin tocar nada la flecha y la frase crecen. Durante el tutorial mandan sus propias flechas.
+- **Objetivo accionable:** orden concreta + estado ("Te falta $X", "Te faltan 7", "Esperá un momento…" o "¡YA PODÉS!" en verde) + botón **IR** que lleva a la compra o pestaña y la destaca 8 s. Textos: `ObjectiveLogic.status`.
+- **Pantalla simplificada** en las primeras eras: arriba solo la plata y el semáforo; la tasa exacta/poder adquisitivo aparecen en el paso 3 del tutorial y "Remarcar" en el paso 4 (o desde la Era 3).
+- **Semáforo:** "VAS GANANDO" (verde) o "TE ESTÁ COMIENDO LA INFLACIÓN" (rojo) con una razón: "Remarcá tus precios", "Comprá más negocios" o "Seguí así".
+- **Remarcar:** "Tus precios quedaron viejos. ¡Remarcá! (+X%)" con el botón latiendo cuando conviene (X es cuánto más ganarías).
+- **Offline más justo:** la inflación corre a la mitad de velocidad (`offline_inflation_speed`) y se frena a los 12 meses por ausencia (`offline_max_months`); el ingreso sigue entrando todo el tiempo ausente. La bienvenida dice "Mientras no estabas ganaste $X, pero los precios subieron Y %" y el resultado con flecha verde o roja.
+
+### E4. QA de la primera partida
+- `tools/qa_newplayer.ps1` (`--qa-newplayer-shots`): un jugador que **hace lo que marca la pantalla** juega 5 minutos a velocidad x10 y se saca una captura cada 15 s; la hoja de contacto queda en `docs/qa/primeros_5_min.jpg` (+ `primeros_5_min.csv` con plata, acción destacada y objetivo de cada captura). Revisión de las 21 capturas con la pregunta "¿alguien que nunca jugó sabe qué tocar?": se corrigieron un tutorial que se trababa en "remarcá" (el asesor no lo pedía hasta tener 10 % de atraso), el cartel de desbloqueo encimado sobre la nota del tutorial (ahora espera a que termine), la frase "Tocá la empanada" cuando el clic ya no pesa (ahora "Juntá plata para tu objetivo"), el texto de las flechas ilegible sobre otros textos (cartelito oscuro) y el giga "¡AUMENTO!" (más chico y translúcido).
+- Detalle técnico: en este PC Windows deja de dibujar una ventana normal que no está al frente, así que las capturas automáticas usan ventana sin bordes.

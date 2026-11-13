@@ -9,7 +9,7 @@ extends RefCounted
 ##   why: clave de texto corta ("adv.click", "adv.remark", ...).
 
 ## Por debajo de este atraso en los precios no vale la pena remarcar todavía.
-const REMARK_MIN_LAG: float = 0.10
+const REMARK_MIN_LAG: float = 0.05
 
 const TAB_OF_FEATURE: Dictionary = {"upgrades": 1, "refuges": 2, "reform": 3, "album": 4, "timba": 5}
 
@@ -21,7 +21,8 @@ static func recommend(m: GameModel, seen_tabs: Array = []) -> Dictionary:
 	if EconomyLogic.tutorial_step(m) == 0:
 		return {"kind": "click", "id": "", "why": "adv.click"}
 	# precios viejos: remarcar es plata regalada
-	if EconomyLogic.needs_remark(m) and m.remark_cd <= 0.0 and lag(m) >= REMARK_MIN_LAG:
+	var tutorial_remark: bool = EconomyLogic.tutorial_step(m) == 3      # el tutorial pide remarcar aunque todavía sea poquito
+	if EconomyLogic.needs_remark(m) and m.remark_cd <= 0.0 and (lag(m) >= REMARK_MIN_LAG or tutorial_remark or m.remark_window > 0.0):
 		return {"kind": "remark", "id": "", "why": "adv.remark"}
 	# mecánica nueva todavía sin abrir
 	for f in Unlocks.FEATURES:
@@ -38,11 +39,12 @@ static func recommend(m: GameModel, seen_tabs: Array = []) -> Dictionary:
 	var best: Dictionary = best_buy(m)
 	if not best.is_empty():
 		return {"kind": str(best["kind"]), "id": str(best["id"]), "why": "adv.buy"}
-	# no alcanza para nada: juntar plata tocando (solo mientras el ingreso es chico)
-	if m.era <= 2:
+	# no alcanza para nada: juntar plata. Tocar la empanada solo sirve mientras el clic pesa frente al ingreso por segundo.
+	var click_v: float = EconomyLogic.click_value(m).to_float()
+	var inc: float = EconomyLogic.income_per_sec(m).to_float()
+	if m.total_businesses() == 0 or (m.era <= 2 and inc < click_v * 20.0):
 		return {"kind": "click", "id": "", "why": "adv.click"}
-	return {"kind": "", "id": "", "why": ""}
-
+	return {"kind": "objective", "id": "", "why": "adv.wait"}
 
 ## Fracción de ingreso que se pierde por tener los precios atrasados (0 = al día).
 static func lag(m: GameModel) -> float:

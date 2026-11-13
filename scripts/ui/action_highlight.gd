@@ -24,6 +24,17 @@ func _ready() -> void:
 	_label.add_theme_color_override("font_outline_color", Color("#1c1508"))
 	_label.add_theme_constant_override("outline_size", 7)
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# cartelito oscuro detrás de la frase: se lee aunque caiga sobre otro texto
+	var bg: StyleBoxFlat = StyleBoxFlat.new()
+	bg.bg_color = Color(0.06, 0.09, 0.07, 0.94)
+	bg.border_color = Chalk.YELLOW
+	bg.set_border_width_all(2)
+	bg.set_corner_radius_all(6)
+	bg.content_margin_left = 10.0
+	bg.content_margin_right = 10.0
+	bg.content_margin_top = 3.0
+	bg.content_margin_bottom = 3.0
+	_label.add_theme_stylebox_override("normal", bg)
 	add_child(_label)
 
 

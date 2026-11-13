@@ -7,6 +7,8 @@ config/name="INFLATION? What Inflation?"
 config/description="Un incremental donde la plata pierde valor mientras jugás."
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
+config/icon="res://icon.png"
+config/windows_native_icon="res://icon.ico"
 
 [autoload]
 

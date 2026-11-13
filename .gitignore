@@ -8,3 +8,6 @@ tools/godot*
 
 # Generados por Godot a partir de los CSV de i18n/
 *.translation
+
+# rcedit (para el ícono del .exe)
+tools/rcedit*

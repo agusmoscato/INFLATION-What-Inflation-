@@ -215,7 +215,7 @@ func _event_policy(m: GameModel) -> void:
 ## El jugador nuevo hace clic todo el tiempo, compra lo que pide el objetivo (o lo más rentable) y remarca cuando puede.
 func _qa_newplayer(seed_value: int) -> void:
 	const TOTAL: int = 900                 # 15 minutos
-	const FIRST_MINUTES: int = 600         # el control de duración de objetivos vale para los primeros 10 minutos
+	const FIRST_MINUTES: int = 900         # el control de duración de objetivos vale para los primeros 15 minutos
 	const MAX_OBJ_S: int = 90              # ningún objetivo puede durar más de 90 s ahí
 	const MIN_BUYS_2MIN: int = 6           # y tiene que haber al menos 6 compras en los primeros 2 minutos
 	const CLICKS_PER_S: float = 2.5
@@ -229,6 +229,11 @@ func _qa_newplayer(seed_value: int) -> void:
 	var unlock_log: Array = []        # [[segundo, mecánica], ...]
 	var cur_id: String = ""
 	var cur_since: int = 0
+	var rec_key: String = ""         # recomendación actual y desde cuándo (un jugador tarda ~2 s en reaccionar)
+	var rec_since: int = 0
+	var red_secs: int = 0            # segundos seguidos con el semáforo en rojo
+	var red_episodes: Array = []     # [[inicio, duración]] de cada tramo en rojo de 3 s o más
+	var red_start: int = 0
 	for t in range(TOTAL):
 		click_acc += CLICKS_PER_S
 		while click_acc >= 1.0:
@@ -236,7 +241,12 @@ func _qa_newplayer(seed_value: int) -> void:
 			EconomyLogic.do_click(m)
 		# un jugador obediente hace lo que marca la pantalla: la acción destacada (que coincide con el objetivo)
 		var rec: Dictionary = Advisor.recommend(m, seen)
-		match str(rec["kind"]):
+		var key: String = "%s:%s" % [rec["kind"], rec["id"]]
+		if key != rec_key:
+			rec_key = key
+			rec_since = t
+		var reacted: bool = t - rec_since >= 3      # un jugador necesita ~3 s para leer la flecha y tocar
+		match str(rec["kind"]) if reacted else "":
 			"buy":
 				if EconomyLogic.buy_business(m, str(rec["id"]), 1) > 0:
 					buys.append([t, "biz:" + str(rec["id"])])
@@ -248,6 +258,15 @@ func _qa_newplayer(seed_value: int) -> void:
 			"tab":
 				seen.append(int(rec["id"]))
 		EconomyLogic.tick(m, 1.0)
+		# semáforo: ¿en rojo? (tramos de 3 s o más, para contar los "momentos de tensión")
+		if not bool(EconomyLogic.race(m)["winning"]) and Unlocks.has(m, "inflation"):
+			if red_secs == 0:
+				red_start = t
+			red_secs += 1
+		else:
+			if red_secs >= 3:
+				red_episodes.append([red_start, red_secs])
+			red_secs = 0
 		for n in m.notifications:
 			if n["sig"] == "unlock":
 				unlock_log.append([t, str(n["args"][0])])
@@ -303,7 +322,15 @@ func _qa_newplayer(seed_value: int) -> void:
 		print("  (faltan desbloqueos de la cadena temprana en %d min)" % [TOTAL / 60])
 		pace_ok = false
 	print("Ritmo de desbloqueos: %s" % ("PASA" if pace_ok else "FALLA"))
-	var ok: bool = buys_ok and dur_ok and pace_ok
+	# tensión entre los minutos 5 y 15: el semáforo tiene que ponerse rojo al menos 2 veces (3 s o más)
+	var tension_n: int = 0
+	for e in red_episodes:
+		if int(e[0]) >= 300:
+			tension_n += 1
+	print("Momentos de tensión (semáforo en rojo 3 s o más) entre los minutos 5 y 15: %d (mínimo 2)" % tension_n)
+	var tension_ok: bool = tension_n >= 2
+	print("Tensión: %s" % ("PASA" if tension_ok else "FALLA"))
+	var ok: bool = buys_ok and dur_ok and pace_ok and tension_ok
 	print("RESULTADO: %s" % ("PASA" if ok else "FALLA"))
 	var f: FileAccess = FileAccess.open("res://docs/qa_newplayer.csv", FileAccess.WRITE)
 	if f != null:

@@ -11,7 +11,7 @@
 "obj.kiosk3","Tené 3 kioscos: %s/%s","Own 3 corner shops: %s/%s"
 "obj.remarkbonus","Comprá el cartel gigante: remarcar a tiempo paga doble: %s/%s","Buy the giant sign: repricing on time pays double: %s/%s"
 "obj.choripan","Abrí el puesto de choripán: %s/%s","Open the sausage stand: %s/%s"
-"obj.auto_remark","Comprá la etiquetadora: remarca sola y la inflación te come menos: %s/%s","Buy the labeler: it reprices by itself so inflation eats you less: %s/%s"
+"obj.auto_remark","Comprá la etiquetadora: ahora remarca sola y la inflación te come menos: %s/%s","Buy the labeler: it now reprices by itself so inflation eats you less: %s/%s"
 "obj.choripan3","Tené 3 puestos de choripán: %s/%s","Own 3 sausage stands: %s/%s"
 "obj.lavadero","Abrí el lavadero de autos (lavan hasta tu plata): %s/%s","Open the car wash (they wash even your money): %s/%s"
 "obj.lavadero3","Tené 3 lavaderos: %s/%s","Own 3 car washes: %s/%s"

@@ -507,6 +507,10 @@ func _qa_newplayer(failures: Array) -> void:
 	var first_kiosk: float = -1.0
 	var obj_id: String = ""
 	var obj_since: float = 0.0
+	var rec_key: String = ""
+	var rec_since: float = 0.0
+	var red_since: float = -1.0
+	var red_episodes: Array = []
 	var sign_shot_at: float = -1.0
 	var np_seconds: float = NP_SECONDS
 	var ua: PackedStringArray = OS.get_cmdline_user_args()
@@ -542,9 +546,17 @@ func _qa_newplayer(failures: Array) -> void:
 		if oid != obj_id:
 			obj_id = oid
 			obj_since = gt
-		elif gt - obj_since > 90.0 and gt < 600.0 and not tr_state.has("obj_" + oid):
+		elif gt - obj_since > 90.0 and gt < 900.0 and not tr_state.has("obj_" + oid):
 			tr_state["obj_" + oid] = true
-			failures.append("[%s] EL OBJETIVO «%s» LLEVA MÁS DE 90 s EN LOS PRIMEROS 10 MINUTOS" % [_fmt_t(gt), oid])
+			failures.append("[%s] EL OBJETIVO «%s» LLEVA MÁS DE 90 s EN LOS PRIMEROS 15 MINUTOS" % [_fmt_t(gt), oid])
+		# semáforo en rojo: tramos de 3 s o más (los "momentos de tensión" entre los minutos 5 y 15)
+		var is_red: bool = Unlocks.has(m, "inflation") and not bool(EconomyLogic.race(m)["winning"])
+		if is_red and red_since < 0.0:
+			red_since = gt
+		elif not is_red and red_since >= 0.0:
+			if gt - red_since >= 2.5:
+				red_episodes.append(red_since)
+			red_since = -1.0
 		if gt >= next_check:
 			next_check = gt + 0.5
 			_qa_attention_check(gt, tr_state, failures)
@@ -552,7 +564,11 @@ func _qa_newplayer(failures: Array) -> void:
 		if gt >= next_act:
 			next_act = gt + 0.4
 			var rec: Dictionary = Advisor.recommend(m, seen)
-			match str(rec["kind"]):
+			var rk: String = "%s:%s" % [rec["kind"], rec["id"]]
+			if rk != rec_key:
+				rec_key = rk
+				rec_since = gt
+			match str(rec["kind"]) if gt - rec_since >= 3.0 else "":      # un jugador tarda ~3 s en leer la flecha y tocar
 				"buy":
 					_game._select_tab(0)
 					Economy.buy_business(str(rec["id"]), 1)
@@ -585,6 +601,13 @@ func _qa_newplayer(failures: Array) -> void:
 			log.append("%s,\"%s\",%s,%s,%s,%d,%d,%s,%d,%d" % [tag, UIKit.money(m.money), str(rec2["kind"]), str(rec2["id"]), str(ObjectiveLogic.current(m)["id"]), EconomyLogic.tutorial_step(m), _game._tab, str(is_instance_valid(_game._unlock_sign)), visible_notes, int(m.time_played)])
 			next_shot += NP_SHOT_EVERY if next_shot < 300.0 else 2.0 * NP_SHOT_EVERY      # cada 15 s los primeros 5 minutos y cada 30 s después
 	Engine.time_scale = 1.0
+	var tension_n: int = 0
+	for e in red_episodes:
+		if float(e) >= 300.0:
+			tension_n += 1
+	if tension_n < 2:
+		failures.append("SOLO %d MOMENTOS DE TENSIÓN (semáforo en rojo) ENTRE LOS MINUTOS 5 Y 15 (mínimo 2)" % tension_n)
+	print("QA tensión: %d momentos con el semáforo en rojo entre los minutos 5 y 15" % tension_n)
 	if buys_2min < 6:
 		failures.append("SOLO %d COMPRAS EN LOS PRIMEROS 2 MINUTOS (mínimo 6)" % buys_2min)
 	if first_cart < 0.0 or first_cart > 15.0:

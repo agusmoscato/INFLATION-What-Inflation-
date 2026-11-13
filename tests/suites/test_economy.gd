@@ -70,6 +70,8 @@ func run(t) -> void:
 	# auto-remarcado
 	var m6: GameModel = _fresh()
 	m6.money = BigNumber.from_float(1e5)
+	t.check(not EconomyLogic.buy_upgrade(m6, "auto_remark1"), "el remarcado automático no se puede comprar antes de la primera reforma")
+	m6.reforms = 1
 	EconomyLogic.buy_upgrade(m6, "auto_remark1")
 	m6.price_level = BigNumber.from_float(3.0)
 	EconomyLogic.tick(m6, 25.0)

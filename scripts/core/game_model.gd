@@ -38,6 +38,7 @@ var time_played: float = 0.0
 var run_time: float = 0.0
 var month_progress: float = 0.0
 var month_count: int = 0
+var tension_seen: int = 0              ## cuántos tramos de inflación alta (3 % -> 5 % -> 8 %) ya se anunciaron
 var intro_grace: bool = false          ## partida nueva: sin inflación hasta que aparece el cartel "¡La inflación!"
 var offline_months_left: int = -1        ## solo durante la simulación offline: cuántos aumentos más pueden pasar (-1 = sin límite)
 var remark_window: float = 0.0
@@ -140,7 +141,7 @@ func to_dict() -> Dictionary:
 		"won": won, "won_notified": won_notified, "demo_finished": demo_finished,
 		"clicks": clicks, "remarks": remarks, "events_seen": events_seen,
 		"time_played": time_played, "run_time": run_time,
-		"month_progress": month_progress, "month_count": month_count, "intro_grace": intro_grace,
+		"month_progress": month_progress, "month_count": month_count, "intro_grace": intro_grace, "tension_seen": tension_seen,
 		"remark_window": remark_window, "auto_timer": auto_timer, "auto_buy_timer": auto_buy_timer,
 		"event_timer": event_timer, "active_events": active_events.duplicate(true),
 		"obj_index": obj_index, "unlocked": unlocked.duplicate(), "real_ref": real_ref.to_save(),
@@ -199,6 +200,7 @@ func from_dict(d: Dictionary) -> void:
 	month_progress = float(d.get("month_progress", 0.0))
 	month_count = int(d.get("month_count", 0))
 	intro_grace = bool(d.get("intro_grace", false))
+	tension_seen = int(d.get("tension_seen", 0))
 	remark_window = float(d.get("remark_window", 0.0))
 	auto_timer = float(d.get("auto_timer", 0.0))
 	auto_buy_timer = float(d.get("auto_buy_timer", 0.0))

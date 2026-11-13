@@ -157,11 +157,30 @@ static func purchasing_power(m: GameModel) -> BigNumber:
 
 
 ## Tasa mensual de inflación vigente (0.08 = 8 %).
+## Tramos de inflación alta de la primera vuelta (data/balance.json > tension): entre los minutos 5 y 15 la tasa sube por
+## tramos (3 % -> 5 % -> 8 %) y el semáforo se pone rojo si el jugador no remarca ni compra. Devuelve el índice del tramo
+## actual o -1. Solo en partidas nuevas (intro_grace), en la Era 1 y antes de la primera reforma.
+static func tension_index(m: GameModel) -> int:
+	if not m.intro_grace or m.era != 1 or m.reforms > 0:
+		return -1
+	var list: Array = GameData.balance["tension"]
+	for i in range(list.size()):
+		var e: Dictionary = list[i]
+		if m.time_played >= float(e["from"]) and m.time_played < float(e["to"]):
+			return i
+	return -1
+
+
+static func tension_rate(m: GameModel) -> float:
+	var i: int = tension_index(m)
+	return float(GameData.balance["tension"][i]["rate"]) if i >= 0 else 0.0
+
+
 static func inflation_rate(m: GameModel) -> float:
 	ensure_fresh(m)
 	if m.intro_grace and not Unlocks.has(m, "inflation"):
 		return 0.0      # los primeros minutos no hay inflación: aparece con el cartel "¡La inflación!"
-	var r: float = float(GameData.era_def(m.era)["inflation"])
+	var r: float = maxf(float(GameData.era_def(m.era)["inflation"]), tension_rate(m))
 	if m.era >= 5:
 		r *= maxf(0.0, 1.0 - B("measure_reduction") * float(m.measures))
 	r *= maxf(0.5, 1.0 / (1.0 + B("cred_inflation_reduction") * (float(m.credibility) + m.legacy_cred)))
@@ -258,6 +277,8 @@ static func upgrade_visible(m: GameModel, u: Dictionary) -> bool:
 		return false      # las mejoras recién aparecen en el minuto 6 (ver Unlocks)
 	if m.upgrades.has(u["id"]) or int(u["era"]) > m.era:
 		return false
+	if str(u["effect"]["type"]) == "auto_remark" and m.reforms < 1:
+		return false      # el remarcado automático llega recién después de la primera reforma: toda la primera vuelta se remarca a mano
 	if int(u["req_owned"]) > 0 and m.owned_count(u["biz"]) < int(u["req_owned"]):
 		return false
 	return true
@@ -719,6 +740,10 @@ static func _update_era(m: GameModel) -> void:
 static func month_end(m: GameModel) -> void:
 	m.real_ref = income_per_sec(m).div(m.price_level)      # ingreso real al cierre del mes, antes del aumento
 	var rate: float = inflation_rate(m)
+	var ti: int = tension_index(m)
+	if ti >= 0 and ti + 1 > m.tension_seen:
+		m.tension_seen = ti + 1
+		m.push("toast", ["toast.tension"])      # empieza un tramo de inflación más alta
 	GambleLogic.settle_dollar(m, rate)         # la timba del dólar se resuelve con la tasa del mes que cierra
 	GambleLogic.draw_quiniela(m)               # y se sortea la quiniela
 	m.month_count += 1

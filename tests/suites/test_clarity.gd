@@ -121,3 +121,39 @@ func run(t) -> void:
 	var want: Dictionary = ObjectiveLogic.status(mo2, ObjectiveLogic.LIST[mo2.obj_index])["go"]
 	t.eq(pick["kind"], want["kind"], "la flecha va a lo que dice el objetivo")
 	t.eq(pick["id"], want["id"], "y al mismo negocio")
+
+	# --- tensión: la inflación sube por tramos entre los minutos 5 y 15 (solo en la primera vuelta) ---
+	var mt2: GameModel = GameModel.new(5)
+	mt2.intro_grace = true
+	mt2.unlocked["inflation"] = 120.0
+	mt2.time_played = 200.0
+	t.near(EconomyLogic.inflation_rate(mt2), 0.03, "antes del minuto 6: 3 %")
+	mt2.time_played = 400.0
+	t.near(EconomyLogic.inflation_rate(mt2), 0.05, "tramo 1 (minutos 6 a 9): 5 %")
+	mt2.time_played = 560.0
+	t.near(EconomyLogic.inflation_rate(mt2), 0.03, "entre tramos: 3 %")
+	mt2.time_played = 650.0
+	t.near(EconomyLogic.inflation_rate(mt2), 0.08, "tramo 2 (minutos 10 a 13): 8 %")
+	mt2.time_played = 900.0
+	t.near(EconomyLogic.inflation_rate(mt2), 0.03, "después vuelve al 3 %")
+	mt2.reforms = 1
+	mt2.time_played = 650.0
+	t.check(EconomyLogic.inflation_rate(mt2) < 0.08, "después de la primera reforma ya no hay tramos")
+	mt2.reforms = 0
+	var seen_before: int = mt2.tension_seen
+	EconomyLogic.month_end(mt2)
+	t.check(mt2.tension_seen > seen_before, "se anuncia el tramo con un aviso")
+	# el semáforo se pone rojo si no se remarca ni se compra, y vuelve a verde al remarcar
+	var ms2: GameModel = GameModel.new(5)
+	ms2.intro_grace = true
+	ms2.unlocked["inflation"] = 120.0
+	ms2.unlocked["remark"] = 240.0
+	ms2.time_played = 400.0
+	ms2.money = BigNumber.from_float(1000.0)
+	EconomyLogic.buy_business(ms2, "kiosco", 5)
+	EconomyLogic.month_end(ms2)
+	EconomyLogic.month_end(ms2)
+	t.check(not EconomyLogic.race(ms2)["winning"], "sin remarcar, con 5 % por mes: semáforo en rojo")
+	ms2.remark_window = 5.0
+	EconomyLogic.remark(ms2, true)
+	t.check(EconomyLogic.race(ms2)["winning"], "al remarcar vuelve al verde")

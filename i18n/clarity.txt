@@ -53,3 +53,4 @@
 "obj.lavadero6","Tené 6 lavaderos: %s/%s","Own 6 car washes: %s/%s"
 "obj.lavadero7","Tené 7 lavaderos: %s/%s","Own 7 car washes: %s/%s"
 "obj.lavadero8","Tené 8 lavaderos: %s/%s","Own 8 car washes: %s/%s"
+"toast.tension","¡La inflación se acelera! Remarcá a tiempo y seguí comprando.","Inflation is speeding up! Reprice on time and keep buying."

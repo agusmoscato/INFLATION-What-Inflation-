@@ -18,6 +18,12 @@ const PLAN_ORDER: Array = ["emission", "convertibility", "stabilization"]
 
 var rows: Array = []   # [evento, minuto, detalle]
 var no_prestige: bool = false
+var use_refuges: bool = true
+var do_park: bool = true
+var do_events: bool = true
+var refuge_stats: Dictionary = {"parked": 0, "sold": 0, "event_sells": 0, "strikes": 0}
+
+const SAVE_PAYBACK_S: float = 600.0   ## ahorra para la cartera si lo mejor a comprar repaga en más de esto
 
 
 func _init() -> void:
@@ -26,6 +32,12 @@ func _init() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--hours="):
 			hours = a.get_slice("=", 1).to_float()
+		elif a == "--nopark":
+			do_park = false
+		elif a == "--noevents":
+			do_events = false
+		elif a == "--norefuges":
+			use_refuges = false
 		elif a == "--noprestige":
 			no_prestige = true
 		elif a.begins_with("--seed="):
@@ -42,11 +54,14 @@ func _init() -> void:
 		if m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
 			EconomyLogic.remark(m, true)
 		var saving: bool = false
+		var port_saving: bool = false
 		if m.era >= 5 and m.measures < EconomyLogic.measure_count_total():
 			if EconomyLogic.buy_measure(m):
 				rows.append(["medida", float(t) / 60.0, "medidas=%d" % m.measures])
 			saving = EconomyLogic.income_per_sec(m).mul_f(900.0).ge(EconomyLogic.measure_cost(m))
-		if t % 2 == 0 and not saving:
+		if use_refuges and t % 2 == 0:
+			port_saving = _refuge_policy(m)
+		if t % 2 == 0 and not saving and not port_saving:
 			var guard: int = 0
 			var bought_any: bool = false
 			while guard < 40 and EconomyLogic.smart_buy(m):
@@ -84,7 +99,7 @@ func _init() -> void:
 			print("  t=%4.0f min era=%d cred=%d life=1e%.1f money=%s P=%s inc/s=%s" % [float(t) / 60.0, m.era, m.credibility, m.lifetime_real.log10(),
 				m.money.format(), m.price_level.format(), EconomyLogic.income_per_sec(m).format()])
 	rows.append(["fin", float(total) / 60.0 if not m.won else rows[rows.size() - 1][1],
-		"era=%d cred=%d reformas=%d planes=%d compras=%d max_espera_s=%.0f medidas=%d" % [m.era, m.credibility, m.reforms, m.plans_done, purchases, max_gap, m.measures]])
+		"era=%d cred=%d reformas=%d planes=%d compras=%d max_espera_s=%.0f medidas=%d refugios=%s" % [m.era, m.credibility, m.reforms, m.plans_done, purchases, max_gap, m.measures, str(refuge_stats)]])
 	_report(started)
 	quit(0)
 
@@ -101,3 +116,55 @@ func _report(started: int) -> void:
 		f.store_string(csv)
 		f.close()
 	print("Simulación en %.1f s reales. CSV: docs/balance.csv" % [float(Time.get_ticks_msec() - started) / 1000.0])
+
+
+# =====================================================================
+#  Política de refugios y eventos del bot
+# =====================================================================
+## Mantiene una cartera diversificada: cada refugio con ahorros >= 2 min de ingresos da +5 % de ingresos.
+## Ahorra para armarla solo cuando lo mejor que puede comprar rinde poco (repago > SAVE_PAYBACK_S).
+## Responde a eventos:
+##  - corrida cambiaria: vende el dólar que saltó (la cartera lo recompra después);
+##  - cepo: no puede mover nada (se espera);
+##  - paro: negocia si sale barato;
+##  - aguinaldo: gasta todo el efectivo enseguida (no ahorra para la cartera mientras dura).
+## Devuelve true si está ahorrando para la cartera (el bot frena sus compras).
+func _refuge_policy(m: GameModel) -> bool:
+	if not EconomyLogic.refuges_unlocked(m):
+		return false
+	EconomyLogic.ensure_fresh(m)
+	if do_events and EconomyLogic.has_event(m, "paro") and EconomyLogic.strike_cost(m).lt(m.money.mul_f(0.3)):
+		if EconomyLogic.settle_strike(m):
+			refuge_stats["strikes"] += 1
+	if EconomyLogic.refuges_blocked(m):
+		return false
+	if do_events and EconomyLogic.has_event(m, "corrida") and not EconomyLogic.refuge_value(m, "usd").is_zero():
+		EconomyLogic.refuge_sell(m, "usd", 1.0)
+		refuge_stats["event_sells"] += 1
+	if not do_park:
+		return false
+	if do_events and EconomyLogic.has_event(m, "aguinaldo"):
+		refuge_stats["event_sells"] += 1
+		return false
+	var need_real: BigNumber = m.base_income.mul_f(EconomyLogic.B("refuge_bonus_seconds") * 1.15)
+	if need_real.is_zero():
+		return false
+	for r in GameData.refuges:
+		var id: String = r["id"]
+		var have_real: BigNumber = m.refuge_units[id].mul_f(float(m.refuge_price[id]))
+		if have_real.ge(need_real):
+			continue
+		var missing: BigNumber = need_real.sub(have_real).mul(m.price_level).div_f(1.0 - EconomyLogic.refuge_fee(m, id))
+		if m.money.ge(missing):
+			if EconomyLogic.refuge_buy(m, id, missing):
+				refuge_stats["parked"] += 1
+			continue
+		return _best_payback(m) > SAVE_PAYBACK_S
+	return false
+
+
+func _best_payback(m: GameModel) -> float:
+	var best: float = INF
+	for c in EconomyLogic.candidates(m):
+		best = minf(best, float(c["payback"]))
+	return best

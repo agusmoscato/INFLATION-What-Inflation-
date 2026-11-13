@@ -1,27 +1,24 @@
 evento,minuto,detalle
 era,27.2,era=2
-reforma,40.0,n=1 cred=8 P=1e1.6
-reforma,80.0,n=2 cred=24 P=1e2.4
-era,112.5,era=3
-reforma,120.0,n=3 cred=77 P=1e2.6
-reforma,160.0,n=4 cred=249 P=1e2.7
-reforma,200.0,n=5 cred=1157 P=1e2.2
-era,207.8,era=4
-plan,207.9,plan=emission n=1
-reforma,247.9,n=6 cred=22561 P=1e6.6
-plan,247.9,plan=convertibility n=2
-reforma,287.9,n=7 cred=56138 P=1e3.4
-plan,287.9,plan=stabilization n=3
-reforma,327.9,n=8 cred=88025 P=1e1.9
-reforma,367.9,n=9 cred=219241 P=1e2.0
-era,393.0,era=5
-reforma,421.5,n=10 cred=2077574 P=1e5.4
-medida,423.5,medidas=1
-medida,433.1,medidas=2
-reforma,463.7,n=11 cred=8877674 P=1e4.3
-medida,477.4,medidas=3
-reforma,503.7,n=12 cred=19429183 P=1e3.0
-medida,525.1,medidas=4
-medida,582.5,medidas=5
-victoria,583.0,inflación 0 (medidas=5)
-fin,583.0,era=5 cred=19429183 reformas=12 planes=3 compras=1333 max_espera_s=1338 medidas=5
+reforma,40.0,n=1 cred=7 P=1e1.6
+reforma,80.0,n=2 cred=32 P=1e2.4
+era,99.5,era=3
+reforma,120.0,n=3 cred=142 P=1e2.9
+reforma,160.0,n=4 cred=912 P=1e2.2
+era,179.3,era=4
+plan,179.3,plan=emission n=1
+reforma,219.3,n=5 cred=23944 P=1e6.5
+plan,219.4,plan=convertibility n=2
+reforma,259.4,n=6 cred=63510 P=1e3.4
+plan,259.4,plan=stabilization n=3
+reforma,299.4,n=7 cred=105420 P=1e1.9
+reforma,339.4,n=8 cred=271055 P=1e2.0
+era,372.0,era=5
+medida,375.5,medidas=1
+medida,402.4,medidas=2
+medida,427.6,medidas=3
+reforma,427.6,n=9 cred=4336049 P=1e8.0
+medida,444.0,medidas=4
+medida,462.0,medidas=5
+victoria,462.5,inflación 0 (medidas=5)
+fin,462.5,era=5 cred=4336049 reformas=9 planes=3 compras=891 max_espera_s=3344 medidas=5 refugios={ "parked": 2926; "sold": 0; "event_sells": 1390; "strikes": 16 }

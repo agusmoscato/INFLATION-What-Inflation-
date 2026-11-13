@@ -681,12 +681,15 @@ func _refresh_refuges() -> void:
 	elif blocked:
 		ref_note.text = tr("ui.ref.blocked")
 	else:
-		ref_note.text = tr("ui.ref.note")
+		ref_note.text = tr("ui.ref.note") + "
+" + tr("ui.ref.bonus") % [EconomyLogic.refuge_diversified_count(m), GameData.refuges.size(), int(round(EconomyLogic.B("refuge_bonus") * EconomyLogic.refuge_diversified_count(m) * 100.0))]
 	for r in GameData.refuges:
 		var id: String = r["id"]
 		var e: Dictionary = ref_rows[id]
 		var value: BigNumber = EconomyLogic.refuge_value(m, id)
 		e["value"].text = "%s: %s  (x%.2f)" % [tr("ui.ref.have"), UIKit.money(value), float(m.refuge_price[id])]
+		var real_have: BigNumber = m.refuge_units[id].mul_f(float(m.refuge_price[id]))
+		e["value"].add_theme_color_override("font_color", UIKit.C_GREEN if (not real_have.is_zero() and real_have.ge(m.base_income.mul_f(EconomyLogic.B("refuge_bonus_seconds")))) else UIKit.C_GOLD)
 		var can: bool = unlocked and not blocked
 		e["b25"].disabled = not can or m.money.is_zero()
 		e["b100"].disabled = not can or m.money.is_zero()

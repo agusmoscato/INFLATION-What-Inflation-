@@ -82,6 +82,7 @@ static func recalc(m: GameModel) -> void:
 		var bm: float = float(m.biz_up_mult.get(def["id"], 1.0)) * milestone_mult(n)
 		base = base.add(def["base_income"].mul_f(float(n) * bm * gm))
 	m.base_income = base
+	m.refuge_mult = 1.0 + B("refuge_bonus") * float(refuge_diversified_count(m))
 
 
 static func ensure_fresh(m: GameModel) -> void:
@@ -132,7 +133,7 @@ static func has_event(m: GameModel, id: String) -> bool:
 ## Ingreso nominal por segundo.
 static func income_per_sec(m: GameModel) -> BigNumber:
 	ensure_fresh(m)
-	return m.base_income.mul(m.my_prices).mul_f(event_income_mult(m))
+	return m.base_income.mul(m.my_prices).mul_f(event_income_mult(m) * m.refuge_mult)
 
 
 ## Poder adquisitivo: cuántas "empanadas del día 1" alcanzan con tu plata.
@@ -392,6 +393,17 @@ static func refuge_value_total_real(m: GameModel) -> BigNumber:
 	return t
 
 
+## Cuántos refugios tienen ahorros >= N segundos de ingresos (cartera diversificada).
+static func refuge_diversified_count(m: GameModel) -> int:
+	var thresh: BigNumber = m.base_income.mul_f(B("refuge_bonus_seconds"))
+	var n: int = 0
+	for r in GameData.refuges:
+		var real: BigNumber = m.refuge_units[r["id"]].mul_f(float(m.refuge_price[r["id"]]))
+		if not real.is_zero() and real.ge(thresh):
+			n += 1
+	return n
+
+
 static func refuges_unlocked(m: GameModel) -> bool:
 	return m.era >= 2 or m.reforms > 0
 
@@ -402,6 +414,7 @@ static func refuge_buy(m: GameModel, id: String, nominal: BigNumber) -> bool:
 	var real: BigNumber = nominal.div(m.price_level).mul_f(1.0 - refuge_fee(m, id))
 	m.money = m.money.sub(nominal)
 	m.refuge_units[id] = m.refuge_units[id].add(real.div_f(float(m.refuge_price[id])))
+	m.dirty = true
 	m.push("refuge_changed")
 	return true
 
@@ -413,6 +426,7 @@ static func refuge_sell(m: GameModel, id: String, fraction: float = 1.0) -> bool
 	var value: BigNumber = refuge_value(m, id).mul_f(f)
 	m.refuge_units[id] = m.refuge_units[id].mul_f(1.0 - f)
 	m.money = m.money.add(value.mul_f(1.0 - refuge_fee(m, id)))
+	m.dirty = true
 	m.push("refuge_changed")
 	return true
 
@@ -427,6 +441,7 @@ static func refuge_monthly_update(m: GameModel, rate: float) -> void:
 		pr *= exp(drift + noise - 0.5 * vol * vol)
 		pr += (1.0 - pr) * float(r["reversion"])
 		m.refuge_price[id] = clampf(pr, float(r["min"]), float(r["max"]))
+	m.dirty = true
 
 
 # =====================================================================

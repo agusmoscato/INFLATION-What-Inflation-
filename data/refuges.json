@@ -1,6 +1,6 @@
 [
-  {"id": "usd",    "fee": 0.02, "drift_infl": -0.15, "drift": 0.0,   "vol": 0.01, "reversion": 0.0,  "min": 0.2,  "max": 20.0, "color": "#6cbf6c"},
-  {"id": "bricks", "fee": 0.06, "drift_infl": 0.0,   "drift": 0.005, "vol": 0.01, "reversion": 0.0,  "min": 0.2,  "max": 50.0, "color": "#c0603a"},
-  {"id": "gold",   "fee": 0.02, "drift_infl": 0.0,   "drift": 0.0,   "vol": 0.05, "reversion": 0.1,  "min": 0.5,  "max": 3.0,  "color": "#e6c53a"},
-  {"id": "crypto", "fee": 0.01, "drift_infl": 0.0,   "drift": 0.03,  "vol": 0.35, "reversion": 0.02, "min": 0.05, "max": 30.0, "color": "#f28c28"}
+  {"id": "usd",    "fee": 0.04, "drift_infl": -0.15, "drift": 0.0,   "vol": 0.01, "reversion": 0.0,  "min": 0.2,  "max": 20.0, "color": "#6cbf6c"},
+  {"id": "bricks", "fee": 0.08, "drift_infl": 0.0,   "drift": 0.005, "vol": 0.01, "reversion": 0.0,  "min": 0.2,  "max": 50.0, "color": "#c0603a"},
+  {"id": "gold",   "fee": 0.04, "drift_infl": 0.0,   "drift": 0.0,   "vol": 0.05, "reversion": 0.1,  "min": 0.5,  "max": 3.0,  "color": "#e6c53a"},
+  {"id": "crypto", "fee": 0.03, "drift_infl": 0.0,   "drift": 0.03,  "vol": 0.35, "reversion": 0.02, "min": 0.05, "max": 30.0, "color": "#f28c28"}
 ]

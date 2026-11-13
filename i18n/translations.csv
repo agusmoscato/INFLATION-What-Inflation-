@@ -85,3 +85,4 @@
 "ui.credits.body","Todos los billetes, titulares y empresas son ficticios. Cualquier parecido con la realidad es pura inflación.\n\nDiseño y programación: el equipo de INFLATION? What Inflation?.\nHecho con Godot Engine 4.","All banknotes, headlines and companies are fictional. Any resemblance to reality is pure inflation.\n\nDesign and programming: the INFLATION? What Inflation? team.\nMade with Godot Engine 4."
 "ui.credits.continue","Seguir jugando","Keep playing"
 "ui.credits.menu","Menú principal","Main menu"
+"ui.ref.bonus","Cartera diversificada: %d/%d refugios con ahorros de al menos 2 min de ingresos  →  +%d %% de ingresos","Diversified portfolio: %d/%d refuges holding at least 2 min of income  →  +%d %% income"

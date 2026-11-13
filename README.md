@@ -22,7 +22,7 @@ godot --headless --script tests/run_tests.gd   # BigNumber, economía, inflació
 godot --headless res://tests/SmokeUI.tscn      # prueba de humo de la interfaz (cualquier "SCRIPT ERROR" es un fallo)
 ```
 
-El runner propio (`tests/run_tests.gd`) no tiene dependencias y devuelve código de salida 1 si algo falla. Estado actual: **1223 chequeos OK, 0 fallos**.
+El runner propio (`tests/run_tests.gd`) no tiene dependencias y devuelve código de salida 1 si algo falla. Estado actual: **1229 chequeos OK, 0 fallos**.
 
 Nota: los scripts que usan los autoloads (`GameState`, `Economy`...) no compilan con `--script`; por eso la lógica vive en clases puras (`GameModel`, `EconomyLogic`, `GameData`, `SaveIO`) y la prueba de la interfaz corre como escena.
 
@@ -32,18 +32,19 @@ Nota: los scripts que usan los autoloads (`GameState`, `Economy`...) no compilan
 godot --headless --script tools/simulate.gd [-- --hours=10 --seed=1 --noprestige]
 ```
 
-Juega hasta 10 horas con un bot simple y escribe `docs/balance.csv` (minuto en que se llega a cada era, reforma, plan y a la victoria). Resultado actual (semilla 1):
+Juega hasta 10 horas con un bot simple y escribe `docs/balance.csv` (minuto en que se llega a cada era, reforma, plan y a la victoria). Resultado actual:
 
-| Hito | Objetivo (diseño) | Simulado |
-| --- | --- | --- |
-| Era 2 | 30 min | 27 min |
-| Primera reforma | ~45 min | 40 min |
-| Era 3 | 2 h (120 min) | 112 min |
-| Era 4 | 4 h (240 min) | 208 min |
-| Era 5 | 7 h (420 min) | 393 min |
-| Victoria (inflación 0) | 7-10 h | 583 min (9,7 h) |
+Dos estrategias del bot (3 semillas, minutos de juego). Detalle en [docs/balance_refugios.md](docs/balance_refugios.md):
 
-Todas las eras quedan dentro de ±25 % de la tabla del diseño (Era 4: -13 %, Era 5: -6 %). Los umbrales se calibraron con el simulador: ver DECISIONES.md.
+| Hito | Objetivo (diseño) | Sin refugios | Con refugios |
+| --- | --- | --- | --- |
+| Era 2 | 30 min | 27 | 27 |
+| Era 3 | 120 min | 113-118 | 99-110 |
+| Era 4 | 240 min | 216-218 | 179-206 |
+| Era 5 | 420 min | 440-443 | 371-390 |
+| Victoria (inflación 0) | 7-10 h | 523-531 (8,8 h) | 463-477 (7,8 h) |
+
+Los refugios (cartera diversificada, +15 % de ingresos por refugio con ahorros >= 2 min de ingresos) aceleran ~12 % en promedio (no son obligatorios). Todas las eras quedan a ±25 % de la tabla. Opciones del simulador: `--norefuges`, `--nopark`, `--noevents`, `--noprestige`.
 
 ## Estructura
 
@@ -82,6 +83,7 @@ tests/, tools/                tests, prueba de humo y simulador
 
 ## Decisiones principales
 
+- Refugios: cartera diversificada (+15 % de ingresos por refugio con ahorros >= 2 min de ingresos).
 - Costos de negocios crecen x1,22 por unidad; ingresos escalan con tus precios (M), costos con el nivel de precios (P); remarcar pone M al día.
 - Era según ganancia real histórica (independiente de la inflación). Credibilidad por ganancia real de cada vuelta, con exponente 0,3.
 - Cada plan económico se usa una sola vez; la cruzada final son 5 medidas que bajan la tasa un 20 % cada una.

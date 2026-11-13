@@ -24,3 +24,12 @@ Registro de decisiones tomadas de forma autónoma (más reciente al final).
 - Offline: tope de 12 h; la inflación corre, no hay clics ni eventos, y sin auto-remarcado el ingreso real decae.
 - Simulador: el bot hace 1 clic/s, remarca a tiempo, compra por menor tiempo de repago, reforma cada ≥40 min cuando duplica su Credibilidad y ahorra para las medidas finales. No usa refugios (solo el arrastre).
 - Resultado del simulador (semilla 1): Era 2 a los 27 min (objetivo 30), Era 3 a 112 (120), Era 4 a 208 (240), Era 5 a 393 (420), victoria a 583 (7-10 h). Primera reforma a los 40 min (~45).
+
+## Refugios y bot (tanda 2)
+- Los refugios no daban ventaja medible: estacionar plata casi no pesa porque se compra en cuanto se puede, y el arrastre del 50 % en la reforma le regalaba un capital que salteaba el inicio de cada vuelta (cualquier fracción daba lo mismo). Se probó y se descartó.
+- Nueva mecánica: **cartera diversificada**. Cada refugio con ahorros >= 2 min de ingresos suma +15 % de ingresos (`refuge_bonus`, `refuge_bonus_seconds`). Con 4 refugios, +60 %. El valor de los refugios se reevalúa cada mes (su cotización cambia).
+- Comisiones subidas a 4 % (dólar), 8 % (ladrillos), 4 % (oro), 3 % (cripto) para que armar y vender la cartera tenga costo real.
+- Resultado: el bot con refugios llega a Eras 3-5 y a la victoria ~12 % antes (rango 5-17 %). Detalle en `docs/balance_refugios.md`.
+- Para que los dos modos queden dentro de la tabla se subieron los umbrales de Era 4 (3e16) y Era 5 (1e24) y se bajaron las medidas finales (1e25 ... 2e28).
+- El bot ahora tiene flags: `--norefuges`, `--nopark` (sin cartera), `--noevents` (sin respuesta a eventos).
+- Prueba de humo: usa `user://test_save.json` y `user://test_settings.cfg` (`SaveSystem.save_path`, `Settings.path`); verificado que el save real no cambia.

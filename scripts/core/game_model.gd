@@ -59,6 +59,7 @@ var auto_buy_interval: float = 0.0
 var infl_up_mult: float = 1.0
 var fee_mult: float = 1.0
 var remark_bonus_mult: float = 1.0
+var refuge_mult: float = 1.0                    # bono de cartera diversificada
 
 ## Cola de notificaciones para la UI: [{sig: String, args: Array}]
 var notifications: Array = []

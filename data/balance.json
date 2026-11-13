@@ -12,6 +12,8 @@
   "album_complete_bonus": 0.25,
   "reform_min_era": 2,
   "refuge_carry": 0.5,
+  "refuge_bonus": 0.15,
+  "refuge_bonus_seconds": 120.0,
   "plan_min_era": 4,
   "plan_min_cred": [15, 60, 240],
   "plan_perm_mult": 1.6,
@@ -27,6 +29,6 @@
   "offline_step": 10.0,
   "autosave_seconds": 30.0,
   "measure_reduction": 0.2,
-  "measures": ["1e26", "1e27", "1e28", "5e28", "2e29"],
+  "measures": ["1e25", "1e26", "1e27", "5e27", "2e28"],
   "hyper_tint_rate": 0.5
 }

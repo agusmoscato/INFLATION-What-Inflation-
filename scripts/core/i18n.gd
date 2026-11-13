@@ -31,7 +31,7 @@ static func load_all() -> void:
 				continue
 			for i in cols:
 				if i < line.size() and _tables.has(cols[i]):
-					_tables[cols[i]][line[0]] = line[i]
+					_tables[cols[i]][line[0]] = line[i].replace("\\n", "\n")
 	for loc in LOCALES:
 		var tr_res: Translation = Translation.new()
 		tr_res.locale = loc

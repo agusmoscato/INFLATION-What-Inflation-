@@ -47,3 +47,18 @@ func run(t) -> void:
 	for k in needed:
 		t.check(I18n.has_key(k, "es"), "falta ES: " + str(k))
 		t.check(I18n.has_key(k, "en"), "falta EN: " + str(k))
+	# claves tr("...") usadas en la UI
+	var re: RegEx = RegEx.new()
+	re.compile("tr\\(\"([^\"]+)\"\\)")
+	var dir: DirAccess = DirAccess.open("res://scripts/ui")
+	for fname in dir.get_files():
+		if not fname.ends_with(".gd"):
+			continue
+		var src: String = FileAccess.get_file_as_string("res://scripts/ui/" + fname)
+		for mt in re.search_all(src):
+			var key: String = mt.get_string(1)
+			t.check(I18n.has_key(key, "es") and I18n.has_key(key, "en"), "UI %s usa clave inexistente: %s" % [fname, key])
+	for tab in GameScreen.TABS:
+		t.check(I18n.has_key(tab, "es") and I18n.has_key(tab, "en"), "pestaña " + tab)
+	for k in ["toast.measure", "toast.shock"]:
+		t.check(I18n.has_key(k, "es") and I18n.has_key(k, "en"), k)

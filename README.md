@@ -94,13 +94,17 @@ tests/, tools/                tests, prueba de humo y simulador
 
 https://github.com/agusmoscato/INFLATION-What-Inflation-.git (rama `main`). Se hace push después de cada commit de fase.
 
+## Estilo visual
+
+Pizarra de kiosco caricaturesca: todo dibujado con tiza (ver [docs/rediseno.md](docs/rediseno.md), con el antes y después). Tipografías Cabin Sketch y Caveat Brush (SIL OFL, licencias en `assets/fonts/`). Íconos propios opcionales en `assets/icons/<id>.png`.
+
 ## Capturas por resolución
 
 ```
 TOUR_RES=1920x1080 SHOT_DIR=docs/screenshots godot --rendering-driver opengl3 res://tests/ScreenshotTour.tscn
 ```
 
-Genera 12 capturas (menú, juego en Era 1 y 3, las 6 pestañas, hiperinflación, tijera de la reforma, opciones, créditos) renderizando fuera de pantalla a tamaño exacto, emulando el escalado del proyecto. Revisadas en 1920x1080, 1280x800 (Steam Deck) y 2560x1440: ver `docs/screenshots/`. Los avisos ("¡Logro!") se apilan sobre la empanada; es cosmético.
+Genera 13 capturas (JPG) (menú, juego en Era 1 y 3, las 6 pestañas, hiperinflación, tijera de la reforma, opciones, créditos) renderizando fuera de pantalla a tamaño exacto, emulando el escalado del proyecto. Revisadas en 1920x1080, 1280x800 (Steam Deck) y 2560x1440: ver `docs/screenshots/`. Los avisos ("¡Logro!") se apilan sobre la empanada; es cosmético.
 
 ## Página de Steam
 

@@ -33,3 +33,11 @@ Registro de decisiones tomadas de forma autónoma (más reciente al final).
 - Para que los dos modos queden dentro de la tabla se subieron los umbrales de Era 4 (3e16) y Era 5 (1e24) y se bajaron las medidas finales (1e25 ... 2e28).
 - El bot ahora tiene flags: `--norefuges`, `--nopark` (sin cartera), `--noevents` (sin respuesta a eventos).
 - Prueba de humo: usa `user://test_save.json` y `user://test_settings.cfg` (`SaveSystem.save_path`, `Settings.path`); verificado que el save real no cambia.
+
+## Rediseño "pizarra de kiosco" (tanda 3)
+- Toda la presentación pasa a tiza sobre pizarrón (ver `docs/rediseno.md`). Lógica, datos y tests sin cambios.
+- Efecto tiza global como una única pasada de pantalla completa (shader con `hint_screen_texture`) en lugar de un material por nodo: más barato y uniforme. El marco de madera va en una capa superior para quedar fuera del efecto.
+- `StyleBox` propio con `_draw` para paneles y botones: así todos los controles estándar (Button, PanelContainer) se reskinean sin reescribir la UI.
+- Tiza roja (`#E8707A`) fuera de la paleta de 6 colores solo para alertas; pedida explícitamente para "ÚLTIMA HORA".
+- Avisos: pila de 3 notitas dentro del HUD (arriba a la derecha); era y menú se mudaron a la columna izquierda.
+- Capturas en JPG; las anteriores quedan en `docs/screenshots/antes/`. `docs/.gdignore` evita que Godot importe las capturas.

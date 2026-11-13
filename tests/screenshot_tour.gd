@@ -75,7 +75,7 @@ func _shot(name: String) -> void:
 	if dir == "":
 		dir = "user://"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir) if dir.begins_with("user://") or dir.begins_with("res://") else dir)
-	shot_vp.get_texture().get_image().save_png("%s/%s_%s.png" % [dir, tag, name])
+	shot_vp.get_texture().get_image().save_jpg("%s/%s_%s.jpg" % [dir, tag, name], 0.9)
 
 
 func _g() -> GameScreen:

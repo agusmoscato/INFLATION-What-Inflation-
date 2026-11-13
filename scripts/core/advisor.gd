@@ -3,9 +3,14 @@ extends RefCounted
 ## "Una sola acción destacada": decide cuál es la próxima cosa que el jugador debería tocar. La interfaz la marca con una
 ## flecha de tiza y un brillo que late; lo demás queda tranquilo. Lógica pura (sin interfaz) para poder probarla.
 ##
+## Regla de oro: la acción destacada y el objetivo apuntan SIEMPRE a lo mismo. Si el objetivo dice "ahorrá para X", la flecha
+## no señala otra compra: señala el objetivo. Solo se cuelan, por encima del objetivo, un evento que decidir, remarcar cuando
+## los precios están viejos y una pestaña recién desbloqueada.
+##
 ## Devuelve {kind, id, why}:
 ##   kind: "decision" (hay un evento para elegir), "click" (la empanada), "remark", "tab" (id = índice de pestaña),
-##         "buy" (id = negocio), "upgrade" (id = mejora) o "" (nada que destacar).
+##         "buy" (id = negocio), "upgrade" (id = mejora), "objective" (el objetivo todavía no se puede cumplir: se señala la nota)
+##         o "" (nada que destacar).
 ##   why: clave de texto corta ("adv.click", "adv.remark", ...).
 
 ## Por debajo de este atraso en los precios no vale la pena remarcar todavía.
@@ -28,23 +33,26 @@ static func recommend(m: GameModel, seen_tabs: Array = []) -> Dictionary:
 	for f in Unlocks.FEATURES:
 		if m.unlocked.has(f) and TAB_OF_FEATURE.has(f) and not seen_tabs.has(int(TAB_OF_FEATURE[f])):
 			return {"kind": "tab", "id": int(TAB_OF_FEATURE[f]), "why": "adv.tab"}
-	# el objetivo, cuando ya alcanza la plata (o es ir a una pestaña)
+	# el objetivo manda
 	var cur: Dictionary = ObjectiveLogic.current(m)
 	if not bool(cur["done"]):
 		var st: Dictionary = ObjectiveLogic.status(m, ObjectiveLogic.LIST[m.obj_index])
 		var go: Dictionary = st["go"]
-		if bool(st["ready"]) and not go.is_empty() and str(go["kind"]) != "remark":
-			return {"kind": str(go["kind"]), "id": go.get("id", ""), "why": "adv.obj"}
-	# la compra más rentable que se alcanza ahora
+		if not go.is_empty() and str(go["kind"]) != "remark":
+			if bool(st["ready"]):
+				return {"kind": str(go["kind"]), "id": go.get("id", ""), "why": "adv.obj"}
+			if str(go["kind"]) == "click":
+				return {"kind": "click", "id": "", "why": "adv.click"}
+		# todavía no se puede: antes del primer negocio hay que tocar la empanada; después, ahorrar para el objetivo
+		if m.total_businesses() == 0:
+			return {"kind": "click", "id": "", "why": "adv.click"}
+		return {"kind": "objective", "id": "", "why": "adv.wait"}
+	# la cadena de objetivos terminó: la compra más rentable que se alcanza ahora
 	var best: Dictionary = best_buy(m)
 	if not best.is_empty():
 		return {"kind": str(best["kind"]), "id": str(best["id"]), "why": "adv.buy"}
-	# no alcanza para nada: juntar plata. Tocar la empanada solo sirve mientras el clic pesa frente al ingreso por segundo.
-	var click_v: float = EconomyLogic.click_value(m).to_float()
-	var inc: float = EconomyLogic.income_per_sec(m).to_float()
-	if m.total_businesses() == 0:
-		return {"kind": "click", "id": "", "why": "adv.click"}
-	return {"kind": "objective", "id": "", "why": "adv.wait"}
+	return {"kind": "", "id": "", "why": ""}
+
 
 ## Fracción de ingreso que se pierde por tener los precios atrasados (0 = al día).
 static func lag(m: GameModel) -> float:

@@ -1,6 +1,6 @@
 [
-  {"id": "empanadas",  "era": 1, "base_cost": "1.5e1",  "base_income": "0.25",  "color": "#e8a23a"},
-  {"id": "kiosco",     "era": 1, "base_cost": "1.8e2",  "base_income": "2",     "color": "#d9534f"},
+  {"id": "empanadas",  "era": 1, "base_cost": "1.5e1",  "base_income": "0.5",   "color": "#e8a23a"},
+  {"id": "kiosco",     "era": 1, "base_cost": "6e1",    "base_income": "2.5",   "color": "#d9534f"},
   {"id": "choripan",   "era": 1, "base_cost": "2.2e3",  "base_income": "16",    "color": "#b5651d"},
   {"id": "lavadero",   "era": 1, "base_cost": "2.6e4",  "base_income": "128",   "color": "#4aa3df"},
   {"id": "panaderia",  "era": 1, "base_cost": "3.2e5",  "base_income": "1000",  "color": "#f0d58c"},

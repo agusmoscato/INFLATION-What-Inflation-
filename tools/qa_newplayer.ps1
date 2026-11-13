@@ -11,39 +11,47 @@ if ($Godot -eq "") {
 $src = Join-Path $env:APPDATA "Godot\app_userdata\INFLATION- What Inflation-\qa\newplayer"
 Remove-Item "$src\*" -Force -ErrorAction SilentlyContinue
 & $Godot --rendering-driver opengl3 -- --qa-newplayer-shots 2>&1 | Select-String "QA newplayer|ERROR|SCRIPT"
-$shots = Get-ChildItem "$src\t_*.png" | Sort-Object Name
-if ($shots.Count -eq 0) { Write-Error "No se sacaron capturas"; exit 1 }
+$all = Get-ChildItem "$src\t_*.png" | Sort-Object Name
+if ($all.Count -eq 0) { Write-Error "No se sacaron capturas"; exit 1 }
 New-Item -ItemType Directory -Force "docs\qa" | Out-Null
-Copy-Item "$src\log.csv" "docs\qa\primeros_5_min.csv" -Force
+Copy-Item "$src\log.csv" "docs\qa\primeros_15_min.csv" -Force
 Add-Type -AssemblyName System.Drawing
-$cols = 4; $cw = 480; $ch = 270; $rows = [math]::Ceiling($shots.Count / $cols)
-$sheet = New-Object System.Drawing.Bitmap ($cols * $cw), ($rows * $ch)
-$g = [System.Drawing.Graphics]::FromImage($sheet)
-$g.Clear([System.Drawing.Color]::Black)
-$g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$font = New-Object System.Drawing.Font("Arial", 18, [System.Drawing.FontStyle]::Bold)
-$i = 0
-foreach ($s in $shots) {
-  $img = [System.Drawing.Image]::FromFile($s.FullName)
-  $x = ($i % $cols) * $cw; $y = [math]::Floor($i / $cols) * $ch
-  $g.DrawImage($img, $x, $y, $cw, $ch)
-  $sec = [int]($s.BaseName.Substring(2, 3))
-  $label = "{0}:{1:00}" -f [math]::Floor($sec / 60), ($sec % 60)
-  if ($s.BaseName -like "*_cartel") { $label += " cartel" }
-  $g.FillRectangle([System.Drawing.Brushes]::Black, $x, $y + $ch - 28, 150, 28)
-  $g.DrawString($label, $font, [System.Drawing.Brushes]::Yellow, $x + 3, $y + $ch - 27)
-  $img.Dispose(); $i++
-}
 $enc = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq "image/jpeg" }
 $p = New-Object System.Drawing.Imaging.EncoderParameters(1)
 $p.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, 88L)
-$sheet.Save((Join-Path (Get-Location) "docs\qa\primeros_5_min.jpg"), $enc, $p)
-$g.Dispose(); $sheet.Dispose()
-Write-Host "Hoja de contacto: docs\qa\primeros_5_min.jpg ($($shots.Count) capturas)"
+
+# Hoja de contacto: todas las capturas juntas en una imagen, con el tiempo de juego de cada una.
+function Make-Sheet($shots, $outFile) {
+  $cols = 4; $cw = 480; $ch = 270; $rows = [math]::Ceiling($shots.Count / $cols)
+  $sheet = New-Object System.Drawing.Bitmap ($cols * $cw), ($rows * $ch)
+  $g = [System.Drawing.Graphics]::FromImage($sheet)
+  $g.Clear([System.Drawing.Color]::Black)
+  $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $font = New-Object System.Drawing.Font("Arial", 18, [System.Drawing.FontStyle]::Bold)
+  $i = 0
+  foreach ($s in $shots) {
+    $img = [System.Drawing.Image]::FromFile($s.FullName)
+    $x = ($i % $cols) * $cw; $y = [math]::Floor($i / $cols) * $ch
+    $g.DrawImage($img, $x, $y, $cw, $ch)
+    $sec = [int]($s.BaseName.Substring(2, 3))
+    $label = "{0}:{1:00}" -f [math]::Floor($sec / 60), ($sec % 60)
+    if ($s.BaseName -like "*_cartel") { $label += " cartel" }
+    $g.FillRectangle([System.Drawing.Brushes]::Black, $x, $y + $ch - 28, 150, 28)
+    $g.DrawString($label, $font, [System.Drawing.Brushes]::Yellow, $x + 3, $y + $ch - 27)
+    $img.Dispose(); $i++
+  }
+  $sheet.Save((Join-Path (Get-Location) $outFile), $enc, $p)
+  $g.Dispose(); $sheet.Dispose()
+  Write-Host "Hoja de contacto: $outFile ($($shots.Count) capturas)"
+}
+$first = @($all | Where-Object { [int]$_.BaseName.Substring(2, 3) -le 300 })
+$second = @($all | Where-Object { [int]$_.BaseName.Substring(2, 3) -gt 300 })
+Make-Sheet $first "docs\qa\primeros_5_min.jpg"
+if ($second.Count -gt 0) { Make-Sheet $second "docs\qa\minutos_5_a_15.jpg" }
 $res = Join-Path $src "result.txt"
 if (Test-Path $res) {
   $lines = Get-Content $res
-  Write-Host ("QA jugador nuevo (carteles y notas): " + $lines[0])
+  Write-Host ("QA jugador nuevo (ritmo, carteles y notas): " + $lines[0])
   $lines | Select-Object -Skip 1 | Where-Object { $_ } | ForEach-Object { Write-Host "  $_" }
   if ($lines[0] -ne "PASS") { exit 1 }
 }

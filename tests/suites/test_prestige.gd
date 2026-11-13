@@ -67,7 +67,7 @@ func run(t) -> void:
 	t.near(EconomyLogic.inflation_rate(m5), 0.30 * 0.5 * (1.0 / (1.0 + 0.01 * 15.0)), "Estabilización baja la tasa")
 	m5.money = BigNumber.from_float(100.0)
 	EconomyLogic.buy_business(m5, "empanadas", 1)
-	t.near(EconomyLogic.income_per_sec(m5).to_float(), 0.25 * (1.0 + 0.03 * 15.0) * 1.6 * 0.7, "ingreso con plan y legado")
+	t.near(EconomyLogic.income_per_sec(m5).to_float(), 0.5 * (1.0 + 0.03 * 15.0) * 1.6 * 0.7, "ingreso con plan y legado")
 	# Convertibilidad: shock periódico
 	var m6: GameModel = GameModel.new(3)
 	m6.era = 4

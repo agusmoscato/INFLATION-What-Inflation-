@@ -994,6 +994,8 @@ var _era_flash: float = 0.0
 
 
 func _on_month_passed(rate: float) -> void:
+	if rate <= 0.0:
+		return      # todavía no hay inflación (primeros minutos): el mes pasa sin aviso
 	_scratch_costs()
 	var strong: bool = rate >= STRONG_HIKE or _era_flash > 0.0
 	_play("raise", clampf(1.0 - rate * 0.3, 0.6, 1.0))
@@ -1465,7 +1467,7 @@ func _refresh_hud_extras(m: GameModel) -> void:
 	race_meter.set_state(is_winning)
 	if is_winning:
 		race_meter.set_reason(tr("ui.race.why.ok"))
-	elif EconomyLogic.needs_remark(m) and Advisor.lag(m) >= 0.05:
+	elif Unlocks.has(m, "remark") and EconomyLogic.needs_remark(m) and Advisor.lag(m) >= 0.05:
 		race_meter.set_reason(tr("ui.race.why.remark"))
 	else:
 		race_meter.set_reason(tr("ui.race.why.buy"))
@@ -1736,6 +1738,7 @@ func _apply_detail(m: GameModel) -> void:
 	var show_rate: bool = Unlocks.has(m, "inflation")
 	var show_remark: bool = Unlocks.has(m, "remark")
 	rate_box.visible = show_rate
+	race_meter.visible = show_rate      # el semáforo aparece junto con el cartel "¡La inflación!"
 	power_label.visible = show_rate
 	remark_panel.visible = show_remark
 
@@ -1797,7 +1800,7 @@ func _update_advice(delta: float) -> void:
 	else:
 		_highlight.idle = _idle
 		# una pestaña recién desbloqueada solo brilla (sin flecha ni cartel); lo demás lleva flecha y frase corta
-		var glow_only: bool = str(rec.get("kind", "")) == "tab"
+		var glow_only: bool = str(rec.get("kind", "")) == "tab" and str(rec.get("why", "")) == "adv.tab"
 		_highlight.set_target(tgt["ctl"], "" if glow_only else (tr("ui." + str(rec["why"])) if str(rec["why"]) != "" else ""), str(tgt["side"]), not glow_only)
 	# el botón de remarcar late cuando conviene
 	var pulse: bool = str(rec.get("kind", "")) == "remark" and not tgt.is_empty()

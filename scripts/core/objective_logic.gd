@@ -10,32 +10,45 @@ const LIST: Array = [
 	{"id": "cart", "kind": "money_biz", "biz": "empanadas"},
 	{"id": "cart3", "kind": "own", "biz": "empanadas", "n": 3},
 	{"id": "kiosk", "kind": "money_biz", "biz": "kiosco"},
-	{"id": "kiosk2", "kind": "own", "biz": "kiosco", "n": 2},
-	{"id": "inflation", "kind": "months", "n": 5},
 	{"id": "cart5", "kind": "own", "biz": "empanadas", "n": 5},
+	{"id": "kiosk2", "kind": "own", "biz": "kiosco", "n": 2},
 	{"id": "kiosk3", "kind": "own", "biz": "kiosco", "n": 3},
-	{"id": "remark", "kind": "remarks", "n": 1},
+	{"id": "cart7", "kind": "own", "biz": "empanadas", "n": 7},
 	{"id": "kiosk4", "kind": "own", "biz": "kiosco", "n": 4},
-	{"id": "click1", "kind": "upg_id", "upg": "click1"},
-	{"id": "cart_a", "kind": "upg_id", "upg": "empanadas_a"},
 	{"id": "kiosk5", "kind": "own", "biz": "kiosco", "n": 5},
-	{"id": "kiosk_a", "kind": "upg_id", "upg": "kiosco_a"},
+	{"id": "cart10", "kind": "own", "biz": "empanadas", "n": 10},
 	{"id": "kiosk6", "kind": "own", "biz": "kiosco", "n": 6},
 	{"id": "kiosk7", "kind": "own", "biz": "kiosco", "n": 7},
-	{"id": "remarkbonus", "kind": "upg_id", "upg": "remarkbonus"},
+	{"id": "inflation", "kind": "inflation_seen"},
+	{"id": "kiosk8", "kind": "own", "biz": "kiosco", "n": 8},
+	{"id": "cart13", "kind": "own", "biz": "empanadas", "n": 13},
+	{"id": "kiosk9", "kind": "own", "biz": "kiosco", "n": 9},
+	{"id": "kiosk10", "kind": "own", "biz": "kiosco", "n": 10},
 	{"id": "choripan", "kind": "money_biz", "biz": "choripan"},
-	{"id": "auto_remark", "kind": "upg_id", "upg": "auto_remark1"},
+	{"id": "remark", "kind": "remarks", "n": 1},
 	{"id": "choripan2", "kind": "own", "biz": "choripan", "n": 2},
+	{"id": "kiosk12", "kind": "own", "biz": "kiosco", "n": 12},
 	{"id": "choripan3", "kind": "own", "biz": "choripan", "n": 3},
+	{"id": "cart16", "kind": "own", "biz": "empanadas", "n": 16},
 	{"id": "choripan4", "kind": "own", "biz": "choripan", "n": 4},
+	{"id": "kiosk14", "kind": "own", "biz": "kiosco", "n": 14},
 	{"id": "choripan5", "kind": "own", "biz": "choripan", "n": 5},
+	{"id": "click1", "kind": "upg_id", "upg": "click1"},
+	{"id": "cart_a", "kind": "upg_id", "upg": "empanadas_a"},
+	{"id": "kiosk_a", "kind": "upg_id", "upg": "kiosco_a"},
 	{"id": "choripan_a", "kind": "upg_id", "upg": "choripan_a"},
+	{"id": "remarkbonus", "kind": "upg_id", "upg": "remarkbonus"},
+	{"id": "auto_remark", "kind": "upg_id", "upg": "auto_remark1"},
 	{"id": "lavadero", "kind": "money_biz", "biz": "lavadero"},
 	{"id": "lavadero2", "kind": "own", "biz": "lavadero", "n": 2},
 	{"id": "lavadero3", "kind": "own", "biz": "lavadero", "n": 3},
 	{"id": "upg8", "kind": "upgrades", "n": 8},
 	{"id": "lavadero4", "kind": "own", "biz": "lavadero", "n": 4},
 	{"id": "lavadero5", "kind": "own", "biz": "lavadero", "n": 5},
+	{"id": "lavadero6", "kind": "own", "biz": "lavadero", "n": 6},
+	{"id": "lavadero7", "kind": "own", "biz": "lavadero", "n": 7},
+	{"id": "lavadero8", "kind": "own", "biz": "lavadero", "n": 8},
+	{"id": "lavadero_a", "kind": "upg_id", "upg": "lavadero_a"},
 	{"id": "panaderia", "kind": "money_biz", "biz": "panaderia"},
 	{"id": "pack", "kind": "packs", "n": 1},
 	{"id": "era2", "kind": "era", "n": 2},
@@ -56,6 +69,10 @@ const LIST: Array = [
 ]
 
 
+## Segundos que el objetivo "mirá cómo suben los precios" da por visto el cartel de la inflación.
+const INFLATION_SEEN_S: float = 25.0
+
+
 static func count() -> int:
 	return LIST.size()
 
@@ -71,6 +88,7 @@ static func met(m: GameModel, o: Dictionary) -> bool:
 		"money_biz": return m.owned_count(str(o["biz"])) >= 1
 		"own": return m.owned_count(str(o["biz"])) >= int(o["n"])
 		"months": return m.month_count >= int(o["n"])
+		"inflation_seen": return Unlocks.has(m, "inflation") and m.time_played - Unlocks.time_of(m, "inflation") >= INFLATION_SEEN_S
 		"remarks": return m.remarks >= int(o["n"])
 		"upg_id": return m.upgrades.has(str(o["upg"]))
 		"upgrades": return m.upgrades.size() >= int(o["n"])
@@ -110,6 +128,11 @@ static func progress(m: GameModel, o: Dictionary) -> Dictionary:
 			cur_s = str(m.clicks)
 			tgt_s = str(int(o["n"]))
 			cur = float(m.clicks) / float(o["n"])
+		"inflation_seen":
+			var seen_s: float = (m.time_played - Unlocks.time_of(m, "inflation")) if Unlocks.has(m, "inflation") else 0.0
+			cur_s = "%d" % int(seen_s)
+			tgt_s = "%d" % int(INFLATION_SEEN_S)
+			cur = seen_s / INFLATION_SEEN_S
 		"months":
 			cur_s = str(m.month_count)
 			tgt_s = str(int(o["n"]))
@@ -232,6 +255,7 @@ static func eta(m: GameModel, o: Dictionary) -> float:
 			return _eta_money(m, EconomyLogic.business_cost(m, def, missing))
 		"upg_id":
 			return _eta_money(m, EconomyLogic.upgrade_cost(m, GameData.upgrades[GameData.upgrade_idx[str(o["upg"])]])) + Unlocks.time_left(m, "upgrades")
+		"inflation_seen": return Unlocks.time_left(m, "inflation") + (INFLATION_SEEN_S if not Unlocks.has(m, "inflation") else maxf(0.0, INFLATION_SEEN_S - (m.time_played - Unlocks.time_of(m, "inflation"))))
 		"months": return maxf(0.0, float(int(o["n"]) - m.month_count) * EconomyLogic.B("month_seconds") - m.month_progress)
 		"remarks": return maxf(EconomyLogic.B("month_seconds") - m.month_progress, Unlocks.time_left(m, "remark"))
 		"refuge": return 0.0 if EconomyLogic.refuges_unlocked(m) and not m.money.is_zero() else INF
@@ -300,11 +324,29 @@ static func status(m: GameModel, o: Dictionary) -> Dictionary:
 				r["need"] = "money"
 				r["money"] = ucost.sub(m.money)
 		"upgrades":
-			r["need"] = "count"
+			# se compra la mejora visible más barata: el objetivo y la flecha señalan esa mejora concreta
 			r["n"] = maxi(0, int(o["n"]) - m.upgrades.size())
-			r["go"] = {"kind": "tab", "id": 1}
 			if not Unlocks.has(m, "upgrades"):
 				r["need"] = "wait"
+			else:
+				var best_id: String = ""
+				var best_cost: BigNumber = null
+				for u in GameData.upgrades:
+					if EconomyLogic.upgrade_visible(m, u):
+						var uc: BigNumber = EconomyLogic.upgrade_cost(m, u)
+						if best_cost == null or uc.lt(best_cost):
+							best_cost = uc
+							best_id = str(u["id"])
+				if best_id == "":
+					r["need"] = "wait"
+				else:
+					r["go"] = {"kind": "upgrade", "id": best_id}
+					if m.money.ge(best_cost):
+						r["ready"] = true
+						r["need"] = "count"
+					else:
+						r["need"] = "money"
+						r["money"] = best_cost.sub(m.money)
 		"months":
 			r["need"] = "wait"
 			r["n"] = maxi(0, int(o["n"]) - m.month_count)

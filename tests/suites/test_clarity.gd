@@ -6,14 +6,27 @@ func run(t) -> void:
 	# --- Advisor: lo primero que se destaca es la empanada ---
 	var m: GameModel = GameModel.new(3)
 	t.eq(Advisor.recommend(m)["kind"], "click", "al empezar se destaca la empanada")
-	for i in range(3):
+	for i in range(10):
 		EconomyLogic.do_click(m)
+	ObjectiveLogic.update(m)
 	# con plata para el carrito, se destaca comprarlo
 	m.money = BigNumber.from_float(100.0)
 	var rec: Dictionary = Advisor.recommend(m)
 	t.eq(rec["kind"], "buy", "con plata se destaca comprar")
 	t.eq(rec["id"], "empanadas", "el carrito")
-	# sin plata, seguir tocando (era 1)
+	# con el primer negocio y sin plata, el objetivo manda: se señala la nota, no otra compra
+	var mb: GameModel = GameModel.new(3)
+	for i in range(10):
+		EconomyLogic.do_click(mb)
+	mb.money = BigNumber.from_float(100.0)
+	EconomyLogic.buy_business(mb, "empanadas", 1)
+	ObjectiveLogic.update(mb)
+	mb.money = BigNumber.from_float(5.0)
+	var rb: Dictionary = Advisor.recommend(mb)
+	t.eq(rb["kind"], "objective", "ahorrando para el objetivo, la flecha va al objetivo")
+	mb.money = BigNumber.from_float(500.0)
+	t.check(Advisor.recommend(mb)["kind"] != "objective", "con plata, la flecha va a la compra del objetivo")
+	# sin ningún negocio y sin plata, tocar la empanada
 	m.money = BigNumber.zero()
 	t.eq(Advisor.recommend(m)["kind"], "click", "sin plata: tocar la empanada")
 	# una decisión de evento gana a todo
@@ -81,3 +94,30 @@ func run(t) -> void:
 	var rep3: Dictionary = EconomyLogic.simulate_offline(m9, 2.0 * 3600.0)
 	t.check(m9.money.gt(before), "el ingreso sigue después del tope de meses")
 	t.eq(rep3["months"], 12, "12 meses aunque pasen 2 h")
+
+	# --- ritmo inicial: sin inflación hasta el cartel "¡La inflación!" ---
+	var mg: GameModel = GameModel.new(5)
+	mg.intro_grace = true
+	t.near(EconomyLogic.inflation_rate(mg), 0.0, "sin inflación al empezar")
+	var p0: BigNumber = mg.price_level
+	EconomyLogic.month_end(mg)
+	t.check(mg.price_level.approx_eq(p0), "los precios no suben antes de la inflación")
+	t.check(mg.remark_window <= 0.0, "y tampoco hay ventana de remarcar")
+	mg.unlocked["inflation"] = 120.0
+	t.check(EconomyLogic.inflation_rate(mg) > 0.0, "con el cartel arranca la inflación")
+	EconomyLogic.month_end(mg)
+	t.check(mg.price_level.gt(p0), "y ahí sí suben los precios")
+	# primer carrito rápido y kiosco accesible
+	var mq: GameModel = GameModel.new(5)
+	t.near(EconomyLogic.business_cost(mq, GameData.businesses[0], 1).to_float(), 15.0, "el primer carrito cuesta $15 (15 clics, unos 5 s)")
+	t.near(EconomyLogic.business_cost(mq, GameData.businesses[1], 1).to_float(), 60.0, "el kiosco cuesta $60")
+	# la acción destacada y el objetivo apuntan siempre a lo mismo: con la plata del objetivo, la flecha va a ese negocio
+	var mo2: GameModel = GameModel.new(5)
+	mo2.money = BigNumber.from_float(1000.0)
+	for i in range(10):
+		EconomyLogic.do_click(mo2)
+	ObjectiveLogic.update(mo2)
+	var pick: Dictionary = Advisor.recommend(mo2)
+	var want: Dictionary = ObjectiveLogic.status(mo2, ObjectiveLogic.LIST[mo2.obj_index])["go"]
+	t.eq(pick["kind"], want["kind"], "la flecha va a lo que dice el objetivo")
+	t.eq(pick["id"], want["id"], "y al mismo negocio")

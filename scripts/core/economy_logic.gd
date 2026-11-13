@@ -159,6 +159,8 @@ static func purchasing_power(m: GameModel) -> BigNumber:
 ## Tasa mensual de inflación vigente (0.08 = 8 %).
 static func inflation_rate(m: GameModel) -> float:
 	ensure_fresh(m)
+	if m.intro_grace and not Unlocks.has(m, "inflation"):
+		return 0.0      # los primeros minutos no hay inflación: aparece con el cartel "¡La inflación!"
 	var r: float = float(GameData.era_def(m.era)["inflation"])
 	if m.era >= 5:
 		r *= maxf(0.0, 1.0 - B("measure_reduction") * float(m.measures))

@@ -55,6 +55,7 @@ func _init() -> void:
 		_qa_newplayer(seed_value)
 		return
 	var m: GameModel = GameModel.new(seed_value)
+	m.intro_grace = true
 	var total: int = int(hours * 3600.0)
 	var last_era: int = 1
 	var max_gap: float = 0.0
@@ -213,68 +214,78 @@ func _event_policy(m: GameModel) -> void:
 # =====================================================================
 ## El jugador nuevo hace clic todo el tiempo, compra lo que pide el objetivo (o lo más rentable) y remarca cuando puede.
 func _qa_newplayer(seed_value: int) -> void:
-	const MAX_GAP: float = 60.0
-	const TOTAL: int = 900
+	const TOTAL: int = 900                 # 15 minutos
+	const FIRST_MINUTES: int = 600         # el control de duración de objetivos vale para los primeros 10 minutos
+	const MAX_OBJ_S: int = 90              # ningún objetivo puede durar más de 90 s ahí
+	const MIN_BUYS_2MIN: int = 6           # y tiene que haber al menos 6 compras en los primeros 2 minutos
+	const CLICKS_PER_S: float = 2.5
 	var m: GameModel = GameModel.new(seed_value)
-	var done: Array = []     # [[segundo, id], ...]
-	var last_t: float = 0.0
-	var max_gap: float = 0.0
-	var streak: int = 0          # segundos seguidos sin nada alcanzable
-	var max_streak: int = 0
-	var streak_at: int = 0
-	var micro_secs: int = 0
-	var unlock_log: Array = []     # [[segundo, mecanica], ...]
+	m.intro_grace = true
+	var seen: Array = [0]
+	var click_acc: float = 0.0
+	var buys: Array = []              # [[segundo, "biz:empanadas"|"upg:click1"], ...]
+	var obj_start: Dictionary = {}    # id -> segundo en que pasó a ser el objetivo
+	var obj_log: Array = []           # [[id, inicio, fin]]
+	var unlock_log: Array = []        # [[segundo, mecánica], ...]
+	var cur_id: String = ""
+	var cur_since: int = 0
 	for t in range(TOTAL):
-		EconomyLogic.do_click(m)
-		if Unlocks.has(m, "remark") and m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
-			EconomyLogic.remark(m, true)
-		if t % 2 == 0:
-			var cur: Dictionary = ObjectiveLogic.current(m)
-			if not cur["done"]:
-				var o: Dictionary = ObjectiveLogic.LIST[m.obj_index]
-				match str(o["kind"]):
-					"money_biz", "own":
-						EconomyLogic.buy_business(m, str(o["biz"]), 1)
-					"upg_id":
-						EconomyLogic.buy_upgrade(m, str(o["upg"]))
-			var guard: int = 0
-			while guard < 20 and EconomyLogic.smart_buy(m):
-				guard += 1
+		click_acc += CLICKS_PER_S
+		while click_acc >= 1.0:
+			click_acc -= 1.0
+			EconomyLogic.do_click(m)
+		# un jugador obediente hace lo que marca la pantalla: la acción destacada (que coincide con el objetivo)
+		var rec: Dictionary = Advisor.recommend(m, seen)
+		match str(rec["kind"]):
+			"buy":
+				if EconomyLogic.buy_business(m, str(rec["id"]), 1) > 0:
+					buys.append([t, "biz:" + str(rec["id"])])
+			"upgrade":
+				if EconomyLogic.buy_upgrade(m, str(rec["id"])):
+					buys.append([t, "upg:" + str(rec["id"])])
+			"remark":
+				EconomyLogic.remark(m, true)
+			"tab":
+				seen.append(int(rec["id"]))
 		EconomyLogic.tick(m, 1.0)
 		for n in m.notifications:
 			if n["sig"] == "unlock":
 				unlock_log.append([t, str(n["args"][0])])
-			if n["sig"] == "objective_done":
-				max_gap = maxf(max_gap, float(t) - last_t)
-				done.append([t, str(n["args"][0])])
-				last_t = float(t)
 		m.notifications.clear()
-		# ¿hay algo alcanzable? (objetivo actual en <= 60 s o una meta chica)
-		var cur2: Dictionary = ObjectiveLogic.current(m)
-		var ok_now: bool = true
-		if not cur2["done"]:
-			var eta: float = ObjectiveLogic.eta(m, ObjectiveLogic.LIST[m.obj_index])
-			if eta > MAX_GAP:
-				if ObjectiveLogic.micro(m).is_empty():
-					ok_now = false
-				else:
-					micro_secs += 1
-		if ok_now:
-			streak = 0
-		else:
-			streak += 1
-			if streak > max_streak:
-				max_streak = streak
-				streak_at = t
+		var cur: Dictionary = ObjectiveLogic.current(m)
+		var id_now: String = str(cur["id"])
+		if id_now != cur_id:
+			if cur_id != "":
+				obj_log.append([cur_id, cur_since, t])
+			cur_id = id_now
+			cur_since = t
+	obj_log.append([cur_id, cur_since, TOTAL])
 	print("")
-	print("QA jugador nuevo (%d min simulados, semilla %d)" % [TOTAL / 60, seed_value])
-	var csv: String = "segundo,objetivo\n"
-	for d in done:
-		print("  %4d s  %s" % [d[0], d[1]])
-		csv += "%d,%s\n" % [d[0], d[1]]
-	print("Objetivos cumplidos: %d | mayor espera entre objetivos cumplidos: %.0f s" % [done.size(), max_gap])
-	print("Segundos en los que el objetivo tardaba mas de 60 s y se mostro una 'meta chica': %d" % micro_secs)
-	print("Mayor tramo SIN nada alcanzable: %d s (en el segundo %d)" % [max_streak, streak_at])
+	print("QA jugador nuevo OBEDIENTE (%d min simulados, semilla %d, %.1f clics/s)" % [TOTAL / 60, seed_value, CLICKS_PER_S])
+	var csv: String = "objetivo,desde_s,hasta_s,duracion_s\n"
+	var long_objs: Array = []
+	for o in obj_log:
+		var dur: int = int(o[2]) - int(o[1])
+		csv += "%s,%d,%d,%d\n" % [o[0], o[1], o[2], dur]
+		print("  %4d s -> %4d s  (%3d s)  %s" % [o[1], o[2], dur, o[0]])
+		if int(o[1]) < FIRST_MINUTES and dur > MAX_OBJ_S:
+			long_objs.append("%s (%d s)" % [o[0], dur])
+	# compras
+	var buys_2min: int = 0
+	var first_cart: int = -1
+	var first_kiosk: int = -1
+	for b in buys:
+		if int(b[0]) < 120:
+			buys_2min += 1
+		if first_cart < 0 and str(b[1]) == "biz:empanadas":
+			first_cart = int(b[0])
+		if first_kiosk < 0 and str(b[1]) == "biz:kiosco":
+			first_kiosk = int(b[0])
+	print("Primer carrito: %d s | primer kiosco: %d s | compras en los primeros 2 min: %d (mínimo %d)" % [first_cart, first_kiosk, buys_2min, MIN_BUYS_2MIN])
+	var buys_ok: bool = buys_2min >= MIN_BUYS_2MIN and first_cart >= 0 and first_cart <= 12 and first_kiosk >= 0 and first_kiosk <= 90
+	print("Compras iniciales: %s" % ("PASA" if buys_ok else "FALLA (carrito antes de 12 s, kiosco antes de 90 s y 6 compras en 2 min)"))
+	var dur_ok: bool = long_objs.is_empty()
+	print("Objetivos de más de %d s en los primeros %d min: %s" % [MAX_OBJ_S, FIRST_MINUTES / 60, "ninguno -> PASA" if dur_ok else "FALLA: " + ", ".join(long_objs)])
 	# ritmo de desbloqueos: como mucho una mecánica cada 2 minutos y en el orden pensado
 	print("Desbloqueos (segundo, mecánica):")
 	var pace_ok: bool = true
@@ -292,8 +303,8 @@ func _qa_newplayer(seed_value: int) -> void:
 		print("  (faltan desbloqueos de la cadena temprana en %d min)" % [TOTAL / 60])
 		pace_ok = false
 	print("Ritmo de desbloqueos: %s" % ("PASA" if pace_ok else "FALLA"))
-	var ok: bool = max_streak <= int(MAX_GAP) and pace_ok
-	print("RESULTADO: %s (limite %d s sin objetivo alcanzable)" % ["PASA" if ok else "FALLA", int(MAX_GAP)])
+	var ok: bool = buys_ok and dur_ok and pace_ok
+	print("RESULTADO: %s" % ("PASA" if ok else "FALLA"))
 	var f: FileAccess = FileAccess.open("res://docs/qa_newplayer.csv", FileAccess.WRITE)
 	if f != null:
 		f.store_string(csv)

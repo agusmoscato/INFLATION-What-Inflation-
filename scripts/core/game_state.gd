@@ -7,12 +7,14 @@ var achievements: Achievements
 
 func _init() -> void:
 	m.demo_mode = DemoMode.is_demo()
+	m.intro_grace = true
 	achievements = LocalAchievements.new(m.achievements)
 
 
 func new_game() -> void:
 	m = GameModel.new()
 	m.demo_mode = DemoMode.is_demo()
+	m.intro_grace = true      # sin inflación hasta el cartel "¡La inflación!"
 	achievements = LocalAchievements.new(m.achievements)
 
 

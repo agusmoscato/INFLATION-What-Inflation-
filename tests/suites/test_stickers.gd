@@ -76,7 +76,7 @@ func run(t) -> void:
 	t.near(StickerLogic.bonuses(mp)["income"], 0.10, "Negocios: +10 % ingresos")
 	mp.money = BigNumber.from_float(100.0)
 	EconomyLogic.buy_business(mp, "empanadas", 1)
-	t.near(EconomyLogic.income_per_sec(mp).to_float(), 0.25 * 1.10, "el bonus se aplica a los ingresos")
+	t.near(EconomyLogic.income_per_sec(mp).to_float(), 0.5 * 1.10, "el bonus se aplica a los ingresos")
 	for id in StickerLogic.page_ids(1):
 		StickerLogic.give(mp, id)
 	t.near(StickerLogic.bonuses(mp)["inflation"], 0.05, "Personajes: -5 % inflación")

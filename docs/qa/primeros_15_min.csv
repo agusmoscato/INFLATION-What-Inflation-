@@ -1,0 +1,42 @@
+t_seg,plata,tipo_destacado,id,objetivo,tutorial,pestana,cartel_desbloqueo,notas_visibles,time_played
+000,"$1",click,,click10,0,0,false,1,0
+015,"$0,43",objective,,cart3,2,0,false,1,15
+030,"$28,7",objective,,kiosk,2,0,false,1,30
+045,"$11,3",objective,,cart5,3,0,false,1,45
+060,"$8,47",objective,,kiosk3,3,0,false,1,60
+075,"$33,3",objective,,cart7,3,0,false,1,74
+090,"$75,4",objective,,kiosk5,3,0,false,1,89
+105,"$66,7",objective,,cart10,3,0,false,1,103
+120,"$116",objective,,kiosk7,3,0,false,1,118
+135,"$261",objective,,inflation,3,0,false,1,133
+150,"$143",objective,,cart13,3,0,false,1,147
+165,"$98,5",objective,,kiosk10,3,0,false,1,162
+180,"$194",objective,,choripan,3,0,false,1,176
+195,"$681",objective,,choripan,3,0,false,1,191
+210,"$1,17 K",objective,,choripan,3,0,false,1,205
+225,"$1,66 K",objective,,choripan,3,0,false,1,220
+240,"$2,15 K",objective,,choripan,3,0,false,1,234
+255,"$1,04 K",objective,,choripan2,5,0,false,1,249
+270,"$1,86 K",objective,,choripan2,5,0,false,1,263
+285,"$346",objective,,kiosk12,5,0,false,1,278
+300,"$914",objective,,choripan3,5,0,false,1,293
+330,"$516",objective,,choripan4,5,0,false,1,323
+360,"$273",objective,,kiosk14,5,0,false,1,352
+390,"$6,08 K",objective,,choripan5,5,1,false,1,382
+420,"$9,41 K",objective,,choripan_a,5,1,false,1,412
+450,"$20,64 K",objective,,choripan_a,5,1,false,1,442
+480,"$2,48 K",objective,,remarkbonus,5,1,false,1,471
+510,"$19,29 K",objective,,lavadero,5,1,false,1,501
+540,"$9,66 K",objective,,lavadero2,5,0,false,1,531
+570,"$1,07 K",objective,,lavadero3,5,0,false,1,560
+600,"$55,48 K",objective,,lavadero3,5,0,false,1,589
+630,"$50,23 K",objective,,lavadero4,5,1,false,1,619
+660,"$50,78 K",objective,,lavadero5,5,0,false,1,649
+690,"$49,11 K",objective,,lavadero6,5,0,false,1,679
+720,"$41,03 K",objective,,lavadero7,5,0,false,1,709
+750,"$18,17 K",objective,,lavadero8,5,0,false,1,738
+780,"$169,43 K",objective,,lavadero8,5,0,false,1,768
+810,"$144,63 K",objective,,lavadero_a,5,0,false,1,798
+840,"$322,97 K",objective,,lavadero_a,5,0,false,1,827
+870,"$506,61 K",objective,,lavadero_a,5,0,false,1,857
+900,"$301,24 K",objective,,panaderia,5,1,false,1,887

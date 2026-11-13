@@ -413,7 +413,7 @@ func _qa_windows_only() -> void:
 #  Un "jugador que hace lo que le marca la pantalla" (sigue la acción destacada) juega 5 minutos a velocidad x10 y se saca
 #  una captura cada 15 s de juego en user://qa/newplayer/. tools/qa_newplayer.ps1 las junta en docs/qa/primeros_5_min.jpg.
 # =====================================================================
-const NP_SECONDS: float = 300.0
+const NP_SECONDS: float = 900.0      # 15 minutos de juego (a velocidad x10 son unos 90 s reales)
 const NP_SHOT_EVERY: float = 15.0
 const NP_SPEED: float = 10.0
 
@@ -424,6 +424,7 @@ func _qa_newplayer_shots() -> void:
 	Settings.path = "user://qa_np_settings.cfg"
 	get_window().borderless = true
 	get_window().size = Vector2i(1280, 720)      # ventana sin bordes: si no, Windows puede dejar de dibujarla y las capturas salen viejas
+	get_window().always_on_top = true             # y siempre arriba: una ventana tapada por otras se queda sin dibujar y el QA se frena
 	var failures: Array = []
 	await _qa_newplayer(failures)
 	var out: FileAccess = FileAccess.open("user://qa/newplayer/result.txt", FileAccess.WRITE)
@@ -497,11 +498,21 @@ func _qa_newplayer(failures: Array) -> void:
 	var next_check: float = 0.0
 	var seen: Array = [0]
 	var last_us: int = Time.get_ticks_usec()
-	var log: Array = ["t_seg,plata,tipo_destacado,id,objetivo,tutorial,pestana,cartel_desbloqueo,notas_visibles"]
+	var log: Array = ["t_seg,plata,tipo_destacado,id,objetivo,tutorial,pestana,cartel_desbloqueo,notas_visibles,time_played"]
 	var tr_state: Dictionary = {"reported_multi": {}, "reported_text": {}, "text": "", "since": 0.0}
 	var last_sign: Node = null
+	var buys_2min: int = 0
+	var bought_prev: int = 0
+	var first_cart: float = -1.0
+	var first_kiosk: float = -1.0
+	var obj_id: String = ""
+	var obj_since: float = 0.0
 	var sign_shot_at: float = -1.0
-	while gt <= NP_SECONDS + 0.01:
+	var np_seconds: float = NP_SECONDS
+	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	if ua.has("--np-seconds") and ua.find("--np-seconds") + 1 < ua.size():
+		np_seconds = float(ua[ua.find("--np-seconds") + 1])
+	while gt <= np_seconds + 0.01:
 		await get_tree().process_frame
 		var now_us: int = Time.get_ticks_usec()
 		gt += minf(float(now_us - last_us) / 1e6, 0.2) * NP_SPEED
@@ -514,8 +525,26 @@ func _qa_newplayer(failures: Array) -> void:
 			sign_shot_at = gt + 1.0
 		if sign_shot_at > 0.0 and gt >= sign_shot_at:
 			sign_shot_at = -1.0
-			await RenderingServer.frame_post_draw
+			await get_tree().process_frame
+			RenderingServer.force_draw()
 			get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%03d_cartel.png" % int(round(gt))))
+		# métricas del ritmo: compras (negocios + mejoras), primer carrito y kiosco, duración de cada objetivo
+		var bought_now: int = m.total_businesses() + m.upgrades.size()
+		if bought_now > bought_prev:
+			if gt < 120.0:
+				buys_2min += bought_now - bought_prev
+			bought_prev = bought_now
+		if first_cart < 0.0 and m.owned_count("empanadas") >= 1:
+			first_cart = gt
+		if first_kiosk < 0.0 and m.owned_count("kiosco") >= 1:
+			first_kiosk = gt
+		var oid: String = str(ObjectiveLogic.current(m)["id"])
+		if oid != obj_id:
+			obj_id = oid
+			obj_since = gt
+		elif gt - obj_since > 90.0 and gt < 600.0 and not tr_state.has("obj_" + oid):
+			tr_state["obj_" + oid] = true
+			failures.append("[%s] EL OBJETIVO «%s» LLEVA MÁS DE 90 s EN LOS PRIMEROS 10 MINUTOS" % [_fmt_t(gt), oid])
 		if gt >= next_check:
 			next_check = gt + 0.5
 			_qa_attention_check(gt, tr_state, failures)
@@ -543,17 +572,26 @@ func _qa_newplayer(failures: Array) -> void:
 					for i in range(1):
 						Economy.click()           # sin nada destacado, un jugador nuevo toca la empanada
 		if gt >= next_shot:
-			await RenderingServer.frame_post_draw      # sin esto la captura puede ser de un cuadro viejo
+			await get_tree().process_frame
+			RenderingServer.force_draw()      # dibuja un cuadro ya mismo (esperar frame_post_draw se traba hasta 30 s y sin esto la captura sale vieja)
 			var tag: String = "%03d" % int(round(next_shot))
+
 			get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%s.png" % tag))
 			var rec2: Dictionary = Advisor.recommend(m, seen)
 			var visible_notes: int = 0
 			for n in get_tree().get_nodes_in_group("attention"):
 				if (n as CanvasItem).is_visible_in_tree():
 					visible_notes += 1
-			log.append("%s,%s,%s,%s,%s,%d,%d,%s,%d" % [tag, UIKit.money(m.money), str(rec2["kind"]), str(rec2["id"]), str(ObjectiveLogic.current(m)["id"]), EconomyLogic.tutorial_step(m), _game._tab, str(is_instance_valid(_game._unlock_sign)), visible_notes])
-			next_shot += NP_SHOT_EVERY
+			log.append("%s,\"%s\",%s,%s,%s,%d,%d,%s,%d,%d" % [tag, UIKit.money(m.money), str(rec2["kind"]), str(rec2["id"]), str(ObjectiveLogic.current(m)["id"]), EconomyLogic.tutorial_step(m), _game._tab, str(is_instance_valid(_game._unlock_sign)), visible_notes, int(m.time_played)])
+			next_shot += NP_SHOT_EVERY if next_shot < 300.0 else 2.0 * NP_SHOT_EVERY      # cada 15 s los primeros 5 minutos y cada 30 s después
 	Engine.time_scale = 1.0
+	if buys_2min < 6:
+		failures.append("SOLO %d COMPRAS EN LOS PRIMEROS 2 MINUTOS (mínimo 6)" % buys_2min)
+	if first_cart < 0.0 or first_cart > 15.0:
+		failures.append("EL PRIMER CARRITO LLEGÓ A LOS %.0f s (tiene que ser alrededor de los 5-10 s)" % first_cart)
+	if first_kiosk < 0.0 or first_kiosk > 90.0:
+		failures.append("EL KIOSCO LLEGÓ A LOS %.0f s (tiene que ser antes de los 90 s)" % first_kiosk)
+	print("QA ritmo: %d compras en 2 min, primer carrito %.0f s, primer kiosco %.0f s" % [buys_2min, first_cart, first_kiosk])
 	var f: FileAccess = FileAccess.open("user://qa/newplayer/log.csv", FileAccess.WRITE)
 	f.store_string("\n".join(log) + "\n")
 	f.close()

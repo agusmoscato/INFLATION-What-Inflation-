@@ -25,7 +25,7 @@ func run(t) -> void:
 	t.near(EconomyLogic.business_cost(m, def, 1).to_float(), 15.0 * 1.22, "segundo cuesta 15*1,15")
 	# producción
 	EconomyLogic.tick(m, 10.0)
-	t.near(EconomyLogic.income_per_sec(m).to_float(), 0.25, "ingreso 0,25/s")
+	t.near(EconomyLogic.income_per_sec(m).to_float(), 0.5, "ingreso 0,5/s")
 	t.check(m.money.to_float() > 5.0, "el negocio produce")
 	# compra en lote y máximo
 	var m2: GameModel = _fresh()

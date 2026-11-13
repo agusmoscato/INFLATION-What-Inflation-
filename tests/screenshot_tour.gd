@@ -43,6 +43,7 @@ func _ready() -> void:
 		["01_juego_era1", _early],
 		["02_negocios_era3", _mid],
 		["02b_remarcando", _remark],
+		["02c_decision", _decision],
 		["03_mejoras", _tab.bind(1)],
 		["04_refugios", _tab.bind(2)],
 		["05_reforma", _tab.bind(3)],
@@ -129,13 +130,20 @@ func _mid() -> void:
 	m.dirty = true
 	Economy.refuge_buy("usd", 0.02)
 	Economy.refuge_buy("gold", 0.02)
-	EconomyLogic.start_event(m, "aguinaldo")
+	EconomyLogic.start_event(m, "aguinaldo", 1)
 	Economy.flush()
 	_g()._select_tab(0)
 
 
 func _remark() -> void:
 	Economy.remark()
+
+
+func _decision() -> void:
+	var m: GameModel = GameState.m
+	m.pending_choice = {}
+	EconomyLogic.start_event(m, "corrida")
+	Economy.flush()
 
 
 func _tab(i: int) -> void:
@@ -147,7 +155,7 @@ func _hyper() -> void:
 	m.era = 5
 	m.measures = 1
 	m.active_events = []
-	EconomyLogic.start_event(m, "cepo")
+	EconomyLogic.start_event(m, "cepo", 1)
 	m.dirty = true
 	_g()._select_tab(0)
 	EconomyLogic.month_end(m)

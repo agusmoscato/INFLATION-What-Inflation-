@@ -42,8 +42,8 @@ func _process(_delta: float) -> void:
 		if frame == 60:
 			Economy.remark()
 			Economy.refuge_buy("gold", 0.25)
-			EconomyLogic.start_event(m, "paro")
-			EconomyLogic.start_event(m, "cepo")
+			EconomyLogic.start_event(m, "paro", 1)
+			EconomyLogic.start_event(m, "cepo", 1)
 		if frame == 55:
 			_shot("2_biz")
 		if frame == 42:

@@ -20,7 +20,7 @@ var rows: Array = []   # [evento, minuto, detalle]
 var no_prestige: bool = false
 var use_refuges: bool = true
 var do_park: bool = true
-var do_events: bool = true
+var do_events: bool = true       ## false = siempre la opción por defecto de los eventos (--defaultevents)
 var refuge_stats: Dictionary = {"parked": 0, "sold": 0, "event_sells": 0, "strikes": 0}
 
 const SAVE_PAYBACK_S: float = 600.0   ## ahorra para la cartera si lo mejor a comprar repaga en más de esto
@@ -35,6 +35,8 @@ func _init() -> void:
 		elif a == "--nopark":
 			do_park = false
 		elif a == "--noevents":
+			do_events = false
+		elif a == "--defaultevents":
 			do_events = false
 		elif a == "--norefuges":
 			use_refuges = false
@@ -53,6 +55,7 @@ func _init() -> void:
 		EconomyLogic.do_click(m)
 		if m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
 			EconomyLogic.remark(m, true)
+		_event_policy(m)
 		var saving: bool = false
 		var port_saving: bool = false
 		if m.era >= 5 and m.measures < EconomyLogic.measure_count_total():
@@ -129,22 +132,14 @@ func _report(started: int) -> void:
 ##  - paro: negocia si sale barato;
 ##  - aguinaldo: gasta todo el efectivo enseguida (no ahorra para la cartera mientras dura).
 ## Devuelve true si está ahorrando para la cartera (el bot frena sus compras).
+## (Las decisiones de eventos las toma _event_policy.)
 func _refuge_policy(m: GameModel) -> bool:
 	if not EconomyLogic.refuges_unlocked(m):
 		return false
 	EconomyLogic.ensure_fresh(m)
-	if do_events and EconomyLogic.has_event(m, "paro") and EconomyLogic.strike_cost(m).lt(m.money.mul_f(0.3)):
-		if EconomyLogic.settle_strike(m):
-			refuge_stats["strikes"] += 1
 	if EconomyLogic.refuges_blocked(m):
 		return false
-	if do_events and EconomyLogic.has_event(m, "corrida") and not EconomyLogic.refuge_value(m, "usd").is_zero():
-		EconomyLogic.refuge_sell(m, "usd", 1.0)
-		refuge_stats["event_sells"] += 1
 	if not do_park:
-		return false
-	if do_events and EconomyLogic.has_event(m, "aguinaldo"):
-		refuge_stats["event_sells"] += 1
 		return false
 	var need_real: BigNumber = m.base_income.mul_f(EconomyLogic.B("refuge_bonus_seconds") * 1.15)
 	if need_real.is_zero():
@@ -168,3 +163,35 @@ func _best_payback(m: GameModel) -> float:
 	for c in EconomyLogic.candidates(m):
 		best = minf(best, float(c["payback"]))
 	return best
+
+
+## Decisiones de eventos. Con --defaultevents siempre se elige la opción por defecto (como si no se contestara).
+## Si no, elige según el estado:
+##  - feriado: liquidar si los clics ya no valen nada frente a los ingresos; si no, abrir;
+##  - aguinaldo: invertirlo (x2 durante 2 min rinde más que cobrarlo);
+##  - corrida: aguantar si hay cartera diversificada (el bono vale más), vender si no;
+##  - cepo: quedarse en pesos (el dólar blue sale carísimo);
+##  - paro: horas extra si hay con qué pagar; si no, cerrar.
+func _event_policy(m: GameModel) -> void:
+	if m.pending_choice.is_empty():
+		return
+	var id: String = str(m.pending_choice["id"])
+	var pick: int = EconomyLogic.default_choice(id)
+	if do_events:
+		match id:
+			"feriado":
+				var click: float = EconomyLogic.click_value(m).to_float()
+				var inc: float = EconomyLogic.income_per_sec(m).to_float()
+				pick = 1 if click < 0.1 * inc else 0
+			"aguinaldo":
+				pick = 1
+			"corrida":
+				pick = 1 if EconomyLogic.refuge_diversified_count(m) >= 1 else 0
+			"cepo":
+				pick = 1
+			"paro":
+				var cost: BigNumber = EconomyLogic.income_per_sec(m).mul_f(25.0)
+				pick = 1 if cost.le(m.money) else 0
+	EconomyLogic.choose(m, pick)
+	refuge_stats["events"] = int(refuge_stats.get("events", 0)) + 1
+	refuge_stats["event_" + id + "_" + str(pick)] = int(refuge_stats.get("event_" + id + "_" + str(pick), 0)) + 1

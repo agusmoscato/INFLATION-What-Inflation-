@@ -1,7 +1,22 @@
 [
-  {"id": "feriado",   "weight": 3, "min_era": 2, "duration": 40.0, "income_mult": 0.7, "click_mult": 4.0},
-  {"id": "aguinaldo", "weight": 3, "min_era": 2, "duration": 30.0, "income_mult": 2.0, "bonus_seconds": 30.0},
-  {"id": "corrida",   "weight": 2, "min_era": 2, "duration": 45.0, "inflation_mult": 2.0, "fx_jump": 1.3},
-  {"id": "cepo",      "weight": 2, "min_era": 2, "duration": 60.0, "block_refuges": true},
-  {"id": "paro",      "weight": 2, "min_era": 2, "duration": 40.0, "income_mult": 0.35, "settleable": true}
+  {"id": "feriado", "weight": 3, "min_era": 2, "default": "open", "choices": [
+    {"id": "open", "fx": [{"duration": 40.0, "income_mult": 0.7, "click_mult": 4.0}]},
+    {"id": "sale", "fx": [{"duration": 40.0, "income_mult": 0.4, "bonus_seconds": 30.0}]}
+  ]},
+  {"id": "aguinaldo", "weight": 3, "min_era": 2, "default": "cash", "choices": [
+    {"id": "cash", "fx": [{"bonus_seconds": 90.0}]},
+    {"id": "invest", "fx": [{"duration": 120.0, "income_mult": 2.0}]}
+  ]},
+  {"id": "corrida", "weight": 2, "min_era": 2, "default": "hold", "choices": [
+    {"id": "sell", "fx": [{"duration": 45.0, "inflation_mult": 2.0, "sell_refuges_bonus": 0.15}]},
+    {"id": "hold", "fx": [{"duration": 45.0, "inflation_mult": 2.0, "gamble": {"p": 0.5, "up": 1.4, "down": 0.7}}]}
+  ]},
+  {"id": "cepo", "weight": 2, "min_era": 2, "default": "pesos", "choices": [
+    {"id": "blue", "fx": [{"duration": 60.0, "fee_add": 0.4}]},
+    {"id": "pesos", "fx": [{"duration": 60.0, "block_refuges": true}]}
+  ]},
+  {"id": "paro", "weight": 2, "min_era": 2, "default": "close", "choices": [
+    {"id": "close", "fx": [{"duration": 40.0, "income_mult": 0.0}, {"duration": 60.0, "inflation_mult": 0.4}]},
+    {"id": "overtime", "fx": [{"pay_seconds": 25.0}]}
+  ]}
 ]

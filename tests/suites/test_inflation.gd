@@ -38,7 +38,7 @@ func run(t) -> void:
 	m3.era = 5
 	t.near(EconomyLogic.inflation_rate(m3), 1.0, "tasa Era 5 (hiperinflación)")
 	# evento corrida duplica la tasa
-	EconomyLogic.start_event(m3, "corrida")
+	EconomyLogic.start_event(m3, "corrida", 0)
 	t.near(EconomyLogic.inflation_rate(m3), 2.0, "corrida x2")
 	# la Credibilidad baja la inflación
 	var m4: GameModel = GameModel.new(1)

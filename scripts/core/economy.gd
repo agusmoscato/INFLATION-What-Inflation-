@@ -37,6 +37,8 @@ func flush() -> void:
 				EventBus.event_started.emit(n["args"][0])
 				EventBus.headline.emit(GameData.events[GameData.event_idx[n["args"][0]]]["headline_key"])
 			"event_ended": EventBus.event_ended.emit(n["args"][0])
+			"event_choice": EventBus.event_choice.emit(n["args"][0])
+			"event_choice_done": EventBus.event_choice_done.emit(n["args"][0], n["args"][1])
 			"refuge_changed": EventBus.refuge_changed.emit()
 			"reform_done": EventBus.reform_done.emit(n["args"][0], n["args"][1])
 			"plan_done": EventBus.plan_done.emit(n["args"][0])
@@ -81,8 +83,8 @@ func refuge_sell(id: String) -> bool:
 	return ok
 
 
-func settle_strike() -> bool:
-	var ok: bool = EconomyLogic.settle_strike(GameState.m)
+func choose_event(idx: int) -> bool:
+	var ok: bool = EconomyLogic.choose(GameState.m, idx)
 	flush()
 	return ok
 

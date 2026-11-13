@@ -91,34 +91,44 @@ static func ensure_fresh(m: GameModel) -> void:
 
 
 # ---- eventos activos ----
+## Efectos de un evento activo: cada entrada lleva su diccionario "fx" (la opción elegida).
+static func _fx(ev: Dictionary) -> Dictionary:
+	if ev.has("fx"):
+		return ev["fx"]
+	return GameData.events[GameData.event_idx[ev["id"]]]
+
+
 static func event_income_mult(m: GameModel) -> float:
 	var r: float = 1.0
 	for ev in m.active_events:
-		var d: Dictionary = GameData.events[GameData.event_idx[ev["id"]]]
-		r *= float(d.get("income_mult", 1.0))
+		r *= float(_fx(ev).get("income_mult", 1.0))
 	return r
 
 
 static func event_inflation_mult(m: GameModel) -> float:
 	var r: float = 1.0
 	for ev in m.active_events:
-		var d: Dictionary = GameData.events[GameData.event_idx[ev["id"]]]
-		r *= float(d.get("inflation_mult", 1.0))
+		r *= float(_fx(ev).get("inflation_mult", 1.0))
 	return r
 
 
 static func event_click_mult(m: GameModel) -> float:
 	var r: float = 1.0
 	for ev in m.active_events:
-		var d: Dictionary = GameData.events[GameData.event_idx[ev["id"]]]
-		r *= float(d.get("click_mult", 1.0))
+		r *= float(_fx(ev).get("click_mult", 1.0))
+	return r
+
+
+static func event_fee_add(m: GameModel) -> float:
+	var r: float = 0.0
+	for ev in m.active_events:
+		r += float(_fx(ev).get("fee_add", 0.0))
 	return r
 
 
 static func refuges_blocked(m: GameModel) -> bool:
 	for ev in m.active_events:
-		var d: Dictionary = GameData.events[GameData.event_idx[ev["id"]]]
-		if bool(d.get("block_refuges", false)):
+		if bool(_fx(ev).get("block_refuges", false)):
 			return true
 	return false
 
@@ -378,7 +388,7 @@ static func refuge_def(id: String) -> Dictionary:
 
 
 static func refuge_fee(m: GameModel, id: String) -> float:
-	return float(refuge_def(id)["fee"]) * m.fee_mult
+	return float(refuge_def(id)["fee"]) * m.fee_mult + event_fee_add(m)
 
 
 ## Valor nominal actual de lo que tenés en un refugio.
@@ -445,22 +455,91 @@ static func refuge_monthly_update(m: GameModel, rate: float) -> void:
 
 
 # =====================================================================
-#  Eventos
+#  Eventos (cada uno plantea una elección con costo y beneficio)
 # =====================================================================
-static func start_event(m: GameModel, id: String) -> void:
-	var d: Dictionary = GameData.events[GameData.event_idx[id]]
-	for ev in m.active_events:
-		if ev["id"] == id:
-			ev["remaining"] = float(d["duration"])
-			return
-	m.active_events.append({"id": id, "remaining": float(d["duration"])})
+const CHOICE_SECONDS: float = 10.0
+
+
+static func event_def(id: String) -> Dictionary:
+	return GameData.events[GameData.event_idx[id]]
+
+
+static func default_choice(id: String) -> int:
+	var d: Dictionary = event_def(id)
+	var want: String = str(d.get("default", ""))
+	var i: int = 0
+	for c in d["choices"]:
+		if c["id"] == want:
+			return i
+		i += 1
+	return 0
+
+
+## Abre la decisión de un evento (10 s para elegir). Si `choice` >= 0 se resuelve en el acto.
+static func start_event(m: GameModel, id: String, choice: int = -1) -> void:
 	m.events_seen += 1
-	if d.has("bonus_seconds"):
-		earn(m, income_per_sec(m).mul_f(float(d["bonus_seconds"])))
-	if d.has("fx_jump"):
-		var rd: Dictionary = refuge_def("usd")
-		m.refuge_price["usd"] = clampf(float(m.refuge_price["usd"]) * float(d["fx_jump"]), float(rd["min"]), float(rd["max"]))
 	m.push("event_started", [id])
+	if choice >= 0:
+		apply_choice(m, id, choice)
+		return
+	m.pending_choice = {"id": id, "remaining": CHOICE_SECONDS}
+	m.push("event_choice", [id])
+
+
+## El jugador (o el timer) elige la opción `idx` de la decisión pendiente.
+static func choose(m: GameModel, idx: int) -> bool:
+	if m.pending_choice.is_empty():
+		return false
+	var id: String = str(m.pending_choice["id"])
+	m.pending_choice = {}
+	apply_choice(m, id, idx)
+	m.push("event_choice_done", [id, idx])
+	return true
+
+
+static func apply_choice(m: GameModel, id: String, idx: int) -> void:
+	var d: Dictionary = event_def(id)
+	var choices: Array = d["choices"]
+	var ch: Dictionary = choices[clampi(idx, 0, choices.size() - 1)]
+	for fx in ch["fx"]:
+		_apply_fx(m, id, fx)
+
+
+static func _apply_fx(m: GameModel, id: String, fx: Dictionary) -> void:
+	# efectos instantáneos
+	if fx.has("bonus_seconds"):
+		earn(m, income_per_sec(m).mul_f(float(fx["bonus_seconds"])))
+	if fx.has("pay_seconds"):
+		var cost: BigNumber = income_per_sec(m).mul_f(float(fx["pay_seconds"]))
+		m.money = m.money.sub(BigNumber.min_of(cost, m.money))
+	if fx.has("sell_refuges_bonus"):
+		var total: BigNumber = BigNumber.zero()
+		for r in GameData.refuges:
+			total = total.add(refuge_value(m, r["id"]))
+			m.refuge_units[r["id"]] = BigNumber.zero()
+		m.money = m.money.add(total.mul_f(1.0 + float(fx["sell_refuges_bonus"])))
+		m.dirty = true
+		m.push("refuge_changed")
+		m.push("toast", ["toast.sold_refuges"])
+	if fx.has("gamble"):
+		var g: Dictionary = fx["gamble"]
+		var up: bool = m.rng.randf() < float(g["p"])
+		var k: float = float(g["up"]) if up else float(g["down"])
+		for r in GameData.refuges:
+			var rid: String = r["id"]
+			m.refuge_price[rid] = clampf(float(m.refuge_price[rid]) * k, float(r["min"]), float(r["max"]))
+		m.dirty = true
+		m.push("refuge_changed")
+		m.push("toast", ["toast.gamble_up" if up else "toast.gamble_down"])
+	# efectos con duración: quedan activos
+	var dur: float = float(fx.get("duration", 0.0))
+	if dur > 0.0:
+		var keep: Dictionary = {}
+		for k2 in ["income_mult", "inflation_mult", "click_mult", "block_refuges", "fee_add"]:
+			if fx.has(k2):
+				keep[k2] = fx[k2]
+		if not keep.is_empty():
+			m.active_events.append({"id": id, "remaining": dur, "fx": keep})
 
 
 static func pick_event(m: GameModel) -> String:
@@ -489,6 +568,12 @@ static func update_events(m: GameModel, dt: float, allow_spawn: bool) -> void:
 			m.active_events.remove_at(i)
 			m.push("event_ended", [ev["id"]])
 		i -= 1
+	# decisión pendiente: si se acaba el tiempo se aplica la opción por defecto
+	if not m.pending_choice.is_empty():
+		m.pending_choice["remaining"] = float(m.pending_choice["remaining"]) - dt
+		if float(m.pending_choice["remaining"]) <= 0.0:
+			choose(m, default_choice(str(m.pending_choice["id"])))
+		return
 	if allow_spawn and m.era >= int(B("events_min_era")):
 		m.event_timer -= dt
 		if m.event_timer <= 0.0:
@@ -496,24 +581,6 @@ static func update_events(m: GameModel, dt: float, allow_spawn: bool) -> void:
 			var id: String = pick_event(m)
 			if id != "":
 				start_event(m, id)
-
-
-static func strike_cost(m: GameModel) -> BigNumber:
-	return income_per_sec(m).mul_f(B("strike_settle_seconds"))
-
-
-static func settle_strike(m: GameModel) -> bool:
-	if not has_event(m, "paro"):
-		return false
-	var cost: BigNumber = strike_cost(m)
-	if cost.gt(m.money):
-		return false
-	m.money = m.money.sub(cost)
-	for i in range(m.active_events.size() - 1, -1, -1):
-		if m.active_events[i]["id"] == "paro":
-			m.active_events.remove_at(i)
-	m.push("event_ended", ["paro"])
-	return true
 
 
 # =====================================================================

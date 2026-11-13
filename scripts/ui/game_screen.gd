@@ -41,7 +41,11 @@ var ach_list: VBoxContainer
 var ach_info: Label
 var event_panel: PanelContainer
 var event_label: Label
-var settle_btn: Button
+var decision_panel: PanelContainer
+var decision_title: Label
+var decision_buttons: Array = []
+var decision_bar: ChalkBar
+var decision_default: Label
 var ticker_clip: Control
 var ticker_label: Label
 
@@ -122,6 +126,7 @@ func _connect_bus() -> void:
 	EventBus.era_changed.connect(_on_era_changed)
 	EventBus.event_started.connect(_on_event_started)
 	EventBus.event_ended.connect(func(_id: String) -> void: pass)
+	EventBus.event_choice.connect(func(_id: String) -> void: _play("event"))
 	EventBus.achievement_unlocked.connect(_on_achievement)
 	EventBus.reform_done.connect(_on_reform_done)
 	EventBus.plan_done.connect(_on_plan_done)
@@ -468,6 +473,39 @@ func _build_ach_page() -> Control:
 
 
 func _build_event_banner() -> Control:
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	# decisión del evento: notita de tiza con 2 opciones y un timer de 10 s
+	decision_panel = PanelContainer.new()
+	decision_panel.add_theme_stylebox_override("panel", UIKit.chalk_box(Chalk.YELLOW, Color(0, 0, 0, 0.28), 2.8))
+	decision_panel.visible = false
+	var dv: VBoxContainer = VBoxContainer.new()
+	dv.add_theme_constant_override("separation", 4)
+	decision_panel.add_child(dv)
+	decision_title = UIKit.label("", 22, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
+	dv.add_child(decision_title)
+	var drow: HBoxContainer = HBoxContainer.new()
+	drow.add_theme_constant_override("separation", 12)
+	dv.add_child(drow)
+	for i in range(2):
+		var b: Button = Button.new()
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 58)
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		UIKit.style_button(b, UIKit.C_GREEN if i == 0 else UIKit.C_BLUE, 17)
+		var idx: int = i
+		b.pressed.connect(func() -> void: Economy.choose_event(idx))
+		drow.add_child(b)
+		decision_buttons.append(b)
+	var bar_row: HBoxContainer = HBoxContainer.new()
+	dv.add_child(bar_row)
+	decision_bar = ChalkBar.new()
+	decision_bar.fill_color = UIKit.C_GOLD
+	decision_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar_row.add_child(decision_bar)
+	decision_default = UIKit.label("", 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+	bar_row.add_child(decision_default)
+	box.add_child(decision_panel)
 	event_panel = UIKit.panel(Color("#5a3a1a"), 8)
 	event_panel.visible = false
 	var h: HBoxContainer = HBoxContainer.new()
@@ -475,14 +513,8 @@ func _build_event_banner() -> Control:
 	event_label = UIKit.label("", 16, UIKit.C_GOLD)
 	event_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(event_label)
-	settle_btn = Button.new()
-	UIKit.style_button(settle_btn, UIKit.C_GREEN.darkened(0.2), 14)
-	settle_btn.pressed.connect(func() -> void: Economy.settle_strike())
-	settle_btn.visible = false
-	h.add_child(settle_btn)
-	return event_panel
-
-
+	box.add_child(event_panel)
+	return box
 func _build_ticker() -> Control:
 	var p: PanelContainer = UIKit.panel(Color("#0d141b"), 6)
 	var h: HBoxContainer = HBoxContainer.new()
@@ -591,6 +623,20 @@ func _refresh_remark() -> void:
 
 func _refresh_events() -> void:
 	var m: GameModel = gm()
+	# decisión pendiente
+	if m.pending_choice.is_empty():
+		decision_panel.visible = false
+	else:
+		var id: String = str(m.pending_choice["id"])
+		decision_panel.visible = true
+		decision_title.text = tr("ev.%s.q" % id)
+		decision_buttons[0].text = tr("ev.%s.a" % id) + "\n" + tr("ev.%s.ad" % id)
+		decision_buttons[1].text = tr("ev.%s.b" % id) + "\n" + tr("ev.%s.bd" % id)
+		decision_bar.max_value = EconomyLogic.CHOICE_SECONDS
+		decision_bar.value = float(m.pending_choice["remaining"])
+		var di: int = EconomyLogic.default_choice(id)
+		decision_default.text = tr("ui.decision.default") % tr("ev.%s.%s" % [id, "a" if di == 0 else "b"])
+	# efectos activos
 	if m.active_events.is_empty():
 		event_panel.visible = false
 		return
@@ -598,13 +644,8 @@ func _refresh_events() -> void:
 	var parts: Array = []
 	for ev in m.active_events:
 		var d: Dictionary = GameData.events[GameData.event_idx[ev["id"]]]
-		parts.append("%s (%d s) - %s" % [tr(d["name_key"]), int(ceilf(float(ev["remaining"]))), tr(d["desc_key"])])
+		parts.append("%s (%d s)" % [tr(d["name_key"]), int(ceilf(float(ev["remaining"])))])
 	event_label.text = "  |  ".join(parts)
-	settle_btn.visible = EconomyLogic.has_event(m, "paro")
-	if settle_btn.visible:
-		var cost: BigNumber = EconomyLogic.strike_cost(m)
-		settle_btn.text = tr("ui.event.settle") % UIKit.money(cost)
-		settle_btn.disabled = cost.gt(m.money)
 
 
 func _refresh_biz() -> void:

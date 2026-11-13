@@ -41,3 +41,8 @@ Registro de decisiones tomadas de forma autónoma (más reciente al final).
 - Tiza roja (`#E8707A`) fuera de la paleta de 6 colores solo para alertas; pedida explícitamente para "ÚLTIMA HORA".
 - Avisos: pila de 3 notitas dentro del HUD (arriba a la derecha); era y menú se mudaron a la columna izquierda.
 - Capturas en JPG; las anteriores quedan en `docs/screenshots/antes/`. `docs/.gdignore` evita que Godot importe las capturas.
+
+## Eventos con decisión (tanda 4)
+- Cada evento plantea 2 opciones con costo y beneficio, 10 s para elegir y una opción por defecto (ver `docs/balance_eventos.md`). El paro ya no se "negocia": se decide entre cerrar y pagar horas extra.
+- Resultado del simulador: jugar bien los eventos acelera ~7 % (5-9 %) frente a elegir siempre la opción por defecto.
+- "Dólar blue (+40 %)" se implementó como +40 puntos absolutos de comisión sobre la del refugio.

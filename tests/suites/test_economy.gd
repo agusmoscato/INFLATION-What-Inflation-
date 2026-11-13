@@ -83,7 +83,7 @@ func run(t) -> void:
 	t.near(m7.money.to_float(), 920.0 * 0.92, "doble comisión", 1e-6)
 	# cepo bloquea refugios
 	m7.money = BigNumber.from_float(100.0)
-	EconomyLogic.start_event(m7, "cepo")
+	EconomyLogic.start_event(m7, "cepo", 1)
 	t.check(not EconomyLogic.refuge_buy(m7, "gold", BigNumber.from_float(50.0)), "cepo bloquea compra")
 	EconomyLogic.update_events(m7, 61.0, false)
 	t.check(EconomyLogic.refuge_buy(m7, "gold", BigNumber.from_float(50.0)), "cepo termina")
@@ -102,17 +102,11 @@ func run(t) -> void:
 	m9.era = 2
 	m9.base_income = BigNumber.from_float(10.0)
 	m9.dirty = false
-	EconomyLogic.start_event(m9, "aguinaldo")
-	t.near(EconomyLogic.event_income_mult(m9), 2.0, "aguinaldo duplica")
+	EconomyLogic.start_event(m9, "aguinaldo", 1)
+	t.near(EconomyLogic.event_income_mult(m9), 2.0, "aguinaldo invertido duplica el ingreso")
 	t.eq(m9.events_seen, 1, "evento contado")
-	EconomyLogic.update_events(m9, 31.0, false)
-	t.near(EconomyLogic.event_income_mult(m9), 1.0, "aguinaldo expira")
-	# paro: se puede negociar
-	var m10: GameModel = _fresh()
-	m10.era = 2
-	EconomyLogic.start_event(m10, "paro")
-	t.check(EconomyLogic.settle_strike(m10), "negociar paro (costo 0 sin ingresos)")
-	t.check(not EconomyLogic.has_event(m10, "paro"), "paro terminado")
+	EconomyLogic.update_events(m9, 121.0, false)
+	t.near(EconomyLogic.event_income_mult(m9), 1.0, "la inversión del aguinaldo expira a los 2 min")
 	# compra inteligente: arranca con clics, luego compra negocios
 	var m11: GameModel = _fresh()
 	m11.money = BigNumber.from_float(20.0)
@@ -151,3 +145,64 @@ func run(t) -> void:
 	mt.remark_window = 5.0
 	EconomyLogic.remark(mt, true)
 	t.eq(EconomyLogic.tutorial_step(mt), EconomyLogic.TUTORIAL_STEPS, "tutorial: completado")
+	# eventos con decisión
+	var me: GameModel = _fresh()
+	me.era = 2
+	EconomyLogic.start_event(me, "aguinaldo")
+	t.check(not me.pending_choice.is_empty(), "el evento abre una decisión")
+	t.check(EconomyLogic.event_income_mult(me) == 1.0, "sin elegir no hay efecto todavía")
+	EconomyLogic.update_events(me, 5.0, false)
+	t.check(not me.pending_choice.is_empty(), "a los 5 s sigue abierta")
+	EconomyLogic.update_events(me, 6.0, false)
+	t.check(me.pending_choice.is_empty(), "a los 10 s se cierra sola")
+	t.check(EconomyLogic.event_income_mult(me) == 1.0, "por defecto cobra el aguinaldo (sin multiplicador)")
+	# aguinaldo: cobrarlo ya vs invertirlo
+	var ma: GameModel = _fresh()
+	ma.era = 2
+	ma.money = BigNumber.from_float(1000.0)
+	EconomyLogic.buy_business(ma, "empanadas", 4)
+	var inc_a: float = EconomyLogic.income_per_sec(ma).to_float()
+	var cash_before: float = ma.money.to_float()
+	EconomyLogic.start_event(ma, "aguinaldo", 0)
+	t.near(ma.money.to_float(), cash_before + inc_a * 90.0, "cobrarlo ya: +90 s de ingresos")
+	# paro: cerrar (sin ingresos, baja la inflación) vs horas extra
+	var mp: GameModel = _fresh()
+	mp.era = 2
+	mp.money = BigNumber.from_float(1000.0)
+	EconomyLogic.buy_business(mp, "empanadas", 4)
+	var inc_p: float = EconomyLogic.income_per_sec(mp).to_float()
+	var money_p: float = mp.money.to_float()
+	EconomyLogic.start_event(mp, "paro", 1)
+	t.near(mp.money.to_float(), money_p - inc_p * 25.0, "horas extra cuestan 25 s de ingresos")
+	t.check(not EconomyLogic.has_event(mp, "paro"), "con horas extra no queda efecto")
+	var mp2: GameModel = _fresh()
+	mp2.era = 2
+	EconomyLogic.start_event(mp2, "paro", 0)
+	t.near(EconomyLogic.event_income_mult(mp2), 0.0, "cerrar: sin ingresos")
+	t.near(EconomyLogic.event_inflation_mult(mp2), 0.4, "cerrar: la inflación baja a x0,4")
+	# cepo: dólar blue = refugios habilitados con +40 puntos de comisión
+	var mc: GameModel = _fresh()
+	mc.era = 2
+	mc.money = BigNumber.from_float(1000.0)
+	EconomyLogic.start_event(mc, "cepo", 0)
+	t.check(not EconomyLogic.refuges_blocked(mc), "dólar blue: refugios habilitados")
+	t.near(EconomyLogic.refuge_fee(mc, "gold"), 0.04 + 0.4, "dólar blue: comisión +40 puntos")
+	# corrida: vender refugios con ganancia
+	var mv: GameModel = _fresh()
+	mv.era = 2
+	mv.money = BigNumber.from_float(1000.0)
+	EconomyLogic.refuge_buy(mv, "gold", BigNumber.from_float(1000.0))
+	var gold_val: float = EconomyLogic.refuge_value(mv, "gold").to_float()
+	EconomyLogic.start_event(mv, "corrida", 0)
+	t.near(mv.money.to_float(), gold_val * 1.15, "corrida: vender da +15 %")
+	t.check(mv.refuge_units["gold"].is_zero(), "corrida: los refugios se vendieron")
+	# feriado: liquidar da 30 s de ingresos
+	var mf: GameModel = _fresh()
+	mf.era = 2
+	mf.money = BigNumber.from_float(1000.0)
+	EconomyLogic.buy_business(mf, "empanadas", 4)
+	var inc_f: float = EconomyLogic.income_per_sec(mf).to_float()
+	var cash_f: float = mf.money.to_float()
+	EconomyLogic.start_event(mf, "feriado", 1)
+	t.near(mf.money.to_float(), cash_f + inc_f * 30.0, "feriado: liquidar da 30 s de ingresos")
+	t.near(EconomyLogic.event_income_mult(mf), 0.4, "feriado: ingresos x0,4")

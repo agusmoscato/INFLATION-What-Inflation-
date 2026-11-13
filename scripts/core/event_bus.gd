@@ -10,6 +10,8 @@ signal remarked(bonus: BigNumber, on_time: bool)
 signal era_changed(era: int)
 signal event_started(id: String)
 signal event_ended(id: String)
+signal event_choice(id: String)             ## se abrió una decisión (10 s para elegir)
+signal event_choice_done(id: String, idx: int)
 signal refuge_changed
 signal reform_done(banknote_id: int, cut_zeros: int)
 signal plan_done(plan_id: String)

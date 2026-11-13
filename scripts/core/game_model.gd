@@ -41,7 +41,8 @@ var remark_cd: float = 0.0
 var auto_timer: float = 0.0
 var auto_buy_timer: float = 0.0
 var event_timer: float = 120.0
-var active_events: Array = []                  # [{id, remaining}]
+var active_events: Array = []                  # [{id, remaining, fx}]
+var pending_choice: Dictionary = {}            # decisión abierta: {id, remaining} (no se guarda)
 var achievements: Dictionary = {}
 var saved_unix: float = 0.0
 
@@ -164,7 +165,10 @@ func from_dict(d: Dictionary) -> void:
 	active_events = []
 	for ev in d.get("active_events", []):
 		if GameData.event_idx.has(ev.get("id", "")):
-			active_events.append({"id": ev["id"], "remaining": float(ev.get("remaining", 0.0))})
+			var entry: Dictionary = {"id": ev["id"], "remaining": float(ev.get("remaining", 0.0))}
+			if ev.has("fx"):
+				entry["fx"] = ev["fx"]
+			active_events.append(entry)
 	achievements = {}
 	for k in d.get("achievements", {}):
 		achievements[k] = true

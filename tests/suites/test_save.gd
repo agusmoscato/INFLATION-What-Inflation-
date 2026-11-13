@@ -16,7 +16,7 @@ func run(t) -> void:
 	m.price_level = BigNumber.from_string("1.5e77")
 	m.achievements["first_sale"] = true
 	EconomyLogic.refuge_buy(m, "gold", BigNumber.from_float(1000.0))
-	EconomyLogic.start_event(m, "cepo")
+	EconomyLogic.start_event(m, "cepo", 1)
 	# ida y vuelta por JSON
 	var d: Dictionary = m.to_dict()
 	var parsed: Variant = JSON.parse_string(JSON.stringify(d))

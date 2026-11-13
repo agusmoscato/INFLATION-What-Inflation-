@@ -69,3 +69,13 @@ func run(t) -> void:
 		var es_n: int = ph.search_all(I18n.get_text(k, "es")).size()
 		var en_n: int = ph.search_all(I18n.get_text(k, "en")).size()
 		t.eq(es_n, en_n, "marcadores de formato iguales en " + str(k))
+	# cada evento tiene 2 opciones con textos en los dos idiomas y una opción por defecto válida
+	for e in GameData.events:
+		t.eq(e["choices"].size(), 2, "evento %s tiene 2 opciones" % e["id"])
+		var choice_ids: Array = []
+		for c in e["choices"]:
+			choice_ids.append(c["id"])
+		t.check(choice_ids.has(e["default"]), "evento %s: opción por defecto válida" % e["id"])
+		for suffix in ["q", "a", "ad", "b", "bd"]:
+			var key: String = "ev.%s.%s" % [e["id"], suffix]
+			t.check(I18n.has_key(key, "es") and I18n.has_key(key, "en"), "falta traducción " + key)

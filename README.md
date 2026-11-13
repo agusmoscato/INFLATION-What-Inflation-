@@ -110,16 +110,29 @@ Genera 13 capturas (JPG) (menú, juego en Era 1 y 3, las 6 pestañas, hiperinfla
 
 Borrador en español e inglés (descripción corta y larga, features y etiquetas): [docs/STEAM_PAGE.md](docs/STEAM_PAGE.md).
 
-## Build portable de Windows
+## Builds y exportación
 
-`export/windows/InflationWhatInflation_windows.zip` contiene un solo `InflationWhatInflation.exe` (PCK embebido, sin instalar nada). Se genera con:
+Presets en `export_presets.cfg`: **Windows Desktop**, **Linux**, **Web**, **Windows Demo** y **Web Demo** (los dos últimos con el feature tag `demo`). Requieren las export templates 4.4.1 (`tools/export_all.sh --install-templates`). `export/` está en `.gitignore`.
 
 ```
 godot --headless --import
 godot --headless --export-release "Windows Desktop" export/windows/InflationWhatInflation.exe
+godot --headless --export-release "Windows Demo"    export/windows_demo/InflationWhatInflationDemo.exe
+godot --headless --export-release "Web"             export/web/index.html
+godot --headless --export-release "Web Demo"        export/web_demo/index.html
 ```
 
-Requiere las export templates 4.4.1 (`tools/export_all.sh --install-templates`). `export/` está en `.gitignore`.
+- **Windows**: un solo `.exe` portable (PCK embebido), con el ícono de la empanada (rcedit) y la versión/nombre del producto incrustados. Sin firmar: SmartScreen puede advertir la primera vez.
+- **Web**: GL Compatibility / WebGL 2, sin threads. Guardado en IndexedDB. Instrucciones de itch.io en [docs/ITCH.md](docs/ITCH.md).
+- **Demo**: Era 1, Era 2 y la primera reforma; después muestra la pantalla "¡Esto fue la demo!". Guarda aparte del juego completo. `DemoMode.STEAM_URL` (vacía) se completa cuando haya AppID. En el editor se puede probar con el argumento `--demo`.
+- Las traducciones viven en `i18n/*.txt` (formato CSV con extensión `.txt` para que Godot las exporte crudas) y los datos en `data/*.json`; los presets los incluyen con `include_filter`.
+- El ícono se genera con `godot --rendering-driver opengl3 res://tools/IconMaker.tscn` (`icon.png` + `icon.ico`).
+- **Pendiente:** el build de Linux no se probó en esta máquina. No hay integración con Steam todavía (falta el AppID).
 
-- **Pendiente:** el .exe sale con el ícono de Godot porque no está `rcedit` (hace falta para incrustar un ícono y los datos de versión). Instalarlo y configurar `application/icon` en el preset.
-- Sin firmar: Windows SmartScreen puede mostrar una advertencia la primera vez.
+## Opciones de rendimiento
+
+Opciones > "Calidad de tiza" (Alta / Media / Baja) baja el efecto de pantalla, las partículas y los manchones. Si los FPS caen por debajo de 45 durante 5 s, el juego sugiere bajarla.
+
+## Tutorial y eventos
+
+Los primeros 2 minutos tienen un tutorial de tiza (clic → carrito → inflación → remarcar) que se puede saltear y no vuelve a aparecer. Los eventos plantean una decisión de 2 opciones con 10 s para elegir (ver [docs/balance_eventos.md](docs/balance_eventos.md)).

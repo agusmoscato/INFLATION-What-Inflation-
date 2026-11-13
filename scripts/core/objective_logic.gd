@@ -8,16 +8,16 @@ extends RefCounted
 const LIST: Array = [
 	{"id": "click10", "kind": "clicks", "n": 10},
 	{"id": "cart", "kind": "money_biz", "biz": "empanadas"},
-	{"id": "inflation", "kind": "months", "n": 1},
-	{"id": "remark", "kind": "remarks", "n": 1},
 	{"id": "cart3", "kind": "own", "biz": "empanadas", "n": 3},
-	{"id": "click1", "kind": "upg_id", "upg": "click1"},
-	{"id": "cart5", "kind": "own", "biz": "empanadas", "n": 5},
-	{"id": "cart_a", "kind": "upg_id", "upg": "empanadas_a"},
 	{"id": "kiosk", "kind": "money_biz", "biz": "kiosco"},
 	{"id": "kiosk2", "kind": "own", "biz": "kiosco", "n": 2},
+	{"id": "inflation", "kind": "months", "n": 5},
+	{"id": "cart5", "kind": "own", "biz": "empanadas", "n": 5},
 	{"id": "kiosk3", "kind": "own", "biz": "kiosco", "n": 3},
+	{"id": "remark", "kind": "remarks", "n": 1},
 	{"id": "kiosk4", "kind": "own", "biz": "kiosco", "n": 4},
+	{"id": "click1", "kind": "upg_id", "upg": "click1"},
+	{"id": "cart_a", "kind": "upg_id", "upg": "empanadas_a"},
 	{"id": "kiosk5", "kind": "own", "biz": "kiosco", "n": 5},
 	{"id": "kiosk_a", "kind": "upg_id", "upg": "kiosco_a"},
 	{"id": "kiosk6", "kind": "own", "biz": "kiosco", "n": 6},
@@ -231,9 +231,9 @@ static func eta(m: GameModel, o: Dictionary) -> float:
 				return 0.0
 			return _eta_money(m, EconomyLogic.business_cost(m, def, missing))
 		"upg_id":
-			return _eta_money(m, EconomyLogic.upgrade_cost(m, GameData.upgrades[GameData.upgrade_idx[str(o["upg"])]]))
+			return _eta_money(m, EconomyLogic.upgrade_cost(m, GameData.upgrades[GameData.upgrade_idx[str(o["upg"])]])) + Unlocks.time_left(m, "upgrades")
 		"months": return maxf(0.0, float(int(o["n"]) - m.month_count) * EconomyLogic.B("month_seconds") - m.month_progress)
-		"remarks": return EconomyLogic.B("month_seconds") - m.month_progress
+		"remarks": return maxf(EconomyLogic.B("month_seconds") - m.month_progress, Unlocks.time_left(m, "remark"))
 		"refuge": return 0.0 if EconomyLogic.refuges_unlocked(m) and not m.money.is_zero() else INF
 		"events": return maxf(0.0, m.event_timer) + 10.0
 		"packs", "scratches": return 20.0
@@ -292,7 +292,9 @@ static func status(m: GameModel, o: Dictionary) -> Dictionary:
 			var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[uid]]
 			var ucost: BigNumber = EconomyLogic.upgrade_cost(m, u)
 			r["go"] = {"kind": "upgrade", "id": uid}
-			if m.money.ge(ucost):
+			if not Unlocks.has(m, "upgrades"):
+				r["need"] = "wait"
+			elif m.money.ge(ucost):
 				r["ready"] = true
 			else:
 				r["need"] = "money"
@@ -301,12 +303,14 @@ static func status(m: GameModel, o: Dictionary) -> Dictionary:
 			r["need"] = "count"
 			r["n"] = maxi(0, int(o["n"]) - m.upgrades.size())
 			r["go"] = {"kind": "tab", "id": 1}
+			if not Unlocks.has(m, "upgrades"):
+				r["need"] = "wait"
 		"months":
 			r["need"] = "wait"
 			r["n"] = maxi(0, int(o["n"]) - m.month_count)
 		"remarks":
 			r["go"] = {"kind": "remark"}
-			if EconomyLogic.needs_remark(m):
+			if EconomyLogic.needs_remark(m) and Unlocks.has(m, "remark"):
 				r["ready"] = true
 			else:
 				r["need"] = "wait"
@@ -327,4 +331,7 @@ static func status(m: GameModel, o: Dictionary) -> Dictionary:
 			r["ready"] = Unlocks.has(m, "reform")
 		_:
 			r["need"] = "wait"
+	# nada que tocar mientras hay que esperar o mientras la mecánica todavía no se desbloqueó
+	if str(r["need"]) == "wait" or (str(r["need"]) == "none" and not bool(r["ready"])):
+		r["go"] = {}
 	return r

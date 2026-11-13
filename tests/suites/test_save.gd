@@ -8,6 +8,7 @@ func run(t) -> void:
 	m.money = BigNumber.from_float(1e6)
 	EconomyLogic.buy_business(m, "empanadas", 10)
 	EconomyLogic.buy_business(m, "kiosco", 3)
+	m.unlocked["upgrades"] = true
 	EconomyLogic.buy_upgrade(m, "click1")
 	m.era = 2
 	m.album.append(0)

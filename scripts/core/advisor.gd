@@ -21,8 +21,8 @@ static func recommend(m: GameModel, seen_tabs: Array = []) -> Dictionary:
 	if EconomyLogic.tutorial_step(m) == 0:
 		return {"kind": "click", "id": "", "why": "adv.click"}
 	# precios viejos: remarcar es plata regalada
-	var tutorial_remark: bool = EconomyLogic.tutorial_step(m) == 3      # el tutorial pide remarcar aunque todavía sea poquito
-	if EconomyLogic.needs_remark(m) and m.remark_cd <= 0.0 and (lag(m) >= REMARK_MIN_LAG or tutorial_remark or m.remark_window > 0.0):
+	var tutorial_remark: bool = EconomyLogic.tutorial_step(m) == 4      # el tutorial pide remarcar aunque todavía sea poquito
+	if Unlocks.has(m, "remark") and EconomyLogic.needs_remark(m) and m.remark_cd <= 0.0 and (lag(m) >= REMARK_MIN_LAG or tutorial_remark or m.remark_window > 0.0):
 		return {"kind": "remark", "id": "", "why": "adv.remark"}
 	# mecánica nueva todavía sin abrir
 	for f in Unlocks.FEATURES:
@@ -42,7 +42,7 @@ static func recommend(m: GameModel, seen_tabs: Array = []) -> Dictionary:
 	# no alcanza para nada: juntar plata. Tocar la empanada solo sirve mientras el clic pesa frente al ingreso por segundo.
 	var click_v: float = EconomyLogic.click_value(m).to_float()
 	var inc: float = EconomyLogic.income_per_sec(m).to_float()
-	if m.total_businesses() == 0 or (m.era <= 2 and inc < click_v * 20.0):
+	if m.total_businesses() == 0:
 		return {"kind": "click", "id": "", "why": "adv.click"}
 	return {"kind": "objective", "id": "", "why": "adv.wait"}
 

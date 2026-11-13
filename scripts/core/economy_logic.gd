@@ -252,6 +252,8 @@ static func buy_business(m: GameModel, id: String, qty: int = 1) -> int:
 #  Mejoras
 # =====================================================================
 static func upgrade_visible(m: GameModel, u: Dictionary) -> bool:
+	if not Unlocks.has(m, "upgrades"):
+		return false      # las mejoras recién aparecen en el minuto 6 (ver Unlocks)
 	if m.upgrades.has(u["id"]) or int(u["era"]) > m.era:
 		return false
 	if int(u["req_owned"]) > 0 and m.owned_count(u["biz"]) < int(u["req_owned"]):
@@ -823,20 +825,40 @@ static func stats(m: GameModel) -> Dictionary:
 # =====================================================================
 #  Tutorial (los pasos se deducen del estado de la partida)
 # =====================================================================
-const TUTORIAL_STEPS: int = 4
+const TUTORIAL_STEPS: int = 5
+## Cuánto dura en pantalla la nota que presenta la inflación (después se calla hasta que llegue el momento de remarcar).
+const INFLATION_NOTE_SECONDS: float = 30.0
 
 
-## 0 clic, 1 comprar el carrito, 2 mirar la inflación, 3 remarcar; TUTORIAL_STEPS = completado.
+## 0 clic, 1 comprar el carrito, 2 comprar el kiosco, 3 presentar la inflación, 4 remarcar; TUTORIAL_STEPS = completado.
+## Los pasos 3 y 4 esperan a que se desbloquee su mecánica (ver Unlocks): primero el negocio, después la inflación y recién
+## más tarde remarcar.
 static func tutorial_step(m: GameModel) -> int:
+	if m.era > 1 or m.reforms > 0:
+		return TUTORIAL_STEPS
 	if m.clicks < 3:
 		return 0
 	if m.total_businesses() < 1:
 		return 1
-	if m.month_count < 1:
-		return 2
-	if m.remarks < 1:
+	if m.remarks >= 1:
+		return TUTORIAL_STEPS
+	if Unlocks.has(m, "remark"):
+		return 4
+	if Unlocks.has(m, "inflation") and m.time_played - Unlocks.time_of(m, "inflation") <= INFLATION_NOTE_SECONDS:
 		return 3
-	return TUTORIAL_STEPS
+	if m.owned_count("kiosco") < 1:
+		return 2
+	return 3
+
+
+
+## ¿El paso actual todavía no está "a tiempo" de mostrarse? (entonces no hay nota de tutorial en pantalla)
+static func tutorial_waiting(m: GameModel) -> bool:
+	if tutorial_step(m) != 3:
+		return false
+	if not Unlocks.has(m, "inflation"):
+		return true
+	return m.time_played - Unlocks.time_of(m, "inflation") > INFLATION_NOTE_SECONDS
 
 
 # =====================================================================

@@ -62,7 +62,7 @@ func _init() -> void:
 	var purchases: int = 0
 	for t in range(total):
 		EconomyLogic.do_click(m)
-		if m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
+		if Unlocks.has(m, "remark") and m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
 			EconomyLogic.remark(m, true)
 		_event_policy(m)
 		var saving: bool = false
@@ -223,9 +223,10 @@ func _qa_newplayer(seed_value: int) -> void:
 	var max_streak: int = 0
 	var streak_at: int = 0
 	var micro_secs: int = 0
+	var unlock_log: Array = []     # [[segundo, mecanica], ...]
 	for t in range(TOTAL):
 		EconomyLogic.do_click(m)
-		if m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
+		if Unlocks.has(m, "remark") and m.remark_window > 0.0 and EconomyLogic.needs_remark(m):
 			EconomyLogic.remark(m, true)
 		if t % 2 == 0:
 			var cur: Dictionary = ObjectiveLogic.current(m)
@@ -241,6 +242,8 @@ func _qa_newplayer(seed_value: int) -> void:
 				guard += 1
 		EconomyLogic.tick(m, 1.0)
 		for n in m.notifications:
+			if n["sig"] == "unlock":
+				unlock_log.append([t, str(n["args"][0])])
 			if n["sig"] == "objective_done":
 				max_gap = maxf(max_gap, float(t) - last_t)
 				done.append([t, str(n["args"][0])])
@@ -272,7 +275,24 @@ func _qa_newplayer(seed_value: int) -> void:
 	print("Objetivos cumplidos: %d | mayor espera entre objetivos cumplidos: %.0f s" % [done.size(), max_gap])
 	print("Segundos en los que el objetivo tardaba mas de 60 s y se mostro una 'meta chica': %d" % micro_secs)
 	print("Mayor tramo SIN nada alcanzable: %d s (en el segundo %d)" % [max_streak, streak_at])
-	var ok: bool = max_streak <= int(MAX_GAP)
+	# ritmo de desbloqueos: como mucho una mecánica cada 2 minutos y en el orden pensado
+	print("Desbloqueos (segundo, mecánica):")
+	var pace_ok: bool = true
+	var expect: Array = ["inflation", "remark", "upgrades", "album"]
+	for i in range(unlock_log.size()):
+		var u: Array = unlock_log[i]
+		print("  %4d s (min %.1f)  %s" % [u[0], float(u[0]) / 60.0, u[1]])
+		if i > 0 and float(u[0]) - float(unlock_log[i - 1][0]) < 120.0:
+			print("    ^ demasiado pegado al anterior (< 120 s)")
+			pace_ok = false
+		if i < expect.size() and str(u[1]) != expect[i]:
+			print("    ^ se esperaba %s" % expect[i])
+			pace_ok = false
+	if unlock_log.size() < 4:
+		print("  (faltan desbloqueos de la cadena temprana en %d min)" % [TOTAL / 60])
+		pace_ok = false
+	print("Ritmo de desbloqueos: %s" % ("PASA" if pace_ok else "FALLA"))
+	var ok: bool = max_streak <= int(MAX_GAP) and pace_ok
 	print("RESULTADO: %s (limite %d s sin objetivo alcanzable)" % ["PASA" if ok else "FALLA", int(MAX_GAP)])
 	var f: FileAccess = FileAccess.open("res://docs/qa_newplayer.csv", FileAccess.WRITE)
 	if f != null:

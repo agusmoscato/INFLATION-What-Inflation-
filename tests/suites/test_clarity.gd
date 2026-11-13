@@ -27,6 +27,8 @@ func run(t) -> void:
 	mr.money = BigNumber.from_float(100.0)
 	EconomyLogic.buy_business(mr, "empanadas", 1)
 	mr.price_level = mr.price_level.mul_f(2.0)
+	mr.unlocked["inflation"] = 100.0
+	mr.unlocked["remark"] = 200.0
 	t.eq(Advisor.recommend(mr)["kind"], "remark", "con los precios al 50 % se destaca remarcar")
 	t.check(Advisor.lag(mr) > 0.4, "atraso medido")
 	# mecánica nueva sin abrir: se destaca la pestaña hasta abrirla
@@ -34,11 +36,10 @@ func run(t) -> void:
 	for i in range(3):
 		EconomyLogic.do_click(mt)
 	mt.money = BigNumber.zero()
-	mt.era = 2
-	Unlocks.update(mt)
+	mt.unlocked["upgrades"] = 100.0      # recién desbloqueada y todavía sin abrir
 	var rt: Dictionary = Advisor.recommend(mt, [])
 	t.eq(rt["kind"], "tab", "pestaña nueva destacada")
-	var rt2: Dictionary = Advisor.recommend(mt, [1, 2, 3, 4, 5])
+	var rt2: Dictionary = Advisor.recommend(mt, [1])
 	t.check(rt2["kind"] != "tab", "ya abiertas, deja de destacarse")
 
 	# --- objetivo accionable ---

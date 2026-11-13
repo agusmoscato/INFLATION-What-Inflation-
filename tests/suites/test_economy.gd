@@ -2,7 +2,9 @@ extends RefCounted
 
 
 func _fresh() -> GameModel:
-	return GameModel.new(42)
+	var fm: GameModel = GameModel.new(42)
+	fm.unlocked["upgrades"] = true      # los tests de economía compran mejoras desde el primer minuto
+	return fm
 
 
 func run(t) -> void:
@@ -139,9 +141,21 @@ func run(t) -> void:
 	t.eq(EconomyLogic.tutorial_step(mt), 1, "tutorial: luego comprar el carrito")
 	mt.money = BigNumber.from_float(100.0)
 	EconomyLogic.buy_business(mt, "empanadas", 1)
-	t.eq(EconomyLogic.tutorial_step(mt), 2, "tutorial: luego mirar la inflación")
+	t.eq(EconomyLogic.tutorial_step(mt), 2, "tutorial: luego comprar el kiosco")
+	mt.money = BigNumber.from_float(1000.0)
+	EconomyLogic.buy_business(mt, "kiosco", 1)
+	t.eq(EconomyLogic.tutorial_step(mt), 3, "tutorial: luego presentar la inflación")
+	t.check(EconomyLogic.tutorial_waiting(mt), "la nota de inflación espera a que se desbloquee")
+	mt.time_played = 130.0
+	Unlocks.update(mt)
+	t.check(Unlocks.has(mt, "inflation"), "minuto 2: se desbloquea la inflación")
+	t.check(not EconomyLogic.tutorial_waiting(mt), "la nota de inflación se muestra al desbloquearse")
+	mt.time_played = 130.0 + EconomyLogic.INFLATION_NOTE_SECONDS + 1.0
+	t.check(EconomyLogic.tutorial_waiting(mt), "y se calla a los 30 s")
+	mt.time_played = 250.0
+	Unlocks.update(mt)
+	t.eq(EconomyLogic.tutorial_step(mt), 4, "tutorial: luego remarcar (minuto 4)")
 	EconomyLogic.month_end(mt)
-	t.eq(EconomyLogic.tutorial_step(mt), 3, "tutorial: luego remarcar")
 	mt.remark_window = 5.0
 	EconomyLogic.remark(mt, true)
 	t.eq(EconomyLogic.tutorial_step(mt), EconomyLogic.TUTORIAL_STEPS, "tutorial: completado")

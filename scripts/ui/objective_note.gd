@@ -20,32 +20,33 @@ var _ready_state: bool = false
 func _init() -> void:
 	add_theme_stylebox_override("panel", UIKit.chalk_box(Chalk.YELLOW, Color(0, 0, 0, 0.2), 2.6))
 	var v: VBoxContainer = VBoxContainer.new()
-	v.add_theme_constant_override("separation", 4)
+	v.add_theme_constant_override("separation", 2)
 	add_child(v)
 	_title = UIKit.label(tr("ui.obj.title"), 15, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_LEFT, true)
 	v.add_child(_title)
-	_text = UIKit.label("", 18, Chalk.WHITE)
+	_text = UIKit.label("", 14, Chalk.WHITE)
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.custom_minimum_size = Vector2(250, 0)
 	v.add_child(_text)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	v.add_child(row)
-	_status = UIKit.label("", 20, Chalk.WHITE, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_status = UIKit.label("", 18, Chalk.WHITE, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.custom_minimum_size = Vector2(110, 0)
 	row.add_child(_status)
 	_go_btn = Button.new()
 	_go_btn.text = tr("ui.obj.go")
-	_go_btn.custom_minimum_size = Vector2(76, 44)
-	UIKit.style_button(_go_btn, UIKit.C_GREEN.darkened(0.2), 20)
+	_go_btn.custom_minimum_size = Vector2(70, 38)
+	UIKit.style_button(_go_btn, UIKit.C_GREEN.darkened(0.2), 17)
 	_go_btn.pressed.connect(func() -> void: go_pressed.emit(_go))
 	row.add_child(_go_btn)
 	_bar = ChalkBar.new()
 	_bar.fill_color = Chalk.YELLOW
-	_bar.custom_minimum_size = Vector2(0, 12)
+	_bar.custom_minimum_size = Vector2(0, 8)
 	v.add_child(_bar)
-	_micro = UIKit.label("", 15, Chalk.GREEN)
+	_micro = UIKit.label("", 13, Chalk.GREEN)
 	_micro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_micro.custom_minimum_size = Vector2(250, 0)
 	_micro.visible = false

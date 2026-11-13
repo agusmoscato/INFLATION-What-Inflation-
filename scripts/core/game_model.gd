@@ -215,7 +215,7 @@ func from_dict(d: Dictionary) -> void:
 	obj_index = int(d.get("obj_index", 0))
 	unlocked = {}
 	for k in d.get("unlocked", {}):
-		unlocked[k] = true
+		unlocked[k] = d["unlocked"][k]      # true, o el segundo de juego en que se desbloqueó
 	real_ref = BigNumber.from_string(str(d.get("real_ref", "0")))
 	stickers = {}
 	for k in d.get("stickers", {}):

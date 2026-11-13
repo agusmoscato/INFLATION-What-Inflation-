@@ -1103,7 +1103,7 @@ func _floating_text(text: String, pos: Vector2, color: Color) -> void:
 func _burst(pos: Vector2, color: Color, amount: int) -> void:
 	if fx_layer == null:
 		return
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = pos
 	p.emitting = true
 	p.one_shot = true
@@ -1115,8 +1115,8 @@ func _burst(pos: Vector2, color: Color, amount: int) -> void:
 	p.initial_velocity_min = 120.0
 	p.initial_velocity_max = 320.0
 	p.gravity = Vector2(0, 700)
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 6.0
+	p.scale_amount_min = 3.0 / 8.0
+	p.scale_amount_max = 6.0 / 8.0
 	p.color = color
 	fx_layer.add_child(p)
 	get_tree().create_timer(1.2).timeout.connect(p.queue_free)
@@ -1330,7 +1330,7 @@ func _scratch_costs() -> void:
 
 ## Pedacitos de tiza que saltan y caen cuando la tijera corta los ceros.
 func _chalk_chips(pos: Vector2, parent: Control) -> void:
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = pos
 	p.emitting = true
 	p.one_shot = true
@@ -1344,8 +1344,8 @@ func _chalk_chips(pos: Vector2, parent: Control) -> void:
 	p.gravity = Vector2(0, 1100)
 	p.angular_velocity_min = -540.0
 	p.angular_velocity_max = 540.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 7.0
+	p.scale_amount_min = 3.0 / 8.0
+	p.scale_amount_max = 7.0 / 8.0
 	p.color = Chalk.WHITE
 	parent.add_child(p)
 	get_tree().create_timer(1.6).timeout.connect(p.queue_free)

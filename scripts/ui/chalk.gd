@@ -258,3 +258,28 @@ static func wobble(node: Control, angle: float = 0.08, duration: float = 0.5) ->
 	node.rotation = angle
 	var tw: Tween = node.create_tween()
 	tw.tween_property(node, "rotation", 0.0, duration).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+# ---------------------------------------------------------------------
+#  Partículas de tiza: puntitos redondos y suaves (sin textura serían cuadraditos, que parecían basura en pantalla)
+# ---------------------------------------------------------------------
+static var _dot: ImageTexture
+
+
+static func dot_texture() -> ImageTexture:
+	if _dot == null:
+		var n: int = 8
+		var img: Image = Image.create(n, n, false, Image.FORMAT_RGBA8)
+		for y in range(n):
+			for x in range(n):
+				var d: float = Vector2(float(x) + 0.5 - float(n) / 2.0, float(y) + 0.5 - float(n) / 2.0).length() / (float(n) / 2.0)
+				img.set_pixel(x, y, Color(1, 1, 1, clampf(1.4 - d * 1.4, 0.0, 1.0)))
+		_dot = ImageTexture.create_from_image(img)
+	return _dot
+
+
+## Un CPUParticles2D con textura redonda (en vez del cuadradito por defecto).
+static func particles() -> CPUParticles2D:
+	var p: CPUParticles2D = CPUParticles2D.new()
+	p.texture = dot_texture()
+	return p

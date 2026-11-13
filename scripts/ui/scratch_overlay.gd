@@ -223,7 +223,7 @@ func auto_scratch(duration: float = 2.2) -> void:
 
 
 func _dust(pos: Vector2, amount: int) -> void:
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = pos
 	p.emitting = true
 	p.one_shot = true
@@ -235,8 +235,8 @@ func _dust(pos: Vector2, amount: int) -> void:
 	p.initial_velocity_min = 40.0
 	p.initial_velocity_max = 190.0
 	p.gravity = Vector2(0, 420)
-	p.scale_amount_min = 1.5
-	p.scale_amount_max = 4.0
+	p.scale_amount_min = 1.5 / 8.0
+	p.scale_amount_max = 4.0 / 8.0
 	p.color = Color(0.85, 0.9, 0.85, 0.85)
 	add_child(p)
 	get_tree().create_timer(1.0).timeout.connect(p.queue_free)
@@ -288,7 +288,7 @@ func _coins(n: int) -> void:
 
 func _rain(amount: int) -> void:
 	var vp: Vector2 = get_viewport_rect().size
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = Vector2(vp.x / 2.0, -10.0)
 	p.emitting = true
 	p.one_shot = true
@@ -304,8 +304,8 @@ func _rain(amount: int) -> void:
 	p.gravity = Vector2(0, 280)
 	p.angular_velocity_min = -360.0
 	p.angular_velocity_max = 360.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 9.0
+	p.scale_amount_min = 3.0 / 8.0
+	p.scale_amount_max = 9.0 / 8.0
 	p.color = Color(1, 0.93, 0.5)
 	add_child(p)
 	get_tree().create_timer(3.4).timeout.connect(p.queue_free)

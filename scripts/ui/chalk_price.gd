@@ -91,7 +91,7 @@ func _start(anim: int, delay: float) -> void:
 func _dust() -> void:
 	if not is_inside_tree():
 		return
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = Vector2(size.x - 40.0, size.y * 0.5) if align_right else Vector2(40.0, size.y * 0.5)
 	p.emitting = true
 	p.one_shot = true
@@ -103,8 +103,8 @@ func _dust() -> void:
 	p.initial_velocity_min = 30.0
 	p.initial_velocity_max = 90.0
 	p.gravity = Vector2(0, 120)
-	p.scale_amount_min = 2.0
-	p.scale_amount_max = 4.0
+	p.scale_amount_min = 2.0 / 8.0
+	p.scale_amount_max = 4.0 / 8.0
 	p.color = Color(Chalk.WHITE, 0.7)
 	add_child(p)
 	get_tree().create_timer(1.0).timeout.connect(p.queue_free)

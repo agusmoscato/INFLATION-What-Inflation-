@@ -101,7 +101,7 @@ func _show_result() -> void:
 
 func _rain() -> void:
 	var vp: Vector2 = get_viewport_rect().size
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = Vector2(vp.x / 2.0, -10.0)
 	p.emitting = true
 	p.one_shot = true
@@ -115,8 +115,8 @@ func _rain() -> void:
 	p.initial_velocity_min = 140.0
 	p.initial_velocity_max = 380.0
 	p.gravity = Vector2(0, 280)
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 9.0
+	p.scale_amount_min = 3.0 / 8.0
+	p.scale_amount_max = 9.0 / 8.0
 	p.color = Color(1, 0.93, 0.5)
 	add_child(p)
 	get_tree().create_timer(3.4).timeout.connect(p.queue_free)

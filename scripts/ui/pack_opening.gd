@@ -204,7 +204,7 @@ func _reveal_all() -> void:
 ## Lluvia de tiza para las doradas.
 func _chalk_rain() -> void:
 	var vp: Vector2 = get_viewport_rect().size
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = Vector2(vp.x / 2.0, -10.0)
 	p.emitting = true
 	p.one_shot = true
@@ -220,15 +220,15 @@ func _chalk_rain() -> void:
 	p.gravity = Vector2(0, 260)
 	p.angular_velocity_min = -300.0
 	p.angular_velocity_max = 300.0
-	p.scale_amount_min = 3.0
-	p.scale_amount_max = 8.0
+	p.scale_amount_min = 3.0 / 8.0
+	p.scale_amount_max = 8.0 / 8.0
 	p.color = Color(1, 0.95, 0.6)
 	_fx.add_child(p)
 	get_tree().create_timer(3.2).timeout.connect(p.queue_free)
 
 
 func _chalk_bits(pos: Vector2, amount: int) -> void:
-	var p: CPUParticles2D = CPUParticles2D.new()
+	var p: CPUParticles2D = Chalk.particles()
 	p.position = pos
 	p.emitting = true
 	p.one_shot = true
@@ -240,8 +240,8 @@ func _chalk_bits(pos: Vector2, amount: int) -> void:
 	p.initial_velocity_min = 60.0
 	p.initial_velocity_max = 220.0
 	p.gravity = Vector2(0, 600)
-	p.scale_amount_min = 2.0
-	p.scale_amount_max = 5.0
+	p.scale_amount_min = 2.0 / 8.0
+	p.scale_amount_max = 5.0 / 8.0
 	p.color = Chalk.WHITE
 	_fx.add_child(p)
 	get_tree().create_timer(1.2).timeout.connect(p.queue_free)

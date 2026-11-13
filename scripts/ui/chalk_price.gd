@@ -95,7 +95,7 @@ func _dust() -> void:
 	p.position = Vector2(size.x - 40.0, size.y * 0.5) if align_right else Vector2(40.0, size.y * 0.5)
 	p.emitting = true
 	p.one_shot = true
-	p.amount = 9
+	p.amount = Settings.particles(9)
 	p.lifetime = 0.55
 	p.explosiveness = 0.9
 	p.direction = Vector2(0, -1)
@@ -128,7 +128,7 @@ func _draw() -> void:
 	if hyper:
 		x0 = size.x - w_main - 2.0          # pegado al borde
 	# manchones de precios viejos (cuanta más inflación, más)
-	var shown: int = mini(_ghosts.size(), clampi(int(rate * 9.0), 0, 6))
+	var shown: int = mini(_ghosts.size(), clampi(int(rate * 9.0), 0, Settings.ghost_cap()))
 	for i in range(shown):
 		var g: Dictionary = _ghosts[i]
 		var gw: float = Chalk.text_width(font, g["text"], fs, tight)

@@ -1,6 +1,7 @@
 class_name ChalkBoard
 extends ColorRect
 ## Fondo: pizarrón verde oscuro con textura por shader (ruido, polvo y borrones viejos).
+## En calidad Baja queda un fondo liso.
 
 static var instance: ChalkBoard
 
@@ -18,7 +19,11 @@ func _ready() -> void:
 	if sh != null:
 		_mat = ShaderMaterial.new()
 		_mat.shader = sh
-		material = _mat
+	apply_quality()
+
+
+func apply_quality() -> void:
+	material = _mat if Settings.quality < 2 else null
 
 
 ## 0 = pizarra limpia, 1 = hiperinflación (casi toda manchada).
@@ -28,5 +33,5 @@ func set_smudge(v: float) -> void:
 
 func _process(delta: float) -> void:
 	_smudge = lerpf(_smudge, _target, clampf(delta * 1.5, 0.0, 1.0))
-	if _mat != null:
+	if _mat != null and material != null:
 		_mat.set_shader_parameter("smudge", _smudge)

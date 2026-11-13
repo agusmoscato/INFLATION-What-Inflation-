@@ -54,3 +54,7 @@ Registro de decisiones tomadas de forma autónoma (más reciente al final).
 ## Build web (tanda 4)
 - Hallazgo: los `.csv` de traducción se importan y el original no entra al paquete exportado (el exe y el build web mostraban claves como `ui.new_game`). Se renombraron a `i18n/*.txt` (mismo formato) y los presets incluyen `data/*.json, i18n/*.txt` con `include_filter`.
 - Verificado en Chrome con WebGL 2 por software: arranca, traducciones, shaders de tiza y guardado en IndexedDB. Sin shader de respaldo (no hizo falta). Ver `docs/ITCH.md`.
+
+## Calidad de tiza (tanda 4)
+- Opciones > "Calidad de tiza": Alta / Media / Baja. Baja el máximo del shader de tiza (1 / 0,6 / apagado), las partículas (x1 / x0,55 / x0,25) y los manchones de precios viejos (6 / 3 / 1); en Baja el pizarrón queda liso.
+- Si los FPS caen por debajo de 45 durante 5 s (pasados 8 s de pantalla) se sugiere bajar la calidad con una notita, una sola vez por sesión (`FpsWatch`).

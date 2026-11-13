@@ -66,6 +66,8 @@ var _shake_amp: float = 0.0
 var _headline_queue: Array = []
 var _last_era: int = 1
 var _busy_overlay: Control
+var _fps_watch: FpsWatch = FpsWatch.new(45.0, 5.0)
+var _screen_age: float = 0.0
 
 
 func gm() -> GameModel:
@@ -556,6 +558,10 @@ func _refresh_qty_buttons() -> void:
 # =====================================================================
 func _process(delta: float) -> void:
 	_clock += delta
+	_screen_age += delta
+	if _screen_age > 8.0 and Settings.quality < 2 and DisplayServer.get_name() != "headless":
+		if _fps_watch.update(Engine.get_frames_per_second(), delta):
+			_toast(tr("ui.fps_hint"), UIKit.C_GOLD)
 	_fast += delta
 	_reform_armed = maxf(0.0, _reform_armed - delta)
 	if _fast >= 0.1:
@@ -1062,7 +1068,7 @@ func _burst(pos: Vector2, color: Color, amount: int) -> void:
 	p.position = pos
 	p.emitting = true
 	p.one_shot = true
-	p.amount = amount
+	p.amount = Settings.particles(amount)
 	p.lifetime = 0.8
 	p.explosiveness = 1.0
 	p.direction = Vector2(0, -1)
@@ -1261,7 +1267,7 @@ func _chalk_chips(pos: Vector2, parent: Control) -> void:
 	p.position = pos
 	p.emitting = true
 	p.one_shot = true
-	p.amount = 34
+	p.amount = Settings.particles(34)
 	p.lifetime = 1.1
 	p.explosiveness = 1.0
 	p.direction = Vector2(0, -1)

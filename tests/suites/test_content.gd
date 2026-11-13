@@ -79,3 +79,29 @@ func run(t) -> void:
 		for suffix in ["q", "a", "ad", "b", "bd"]:
 			var key: String = "ev.%s.%s" % [e["id"], suffix]
 			t.check(I18n.has_key(key, "es") and I18n.has_key(key, "en"), "falta traducción " + key)
+	# calidad de tiza y aviso de FPS bajos
+	Settings.quality = 0
+	t.near(Settings.post_strength(), 1.0, "calidad alta: efecto completo")
+	t.eq(Settings.ghost_cap(), 6, "calidad alta: 6 manchones")
+	Settings.quality = 1
+	t.near(Settings.post_strength(), 0.6, "calidad media: efecto atenuado")
+	t.eq(Settings.ghost_cap(), 3, "calidad media: 3 manchones")
+	t.check(Settings.particles(20) < 20, "calidad media: menos partículas")
+	Settings.quality = 2
+	t.near(Settings.post_strength(), 0.0, "calidad baja: efecto apagado")
+	t.eq(Settings.ghost_cap(), 1, "calidad baja: 1 manchón")
+	t.eq(Settings.particles(2), 1, "siempre al menos 1 partícula")
+	Settings.quality = 0
+	var fw: FpsWatch = FpsWatch.new(45.0, 5.0)
+	var fired: int = 0
+	for i in range(100):
+		if fw.update(30.0, 0.1):    # 10 s a 30 FPS
+			fired += 1
+	t.eq(fired, 1, "FPS bajos sostenidos: avisa exactamente una vez")
+	var fw2: FpsWatch = FpsWatch.new(45.0, 5.0)
+	var fired2: int = 0
+	for i in range(200):
+		var fps: float = 30.0 if i % 20 < 10 else 60.0     # se recupera antes de los 5 s
+		if fw2.update(fps, 0.1):
+			fired2 += 1
+	t.eq(fired2, 0, "FPS que se recuperan: no avisa")

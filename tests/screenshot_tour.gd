@@ -90,6 +90,9 @@ func _menu() -> void:
 
 
 func _tut() -> void:
+	if OS.get_environment("TOUR_QUALITY") != "":
+		Settings.quality = OS.get_environment("TOUR_QUALITY").to_int()
+		Settings.apply()
 	Settings.tutorial_done = false
 	main.start_game(false)
 

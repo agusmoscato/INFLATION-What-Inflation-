@@ -54,6 +54,18 @@ func _ready() -> void:
 		Settings.save_settings())
 	v.add_child(nota)
 
+	v.add_child(UIKit.label(tr("ui.opt.quality"), 16, UIKit.C_DIM))
+	var qual: OptionButton = OptionButton.new()
+	qual.add_item(tr("ui.opt.quality.high"), 0)
+	qual.add_item(tr("ui.opt.quality.mid"), 1)
+	qual.add_item(tr("ui.opt.quality.low"), 2)
+	qual.selected = Settings.quality
+	qual.item_selected.connect(func(i: int) -> void:
+		Settings.quality = i
+		Settings.apply()
+		Settings.save_settings())
+	v.add_child(qual)
+
 	var fs: CheckBox = CheckBox.new()
 	fs.text = tr("ui.opt.fullscreen")
 	fs.button_pressed = Settings.fullscreen

@@ -49,15 +49,6 @@ func _draw() -> void:
 	for p in [Vector2(T * 0.5, T * 0.5), Vector2(w - T * 0.5, T * 0.5), Vector2(T * 0.5, h - TB * 0.5), Vector2(w - T * 0.5, h - TB * 0.5)]:
 		draw_circle(p, 2.4, DARK)
 		draw_circle(p + Vector2(-0.6, -0.6), 1.0, LIGHT)
-	# repisa: tiza y borrador
-	var ty: float = h - TB
-	draw_set_transform(Vector2(w * 0.13, ty - 3.0), -0.12, Vector2.ONE)
-	draw_rect(Rect2(0, -5, 30, 6), Chalk.WHITE)
-	draw_rect(Rect2(0, -5, 30, 2), Color(1, 1, 1, 0.5))
-	draw_set_transform(Vector2(w * 0.8, ty - 3.0), 0.04, Vector2.ONE)
-	draw_rect(Rect2(0, -10, 44, 11), Color("#3b3b3b"))
-	draw_rect(Rect2(0, -4, 44, 5), Color("#d8c9a8"))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _grain(a: Vector2, b: Vector2, seed_v: int, _unused: float) -> void:

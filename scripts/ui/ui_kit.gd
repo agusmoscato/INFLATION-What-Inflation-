@@ -7,11 +7,14 @@ const GAME_NAME: String = "INFLATION? What Inflation?"
 ## Las tipografías manuscritas son más chicas: se escala todo el texto.
 const FS: float = 1.22
 
+## Tamaño mínimo de texto: 15 unidades lógicas = 22 px reales en una ventana de 1080p (la escala del proyecto es 1,5).
+const MIN_FONT: int = 15
+
 const C_BG: Color = Chalk.BOARD
 const C_PANEL: Color = Color("#274034")
 const C_PANEL2: Color = Color("#335444")
 const C_TEXT: Color = Chalk.WHITE
-const C_DIM: Color = Color("#BDBBAF")
+const C_DIM: Color = Color("#E6E3D2")      # texto secundario: casi blanco (nunca gris sobre verde oscuro)
 const C_GOLD: Color = Chalk.YELLOW
 const C_GREEN: Color = Chalk.GREEN
 const C_RED: Color = Chalk.RED
@@ -62,8 +65,8 @@ static func style_button(b: Button, base: Color, font_size: int = 16) -> void:
 	b.add_theme_color_override("font_color", C_TEXT)
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
 	b.add_theme_color_override("font_pressed_color", Chalk.YELLOW)
-	b.add_theme_color_override("font_disabled_color", Color(C_TEXT, 0.35))
-	b.add_theme_font_size_override("font_size", int(font_size * FS))
+	b.add_theme_color_override("font_disabled_color", Color(C_TEXT, 0.72))
+	b.add_theme_font_size_override("font_size", maxi(int(font_size * FS), MIN_FONT))
 	b.focus_mode = Control.FOCUS_NONE
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
@@ -85,7 +88,7 @@ static func style_tab(b: Button, active: bool, font_size: int = 20) -> void:
 	b.add_theme_color_override("font_color", Chalk.YELLOW if active else Chalk.WHITE)
 	b.add_theme_color_override("font_hover_color", Chalk.YELLOW)
 	b.add_theme_color_override("font_pressed_color", Chalk.YELLOW)
-	b.add_theme_font_size_override("font_size", int(font_size * FS))
+	b.add_theme_font_size_override("font_size", maxi(int(font_size * FS), MIN_FONT))
 	if Chalk.title_font != null:
 		b.add_theme_font_override("font", Chalk.title_font)
 	b.focus_mode = Control.FOCUS_NONE
@@ -95,7 +98,7 @@ static func style_tab(b: Button, active: bool, font_size: int = 20) -> void:
 static func label(text: String, size: int = 16, color: Color = C_TEXT, align: int = HORIZONTAL_ALIGNMENT_LEFT, title: bool = false) -> Label:
 	var l: Label = Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", int(size * (1.0 if title else FS)))
+	l.add_theme_font_size_override("font_size", maxi(int(size * (1.0 if title else FS)), MIN_FONT))
 	l.add_theme_color_override("font_color", color)
 	l.horizontal_alignment = align as HorizontalAlignment
 	if title and Chalk.title_font != null:
@@ -134,14 +137,14 @@ static func clear_children(n: Node) -> void:
 static func style_tab_locked(b: Button, font_size: int = 20) -> void:
 	var seed_v: int = 40 + b.get_index() * 5
 	var st: ChalkStyle = chalk_box(Chalk.RED, Color(0, 0, 0, 0), 2.4, seed_v)
-	st.mode = ChalkStyle.Mode.STRIKE
+	st.mode = ChalkStyle.Mode.NONE
 	st.stroke = Color(Chalk.RED, 0.8)
 	for k in ["normal", "hover", "pressed", "focus", "disabled"]:
 		b.add_theme_stylebox_override(k, st)
-	b.add_theme_color_override("font_color", Color(Chalk.WHITE, 0.4))
-	b.add_theme_color_override("font_hover_color", Color(Chalk.WHITE, 0.55))
-	b.add_theme_color_override("font_disabled_color", Color(Chalk.WHITE, 0.4))
-	b.add_theme_font_size_override("font_size", int(font_size * FS))
+	b.add_theme_color_override("font_color", Color(Chalk.WHITE, 0.78))
+	b.add_theme_color_override("font_hover_color", Color(Chalk.WHITE, 0.8))
+	b.add_theme_color_override("font_disabled_color", Color(Chalk.WHITE, 0.78))
+	b.add_theme_font_size_override("font_size", maxi(int(font_size * FS), MIN_FONT))
 	if Chalk.title_font != null:
 		b.add_theme_font_override("font", Chalk.title_font)
 	b.focus_mode = Control.FOCUS_NONE

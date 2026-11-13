@@ -67,8 +67,6 @@ var _album_dirty: bool = true
 var race_meter: RaceMeter
 var objective_note: ObjectiveNote
 var _ach_dirty: bool = true
-var _bills_active: int = 0
-var _bill_timer: float = 0.0
 var _reform_armed: float = 0.0
 var _shake_t: float = 0.0
 var _shake_amp: float = 0.0
@@ -77,6 +75,21 @@ var _last_era: int = 1
 var _busy_overlay: Control
 var _fps_watch: FpsWatch = FpsWatch.new(45.0, 5.0)
 var _screen_age: float = 0.0
+
+
+## Candadito de tiza que se dibuja a la izquierda del nombre de una pestaña bloqueada.
+class LockIcon:
+	extends Control
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(22, 26)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var c: Color = Chalk.YELLOW
+		Chalk.polyline(self, PackedVector2Array([Vector2(5, 12), Vector2(5, 7), Vector2(8, 3), Vector2(14, 3), Vector2(17, 7), Vector2(17, 12)]), c, 2.6, 71, 0.5)
+		Chalk.polygon(self, PackedVector2Array([Vector2(2, 12), Vector2(20, 12), Vector2(20, 24), Vector2(2, 24)]), c, 2.6, 72, true, Color(c, 0.5), 4.0, 0.5)
+		draw_circle(Vector2(11, 17.5), 2.2, Color(0.1, 0.16, 0.12))
 
 
 func gm() -> GameModel:
@@ -111,6 +124,7 @@ func _ready() -> void:
 	add_child(tint)
 	fx_layer = Control.new()
 	fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx_layer.set_meta("qa_ignore", true)
 	fx_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fx_layer)
 	raise_sign = ScribbleText.new()
@@ -205,6 +219,7 @@ func _build_header() -> Control:
 	notes.custom_minimum_size = Vector2(300, 84)
 	notes.clip_contents = true
 	notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notes.set_meta("qa_ignore", true)
 	h.add_child(notes)
 	toast_box = VBoxContainer.new()
 	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -559,6 +574,7 @@ func _build_ticker() -> Control:
 	h.add_child(tag)
 	ticker_clip = Control.new()
 	ticker_clip.clip_contents = true
+	ticker_clip.set_meta("qa_ignore", true)
 	ticker_clip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ticker_clip.custom_minimum_size = Vector2(0, 24)
 	h.add_child(ticker_clip)
@@ -575,7 +591,8 @@ func _select_tab(i: int) -> void:
 	for k in range(pages.size()):
 		pages[k].visible = (k == i)
 
-		UIKit.style_tab(tab_buttons[k], k == i)
+		if not _tab_locked[k]:
+			UIKit.style_tab(tab_buttons[k], k == i)
 	_upg_dirty = true
 	_refresh_page()
 
@@ -935,7 +952,6 @@ func _on_clicked(amount: BigNumber) -> void:
 	_play("click", randf_range(0.9, 1.15))
 	var pos: Vector2 = get_global_mouse_position()
 	_floating_text("+" + UIKit.money(amount), pos, UIKit.C_GOLD)
-	_spawn_bill(pos)
 
 
 func _on_business_bought(_id: String, _n: int) -> void:
@@ -965,9 +981,6 @@ func _on_remarked(bonus: BigNumber, on_time: bool) -> void:
 	_play("register")
 	if on_time and not bonus.is_zero():
 		_toast(tr("ui.remark_bonus") % UIKit.money(bonus), UIKit.C_GREEN)
-		for i in range(8):
-			_spawn_bill(remark_btn.global_position + remark_btn.size / 2.0)
-
 
 func _on_era_changed(era: int) -> void:
 	_play("win")
@@ -1045,38 +1058,6 @@ func _update_juice(delta: float) -> void:
 	var hyper: float = EconomyLogic.B("hyper_tint_rate")
 	var target: float = clampf((_rate - hyper) * 0.4, 0.0, 0.32)
 	tint.color.a = target * (0.75 + 0.25 * sin(_clock * 5.0))
-	# billetes volando solos mientras hay ingresos
-	_bill_timer += delta
-	if _bill_timer >= 0.45 and not gm().base_income.is_zero():
-		_bill_timer = 0.0
-		var r: Rect2 = empanada.get_global_rect()
-		_spawn_bill(r.position + Vector2(randf() * r.size.x, randf() * r.size.y))
-
-
-func _spawn_bill(from: Vector2) -> void:
-	if _bills_active >= 40 or fx_layer == null:
-		return
-	_bills_active += 1
-	var bill: PanelContainer = PanelContainer.new()
-	bill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bill.add_theme_stylebox_override("panel", UIKit.box(Color("#7fb069"), 3, Color("#3f6b34"), 2))
-	var l: Label = UIKit.label("$", 14, Color("#1d3b17"), HORIZONTAL_ALIGNMENT_CENTER)
-	bill.add_child(l)
-	bill.custom_minimum_size = Vector2(40, 20)
-	bill.size = Vector2(40, 20)
-	bill.pivot_offset = Vector2(20, 10)
-	bill.position = from - Vector2(20, 10)
-	bill.rotation = randf_range(-0.6, 0.6)
-	fx_layer.add_child(bill)
-	var target: Vector2 = money_label.global_position + Vector2(40, 20)
-	var mid: Vector2 = from + Vector2(randf_range(-80, 80), randf_range(-120, -40))
-	var tw: Tween = create_tween()
-	tw.tween_property(bill, "position", mid, 0.25).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	tw.tween_property(bill, "position", target, 0.45).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	tw.parallel().tween_property(bill, "rotation", bill.rotation + 3.0, 0.7)
-	tw.tween_callback(func() -> void:
-		_bills_active -= 1
-		bill.queue_free())
 
 
 func _floating_text(text: String, pos: Vector2, color: Color) -> void:
@@ -1407,18 +1388,25 @@ func _refresh_hud_extras(m: GameModel) -> void:
 		remark_btn.tooltip_text = tr("tip.remark") % [UIKit.money(inc), UIKit.money(inc.mul(m.price_level.div(m.my_prices)))]
 	else:
 		remark_btn.tooltip_text = tr("tip.remark_ok")
-	# pestañas: bloqueadas (tachadas con PRÓXIMAMENTE) o abiertas
+	# pestañas: bloqueadas (candado de tiza + nombre; el "próximamente" va en el tooltip) o abiertas
 	for i in range(TABS.size()):
 		var feat: String = TAB_FEATURE[i]
 		var locked: bool = feat != "" and not Unlocks.has(m, feat)
 		var b: Button = tab_buttons[i]
 		if locked != _tab_locked[i] or b.text == "":
 			_tab_locked[i] = locked
+			b.text = tr(TABS[i])
+			var old_lock: Node = b.get_node_or_null("Lock")
+			if old_lock != null:
+				old_lock.queue_free()
 			if locked:
-				b.text = tr(TABS[i]) + "\n" + tr("ui.soon")
 				UIKit.style_tab_locked(b)
+				var li: LockIcon = LockIcon.new()
+				li.name = "Lock"
+				b.add_child(li)
+				_place_lock(b, li)
+				b.resized.connect(_place_lock.bind(b, li))
 			else:
-				b.text = tr(TABS[i])
 				UIKit.style_tab(b, i == _tab)
 		b.tooltip_text = (tr("tip.tab_locked") % tr("tip.locked_" + feat)) if locked else tr(TAB_TIPS[i])
 	_pump_unlock_queue()
@@ -1625,3 +1613,13 @@ func _apply_layout() -> void:
 		e["btn"].custom_minimum_size = Vector2(100 if portrait else 116, 44)
 	world.add_theme_constant_override("margin_left", 16 if portrait else 24)
 	world.add_theme_constant_override("margin_right", 16 if portrait else 24)
+
+
+## El candado va pegado a la izquierda del nombre de la pestaña.
+func _place_lock(b: Button, li: Node) -> void:
+	if not is_instance_valid(li):
+		return
+	var font: Font = b.get_theme_font("font")
+	var fs: int = b.get_theme_font_size("font_size")
+	var tw: float = font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	(li as Control).position = Vector2(maxf(2.0, (b.size.x - tw) * 0.5 - 40.0), (b.size.y - 26.0) * 0.5)

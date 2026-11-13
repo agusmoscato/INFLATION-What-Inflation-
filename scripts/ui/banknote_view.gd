@@ -58,7 +58,7 @@ func _draw() -> void:
 	Chalk.circle(self, mc, size.y * 0.24, tint, 2.6 * minf(k, 1.6), 3 + zeros, true, 6.0 * k)
 	Chalk.circle(self, mc, size.y * 0.13, tint, 2.0, 4 + zeros)
 	var shown: int = maxi(0, zeros - cut_zeros)
-	var text: String = "$" + denomination(shown)
+	var text: String = "$" + denomination(shown) if shown <= 12 else "$1e%d" % shown      # los billetes enormes se abrevian
 	var base_fs: int = 26 if text.length() < 11 else (20 if text.length() < 16 else 15)
 	var fs: int = int(base_fs * k)
 	var tx: float = size.x * 0.3

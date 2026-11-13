@@ -29,8 +29,10 @@ func _ready() -> void:
 	Settings.apply()
 	EventBus.offline_report.connect(func(r: Dictionary) -> void: _pending_offline = r)
 	var win: Window = get_window()
+	if win != null and not (get_viewport() is SubViewport):
+		_fit_initial_window(win)
 	if win != null and win.size.y > win.size.x and not (get_viewport() is SubViewport):
-		win.content_scale_size = Vector2i(720, 1280)      # pantalla vertical: layout de 720x1280
+		win.content_scale_size = Vector2i(1080, 1920)     # pantalla vertical (con escala 1,5: layout de 720x1280)
 	show_menu()
 	var ua: PackedStringArray = OS.get_cmdline_user_args()
 	if ua.has("--record-clip") and ua.find("--record-clip") + 1 < ua.size():
@@ -196,6 +198,7 @@ func _qa_run() -> void:
 		_game._select_tab(3)
 		await _qa_wait(0.4)
 		_qa_shot("reforma_" + lang, failures)
+	await _qa_windows(failures)
 	var f: FileAccess = FileAccess.open("user://qa/result.txt", FileAccess.WRITE)
 	f.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
 	f.close()
@@ -315,3 +318,66 @@ func _qa_web(phase: int) -> void:
 	m.clicks = 4242
 	print("QA_SAVE ok=%s" % str(SaveSystem.save_game()))
 	print("QA_SAVED clicks=4242 packs=%d" % m.packs_opened)
+
+
+## Ventana inicial: 1600x900 o el 80 % de la pantalla (la menor, en 16:9), centrada y redimensionable.
+func _fit_initial_window(win: Window) -> void:
+	if OS.has_feature("web") or DisplayServer.get_name() == "headless":
+		return
+	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	for a in ["--record-clip", "--qa-screenshot", "--clip-size"]:
+		if ua.has(a):
+			return
+	var usable: Rect2i = DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
+	var k: float = minf(1.0, minf(float(usable.size.x) * 0.8 / 1600.0, float(usable.size.y) * 0.8 / 900.0))
+	win.min_size = Vector2i(960, 540)
+	win.size = Vector2i(int(1600.0 * k), int(900.0 * k))
+	win.position = usable.position + (usable.size - win.size) / 2
+
+
+## QA de la ventana real: menú, juego y todas las pestañas en 1280x720, 1366x768, 1600x900 y 1920x1080.
+## Falla si algún botón o texto queda fuera de la ventana o se pisa con otro. Capturas win_<tamaño>_<pantalla>.png en user://qa/.
+const QA_WINDOW_SIZES: Array = [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080)]
+const QA_TABS: Array = ["negocios", "mejoras", "refugios", "reforma", "album", "timba", "logros"]
+
+
+func _qa_win_check(name: String, failures: Array) -> void:
+	var bad: Array = QaCheck.layout(self, get_viewport().get_visible_rect())
+	for b in bad:
+		failures.append("[%s] %s" % [name, b])
+	if DisplayServer.get_name() != "headless" and not OS.has_feature("web"):
+		get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/win_%s.png" % name))
+	print("QA ventana %-28s problemas de layout: %d" % [name, bad.size()])
+
+
+func _qa_windows(failures: Array) -> void:
+	var win: Window = get_window()
+	win.borderless = true
+	Settings.language = "es"
+	Settings.apply()
+	for s in QA_WINDOW_SIZES:
+		win.size = s
+		await _qa_wait(0.6)
+		var tag: String = "%dx%d" % [s.x, s.y]
+		show_menu()
+		await _qa_wait(0.8)
+		_qa_win_check("%s_menu" % tag, failures)
+		Settings.tutorial_done = true
+		start_game(false)
+		await _qa_wait(1.0)
+		_qa_win_check("%s_juego_era1" % tag, failures)
+		var m: GameModel = GameState.m
+		m.era = 3
+		m.money = BigNumber.from_string("5e12")
+		m.base_income = BigNumber.from_float(1e8)
+		m.owned["kiosco"] = 4
+		m.owned["empanadas"] = 10
+		m.dirty = true
+		for id in ["biz_empanadas", "biz_kiosco", "pj_perro", "hl_2", "gold_1", "note_0"]:
+			StickerLogic.give(m, id)
+		m.notifications.clear()
+		await _qa_wait(0.5)
+		for i in range(QA_TABS.size()):
+			_game._select_tab(i)
+			await _qa_wait(0.5)
+			_qa_win_check("%s_%s" % [tag, QA_TABS[i]], failures)

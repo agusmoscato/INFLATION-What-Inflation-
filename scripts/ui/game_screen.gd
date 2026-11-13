@@ -944,7 +944,7 @@ func _update_juice(delta: float) -> void:
 		rate_label.rotation = 0.0
 	# tinte rojo en la hiperinflación
 	var hyper: float = EconomyLogic.B("hyper_tint_rate")
-	var target: float = clampf((_rate - hyper) * 0.2, 0.0, 0.32)
+	var target: float = clampf((_rate - hyper) * 0.4, 0.0, 0.32)
 	tint.color.a = target * (0.75 + 0.25 * sin(_clock * 5.0))
 	# billetes volando solos mientras hay ingresos
 	_bill_timer += delta
@@ -1023,7 +1023,7 @@ func _toast(text: String, color: Color) -> void:
 	var l: Label = UIKit.label(text, 16, color, HORIZONTAL_ALIGNMENT_CENTER)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(l)
-	toast_box.position = Vector2(16.0, 150.0)
+	toast_box.position = Vector2(16.0, maxf(150.0, size.y - 450.0))
 	toast_box.add_child(p)
 	while toast_box.get_child_count() > 4:
 		toast_box.get_child(0).queue_free()

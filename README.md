@@ -93,3 +93,11 @@ tests/, tools/                tests, prueba de humo y simulador
 ## Repositorio
 
 https://github.com/agusmoscato/INFLATION-What-Inflation-.git (rama `main`). Se hace push después de cada commit de fase.
+
+## Capturas por resolución
+
+```
+TOUR_RES=1920x1080 SHOT_DIR=docs/screenshots godot --rendering-driver opengl3 res://tests/ScreenshotTour.tscn
+```
+
+Genera 12 capturas (menú, juego en Era 1 y 3, las 6 pestañas, hiperinflación, tijera de la reforma, opciones, créditos) renderizando fuera de pantalla a tamaño exacto, emulando el escalado del proyecto. Revisadas en 1920x1080, 1280x800 (Steam Deck) y 2560x1440: ver `docs/screenshots/`. Los avisos ("¡Logro!") se apilan sobre la empanada; es cosmético.

@@ -222,6 +222,7 @@ func _qa_run() -> void:
 func _start_clip(clip_name: String) -> void:
 	SaveSystem.save_path = "user://clip_save.json"
 	SaveSystem.ignore_close = true
+	get_window().always_on_top = true      # una ventana tapada por otras se queda sin dibujar y el video sale salteado
 	Settings.path = "user://clip_settings.cfg"
 	Settings.tutorial_done = true
 	Settings.language = "es"
@@ -517,6 +518,9 @@ func _qa_newplayer(failures: Array) -> void:
 	if ua.has("--np-seconds") and ua.find("--np-seconds") + 1 < ua.size():
 		np_seconds = float(ua[ua.find("--np-seconds") + 1])
 	while gt <= np_seconds + 0.01:
+		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:      # algo del sistema minimiza la ventana y Godot deja de dibujar
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_move_to_foreground()
 		await get_tree().process_frame
 		var now_us: int = Time.get_ticks_usec()
 		gt += minf(float(now_us - last_us) / 1e6, 0.2) * NP_SPEED

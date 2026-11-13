@@ -51,11 +51,18 @@ func _ready() -> void:
 			push_error("Clip desconocido: " + clip)
 			get_tree().quit(1)
 	Unlocks.unlock_all(_m())
+	_m().obj_index = maxi(_m().obj_index, 18)      # un objetivo creíble en pantalla (no "tocá la empanada 10 veces" con billones en la caja)
+	_m().intro_grace = false
 	_m().notifications.clear()
 
 
 func _process(delta: float) -> void:
 	_t += (1.0 / 30.0) if _movie else delta
+	if _movie:
+		# algo del sistema minimiza la ventana mientras se graba y Godot deja de dibujar: se la restaura en cada cuadro
+		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_move_to_foreground()
 	if _movie and delta > 0.1 and _t > 1.0:
 		# la PC se trabo: el motor avanzo las animaciones de golpe y el video no queda parejo -> se descarta (el script reintenta)
 		print("clip: cuadro lento (delta %.2f s), se descarta esta toma" % delta)

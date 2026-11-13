@@ -74,7 +74,7 @@ tests/, tools/                tests, prueba de humo y simulador
 
 ## Qué falta / TODO
 
-- **Exports**: `export_presets.cfg` define Windows, Linux y Web, pero no se probó exportar (faltan las export templates de Godot instaladas). Instalarlas desde el editor (Editor > Manage Export Templates).
+- **Exports**: `export_presets.cfg` define Windows, Linux y Web. No hay export templates instaladas en esta máquina, así que no se exportó. Listo para cuando las instales: `tools/export_all.sh --install-templates` (o `tools/export_all.sh` si ya las tenés; `--check` solo verifica). Deja los builds en `export/` y comprueba que el build web tenga `index.html/js/wasm/pck`.
 - **Steam**: `scripts/platform/achievements.gd` es la interfaz; hoy se usa `LocalAchievements` (logros en el save). `achievements_steam.gd` deja anotado dónde conectar GodotSteam (no instalado). Falta crear los logros en Steamworks con los ids de `data/achievements.json`.
 - **Arte y sonido**: todo es placeholder generado por código (formas, tweens, partículas, tonos sintetizados). La música es un loop corto que se acelera con la inflación.
 - **Balance**: hay que validarlo con jugadores reales; los refugios y los eventos casi no pesan en el simulador. Las tasas por era, el costo de las medidas finales y los umbrales de era están en `data/`.
@@ -101,3 +101,7 @@ TOUR_RES=1920x1080 SHOT_DIR=docs/screenshots godot --rendering-driver opengl3 re
 ```
 
 Genera 12 capturas (menú, juego en Era 1 y 3, las 6 pestañas, hiperinflación, tijera de la reforma, opciones, créditos) renderizando fuera de pantalla a tamaño exacto, emulando el escalado del proyecto. Revisadas en 1920x1080, 1280x800 (Steam Deck) y 2560x1440: ver `docs/screenshots/`. Los avisos ("¡Logro!") se apilan sobre la empanada; es cosmético.
+
+## Página de Steam
+
+Borrador en español e inglés (descripción corta y larga, features y etiquetas): [docs/STEAM_PAGE.md](docs/STEAM_PAGE.md).

@@ -1,0 +1,14 @@
+[
+  {"id": 0,  "name_key": "note.0",  "color": "#b8c4a0"},
+  {"id": 1,  "name_key": "note.1",  "color": "#a0c4b8"},
+  {"id": 2,  "name_key": "note.2",  "color": "#c4b8a0"},
+  {"id": 3,  "name_key": "note.3",  "color": "#c4a0a8"},
+  {"id": 4,  "name_key": "note.4",  "color": "#a0a8c4"},
+  {"id": 5,  "name_key": "note.5",  "color": "#c4c0a0"},
+  {"id": 6,  "name_key": "note.6",  "color": "#b0a0c4"},
+  {"id": 7,  "name_key": "note.7",  "color": "#a0c4a0"},
+  {"id": 8,  "name_key": "note.8",  "color": "#a0b8c4"},
+  {"id": 9,  "name_key": "note.9",  "color": "#c4a0b8"},
+  {"id": 10, "name_key": "note.10", "color": "#d0c080"},
+  {"id": 11, "name_key": "note.11", "color": "#d09080"}
+]

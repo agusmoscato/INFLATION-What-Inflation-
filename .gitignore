@@ -1,3 +1,7 @@
-tools/godot_bin/
+# Godot 4
 .godot/
-*.translation
+export/
+*.tmp
+
+# Binarios de Godot descargados
+tools/godot*

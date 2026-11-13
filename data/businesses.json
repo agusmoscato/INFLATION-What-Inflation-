@@ -1,0 +1,18 @@
+[
+  {"id": "empanadas",  "era": 1, "base_cost": "1.5e1",  "base_income": "0.25",  "color": "#e8a23a"},
+  {"id": "kiosco",     "era": 1, "base_cost": "1.8e2",  "base_income": "2",     "color": "#d9534f"},
+  {"id": "choripan",   "era": 1, "base_cost": "2.2e3",  "base_income": "16",    "color": "#b5651d"},
+  {"id": "lavadero",   "era": 1, "base_cost": "2.6e4",  "base_income": "128",   "color": "#4aa3df"},
+  {"id": "panaderia",  "era": 1, "base_cost": "3.2e5",  "base_income": "1000",  "color": "#f0d58c"},
+  {"id": "almacen",    "era": 2, "base_cost": "3.8e6",  "base_income": "8e3",   "color": "#8fbf6a"},
+  {"id": "remiseria",  "era": 2, "base_cost": "4.6e7",  "base_income": "6.4e4", "color": "#6ad1c3"},
+  {"id": "verduleria", "era": 2, "base_cost": "5.5e8",  "base_income": "5.1e5", "color": "#5cb85c"},
+  {"id": "fabrica",    "era": 3, "base_cost": "6.6e9",  "base_income": "4.1e6", "color": "#8a8f98"},
+  {"id": "cadena",     "era": 3, "base_cost": "8e10",   "base_income": "3.3e7", "color": "#e87a3a"},
+  {"id": "banco",      "era": 4, "base_cost": "9.5e11", "base_income": "2.6e8", "color": "#3a6ea5"},
+  {"id": "bolsa",      "era": 4, "base_cost": "1.1e13", "base_income": "2.1e9", "color": "#7a5ea5"},
+  {"id": "cripto",     "era": 4, "base_cost": "1.4e14", "base_income": "1.7e10","color": "#f2a900"},
+  {"id": "imprenta",   "era": 5, "base_cost": "1.6e15", "base_income": "1.4e11","color": "#3aa56e"},
+  {"id": "ceros",      "era": 5, "base_cost": "2e16",   "base_income": "1.1e12","color": "#c0392b"},
+  {"id": "holding",    "era": 5, "base_cost": "2.4e17", "base_income": "9e12",  "color": "#555555"}
+]

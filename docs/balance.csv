@@ -1,0 +1,8 @@
+evento,minuto,detalle
+era,12.8,era=2
+reforma,16.5,n=1 cred=4 P=1e0.6
+reforma,29.0,n=2 cred=8 P=1e0.8
+reforma,40.2,n=3 cred=14 P=1e0.8
+reforma,51.4,n=4 cred=25 P=1e0.7
+reforma,59.5,n=5 cred=46 P=1e0.5
+fin,60.0,era=2 cred=46 reformas=5 planes=0 compras=362 max_espera_s=74

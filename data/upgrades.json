@@ -1,0 +1,28 @@
+{
+  "per_business": [
+    {"suffix": "a", "cost_mult": "10",  "mult": 2.0, "owned": 5},
+    {"suffix": "b", "cost_mult": "500", "mult": 3.0, "owned": 25},
+    {"suffix": "c", "cost_mult": "5e4", "mult": 5.0, "owned": 100}
+  ],
+  "special": [
+    {"id": "click1",       "era": 1, "cost": "60",    "effect": {"type": "click_mult", "value": 2.0}},
+    {"id": "click2",       "era": 1, "cost": "1.5e3", "effect": {"type": "click_mult", "value": 3.0}},
+    {"id": "clickpct",     "era": 1, "cost": "8e3",   "effect": {"type": "click_pct", "value": 0.02}},
+    {"id": "remarkbonus",  "era": 1, "cost": "3e3",   "effect": {"type": "remark_bonus", "value": 2.0}},
+    {"id": "auto_remark1", "era": 1, "cost": "2.5e3", "effect": {"type": "auto_remark", "value": 20.0}},
+    {"id": "auto_remark2", "era": 2, "cost": "2e7",   "effect": {"type": "auto_remark", "value": 8.0}},
+    {"id": "auto_remark3", "era": 3, "cost": "5e10",  "effect": {"type": "auto_remark", "value": 2.0}},
+    {"id": "all1",         "era": 1, "cost": "2e5",   "effect": {"type": "all_mult", "value": 2.0}},
+    {"id": "all2",         "era": 2, "cost": "5e9",   "effect": {"type": "all_mult", "value": 2.0}},
+    {"id": "all3",         "era": 3, "cost": "2e13",  "effect": {"type": "all_mult", "value": 3.0}},
+    {"id": "all4",         "era": 4, "cost": "5e17",  "effect": {"type": "all_mult", "value": 3.0}},
+    {"id": "all5",         "era": 5, "cost": "1e22",  "effect": {"type": "all_mult", "value": 5.0}},
+    {"id": "auto_buy1",    "era": 3, "cost": "5e9",   "effect": {"type": "auto_buy", "value": 20.0}},
+    {"id": "auto_buy2",    "era": 3, "cost": "2e12",  "effect": {"type": "auto_buy", "value": 8.0}},
+    {"id": "auto_buy3",    "era": 4, "cost": "5e15",  "effect": {"type": "auto_buy", "value": 3.0}},
+    {"id": "precios1",     "era": 2, "cost": "1e7",   "effect": {"type": "inflation_mult", "value": 0.9}},
+    {"id": "precios2",     "era": 3, "cost": "1e11",  "effect": {"type": "inflation_mult", "value": 0.9}},
+    {"id": "precios3",     "era": 4, "cost": "1e16",  "effect": {"type": "inflation_mult", "value": 0.9}},
+    {"id": "contador",     "era": 2, "cost": "6e6",   "effect": {"type": "fee_mult", "value": 0.5}}
+  ]
+}

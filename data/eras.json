@@ -1,0 +1,7 @@
+[
+  {"id": 1, "name_key": "era.1", "desc_key": "era.1.d", "threshold": "0",    "inflation": 0.03, "color": "#e8c46a"},
+  {"id": 2, "name_key": "era.2", "desc_key": "era.2.d", "threshold": "3e5",  "inflation": 0.08, "color": "#7ec27e"},
+  {"id": 3, "name_key": "era.3", "desc_key": "era.3.d", "threshold": "1e9",  "inflation": 0.15, "color": "#6aa9e8"},
+  {"id": 4, "name_key": "era.4", "desc_key": "era.4.d", "threshold": "1e13", "inflation": 0.30, "color": "#b07ee8"},
+  {"id": 5, "name_key": "era.5", "desc_key": "era.5.d", "threshold": "1e18", "inflation": 1.00, "color": "#e86a6a"}
+]

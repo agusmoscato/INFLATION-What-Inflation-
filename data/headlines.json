@@ -1,0 +1,10 @@
+[
+  {"key": "hl.1", "min_era": 1}, {"key": "hl.2", "min_era": 1}, {"key": "hl.3", "min_era": 1},
+  {"key": "hl.4", "min_era": 1}, {"key": "hl.5", "min_era": 1}, {"key": "hl.6", "min_era": 1},
+  {"key": "hl.7", "min_era": 2}, {"key": "hl.8", "min_era": 2}, {"key": "hl.9", "min_era": 2},
+  {"key": "hl.10", "min_era": 2}, {"key": "hl.11", "min_era": 2}, {"key": "hl.12", "min_era": 3},
+  {"key": "hl.13", "min_era": 3}, {"key": "hl.14", "min_era": 3}, {"key": "hl.15", "min_era": 3},
+  {"key": "hl.16", "min_era": 4}, {"key": "hl.17", "min_era": 4}, {"key": "hl.18", "min_era": 4},
+  {"key": "hl.19", "min_era": 4}, {"key": "hl.20", "min_era": 5}, {"key": "hl.21", "min_era": 5},
+  {"key": "hl.22", "min_era": 5}, {"key": "hl.23", "min_era": 5}, {"key": "hl.24", "min_era": 5}
+]

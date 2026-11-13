@@ -134,17 +134,15 @@ class Art extends Control:
 		var h: float = size.y
 		match kind:
 			"wide":
-				_mascot(Vector2(w * 0.60, h * 0.10), Vector2(w * 0.34, h * 0.78), 0.55)
-				_stickers(Vector2(w * 0.02, h * 0.58), h * 0.36)
+				_mascot(Vector2(w * 0.66, h * 0.50), Vector2(w * 0.30, h * 0.46), 0.55)
 			"small":
-				_mascot(Vector2(w * 0.68, h * 0.06), Vector2(w * 0.30, h * 0.90), 0.3)
+				_mascot(Vector2(w * 0.70, h * 0.18), Vector2(w * 0.28, h * 0.72), 0.3)
 			"tall":
 				_mascot(Vector2(w * 0.22, h * 0.34), Vector2(w * 0.56, h * 0.30), 0.55)
 				_stickers(Vector2(w * 0.08, h * 0.70), w * 0.30)
 			"hero":
 				_mascot(Vector2(w * 0.62, h * 0.12), Vector2(h * 0.95, h * 0.76), 0.6)
-				_stickers(Vector2(w * 0.80, h * 0.20), h * 0.45)
-				_stickers(Vector2(w * 0.38, h * 0.06), h * 0.30)
+				_stickers(Vector2(w * 0.40, h * 0.30), h * 0.40)
 
 	func _mascot(pos: Vector2, sz: Vector2, rate: float) -> void:
 		var e: EmpanadaButton = EmpanadaButton.new()
@@ -176,9 +174,9 @@ class Art extends Control:
 		match kind:
 			"wide":
 				_bills(0.5)
-				_title(tf, Vector2(w * 0.04, h * 0.40), h * 0.30, h * 0.12)
+				_title(tf, Vector2(w * 0.04, h * 0.36), h * 0.27, h * 0.11)
 			"small":
-				_title(tf, Vector2(w * 0.03, h * 0.58), h * 0.42, h * 0.20)
+				_title(tf, Vector2(w * 0.035, h * 0.50), h * 0.30, h * 0.11)
 			"tall":
 				_bills(0.4)
 				_title_centered(tf, Vector2(w * 0.5, h * 0.20), w * 0.17, w * 0.085)
@@ -190,7 +188,7 @@ class Art extends Control:
 			"ach":
 				_medal(tf)
 		if kind == "wide":
-			_banknote(Vector2(w * 0.30, h * 0.86), Vector2(w * 0.56, h * 0.17))
+			_banknote(Vector2(w * 0.34, h * 0.82), Vector2(w * 0.58, h * 0.20))
 
 	# Titulo a la izquierda (dos lineas) con borde oscuro para que se lea en la capsula chica.
 	func _title(f: Font, base: Vector2, big: float, small: float) -> void:
@@ -231,7 +229,8 @@ class Art extends Control:
 		var txt: String = "$1.000.000.000.000"
 		var tw: float = Chalk.text_width(f, txt, fs, 0.95)
 		var k: float = minf(1.0, (sz.x * 0.94) / tw)
-		Chalk.draw_written(self, f, txt, Vector2(-tw * k * 0.5, fs * k * 0.34), int(float(fs) * k), Chalk.WHITE, 1.0, 33, 0.0, 0.95)
+		draw_string_outline(f, Vector2(-tw * k * 0.5, fs * k * 0.34), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, int(float(fs) * k), 6, Color(0.05, 0.08, 0.06, 0.9))
+		draw_string(f, Vector2(-tw * k * 0.5, fs * k * 0.34), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, int(float(fs) * k), Chalk.WHITE)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# Ceros de tiza flotando de fondo.

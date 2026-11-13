@@ -33,7 +33,7 @@ if (-not $SkipShots) {
   foreach ($j in $jobs) {
     Remove-Item "$tmp\*" -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force $tmp | Out-Null
-    $env:TOUR_RES = "1920x1080"; $env:SHOT_DIR = $tmp; $env:TOUR_ONLY = $j.only; $env:SHOT_PNG = "1"
+    $env:TOUR_RES = "1920x1080"; $env:SHOT_DIR = $tmp; $env:TOUR_ONLY = $j.only; $env:SHOT_PNG = "1"; $env:SHOT_CLEAN = "1"
     Write-Host "Capturas: $($j.only)"
     & $Godot --rendering-driver opengl3 res://tests/ScreenshotTour.tscn 2>&1 | Select-String "TOUR OK|ERROR|SCRIPT"
     foreach ($k in $j.map.Keys) {
@@ -41,7 +41,7 @@ if (-not $SkipShots) {
       if (Test-Path $src) { Copy-Item $src "$out\screenshots\$($j.map[$k]).png" -Force } else { Write-Warning "Falta la captura $k" }
     }
   }
-  Remove-Item Env:TOUR_RES, Env:SHOT_DIR, Env:TOUR_ONLY, Env:SHOT_PNG -ErrorAction SilentlyContinue
+  Remove-Item Env:TOUR_RES, Env:SHOT_DIR, Env:TOUR_ONLY, Env:SHOT_PNG, Env:SHOT_CLEAN -ErrorAction SilentlyContinue
   Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 Get-ChildItem $out -Recurse -File | Where-Object { $_.FullName -notmatch "achievements" } | Select-Object @{n="archivo";e={$_.FullName.Substring($out.Length + 1)}}, @{n="KB";e={[int]($_.Length / 1KB)}}

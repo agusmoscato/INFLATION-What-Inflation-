@@ -80,6 +80,8 @@ var _idx: int = 0
 ## Cada paso: [nombre_de_la_captura, acción, frames_de_espera_extra_antes_de_la_captura (opcional)].
 func _process(_delta: float) -> void:
 	frame += 1
+	if OS.get_environment("SHOT_CLEAN") != "" and _idx > 1:
+		_strip(main)
 	if frame < _next_at:
 		return
 	if _idx > 0 and _idx - 1 < steps.size():
@@ -270,3 +272,12 @@ func _bolillero() -> void:
 	if _g()._scratch_overlay != null and is_instance_valid(_g()._scratch_overlay):
 		_g()._scratch_overlay.queue_free()
 	_g()._on_quiniela_drawn({"number": 37, "winning": 37, "stake": BigNumber.from_float(1e9), "payout": BigNumber.from_float(4.9e10), "kind": "exact"})
+
+
+## Para las capturas de Steam: saca la guía del tutorial y los carteles de "desbloqueaste" que tapan la pantalla.
+func _strip(n: Node) -> void:
+	for c in n.get_children():
+		if c is TutorialGuide or c is UnlockSign:
+			c.queue_free()
+		else:
+			_strip(c)

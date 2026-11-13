@@ -37,6 +37,10 @@ func _ready() -> void:
 		call_deferred("_start_clip", ua[ua.find("--record-clip") + 1])
 	if OS.get_cmdline_user_args().has("--qa-screenshot"):
 		call_deferred("_qa_run")
+	if OS.has_feature("web"):
+		var q: String = str(JavaScriptBridge.eval("window.location.search"))
+		if q.contains("qa=web"):
+			call_deferred("_qa_web", 2 if q.contains("phase=2") else 1)
 
 
 func _set_screen(screen: Control) -> void:
@@ -148,7 +152,7 @@ func _qa_shot(name: String, failures: Array) -> void:
 	var bad: Array = QaCheck.scan(self)
 	for b in bad:
 		failures.append("[%s] %s" % [name, b])
-	if DisplayServer.get_name() != "headless":
+	if DisplayServer.get_name() != "headless" and not OS.has_feature("web"):
 		var img: Image = get_viewport().get_texture().get_image()
 		img.save_png(ProjectSettings.globalize_path("user://qa/%s.png" % name))
 	print("QA captura %-22s claves sin traducir: %d" % [name, bad.size()])
@@ -220,3 +224,94 @@ func _start_clip(clip_name: String) -> void:
 	start_game(false)
 	var d: ClipDirector = ClipDirector.new(self, clip_name)
 	add_child(d)
+
+
+# =====================================================================
+#  QA del build web: http://.../index.html?qa=web  (fase 1) y ?qa=web&phase=2 (despues de recargar).
+#  tools/web_qa.ps1 lo maneja con Chrome headless: mira las lineas "QA_*" de la consola y hace los arrastres del mouse.
+# =====================================================================
+func _qa_translation(langs: Array) -> Array:
+	var failures: Array = []
+	for lang in langs:
+		Settings.language = lang
+		Settings.apply()
+		show_menu()
+		await _qa_wait(0.8)
+		_qa_shot("menu_" + lang, failures)
+		show_howto()
+		await _qa_wait(0.6)
+		_qa_shot("comojuega_" + lang, failures)
+		Settings.tutorial_done = false
+		start_game(false)
+		await _qa_wait(1.0)
+		_qa_shot("negocios_" + lang, failures)
+		var m: GameModel = GameState.m
+		m.era = 3
+		m.money = BigNumber.from_string("5e12")
+		m.base_income = BigNumber.from_float(1e8)
+		m.owned["kiosco"] = 4
+		m.owned["empanadas"] = 10
+		m.dirty = true
+		for id in ["biz_empanadas", "biz_kiosco", "pj_perro", "hl_2", "gold_1", "note_0"]:
+			StickerLogic.give(m, id)
+		m.notifications.clear()
+		await _qa_wait(0.4)
+		_game._select_tab(4)
+		await _qa_wait(0.6)
+		_qa_shot("album_" + lang, failures)
+		_game._select_tab(5)
+		await _qa_wait(0.6)
+		_qa_shot("timba_" + lang, failures)
+	return failures
+
+
+func _qa_web(phase: int) -> void:
+	SaveSystem.save_path = "user://qa_web_save.json"
+	Settings.path = "user://qa_web_settings.cfg"
+	if phase == 2:
+		await _qa_wait(1.0)
+		var ok: bool = SaveSystem.load_game()
+		print("QA_PERSIST loaded=%s clicks=%d packs=%d" % [ok, GameState.m.clicks, GameState.m.packs_opened])
+		return
+	var failures: Array = await _qa_translation(["es", "en"])
+	print("QA_I18N bad=%d %s" % [failures.size(), " | ".join(failures)])
+	Settings.language = "es"
+	Settings.apply()
+	Settings.tutorial_done = true
+	start_game(false)
+	await _qa_wait(1.0)
+	var m: GameModel = GameState.m
+	m.era = 3
+	m.money = BigNumber.from_string("5e12")
+	m.base_income = BigNumber.from_float(1e8)
+	m.dirty = true
+	Input.use_accumulated_input = false      # Chrome headless corre a pocos cuadros por segundo: sin esto se pierden los movimientos del mouse
+	# raspadita con el mouse
+	var ov: ScratchOverlay = _game._open_scratch(0.05)
+	await _qa_wait(0.8)
+	var st: Transform2D = get_viewport().get_screen_transform()
+	var a: Vector2 = st * ov._card.position
+	var b: Vector2 = st * ov._card.end
+	print("QA_DRAG scratch %d %d %d %d" % [a.x + 40, a.y + 40, b.x - 40, b.y - 40])
+	var t0: int = Time.get_ticks_msec()
+	while ov != null and is_instance_valid(ov) and not ov._done and Time.get_ticks_msec() - t0 < 25000:
+		await _qa_wait(0.2)
+	print("QA_SCRATCH done=%s revealed=%d" % [ov._done, ov._revealed])
+	_game._scratch_overlay.queue_free()
+	_game._scratch_overlay = null
+	await _qa_wait(0.4)
+	# sobre de figuritas con el mouse
+	var pk: PackOpening = _game._open_pack_overlay(StickerLogic.gift_pack(m))
+	await _qa_wait(0.8)
+	st = get_viewport().get_screen_transform()
+	a = st * Vector2(pk._env.position.x - 10.0, pk._env.position.y + 56.0)
+	b = st * Vector2(pk._env.end.x + 10.0, pk._env.position.y + 56.0)
+	print("QA_DRAG pack %d %d %d %d" % [a.x, a.y, b.x, b.y])
+	t0 = Time.get_ticks_msec()
+	while is_instance_valid(pk) and pk.state != PackOpening.State.DONE and Time.get_ticks_msec() - t0 < 25000:
+		await _qa_wait(0.2)
+	print("QA_PACK state=%d tear=%.2f" % [pk.state, pk.tear])
+	# guardado: se marca la partida y se guarda; la fase 2 (tras recargar la pagina) tiene que verla
+	m.clicks = 4242
+	print("QA_SAVE ok=%s" % str(SaveSystem.save_game()))
+	print("QA_SAVED clicks=4242 packs=%d" % m.packs_opened)

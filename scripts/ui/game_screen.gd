@@ -38,6 +38,11 @@ var ref_rows: Dictionary = {}
 var ref_note: Label
 var reform_labels: Dictionary = {}
 var plan_buttons: Dictionary = {}
+var body: BoxContainer
+var header_grid: GridContainer
+var left_col: Control
+var notes_box: Control
+var portrait: bool = false
 var album_page: AlbumPage
 var timba_page: TimbaPage
 var ach_list: VBoxContainer
@@ -90,7 +95,7 @@ func _ready() -> void:
 	root.add_theme_constant_override("separation", 8)
 	world.add_child(root)
 	root.add_child(_build_header())
-	var body: HBoxContainer = HBoxContainer.new()
+	body = BoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 10)
 	root.add_child(body)
@@ -115,6 +120,8 @@ func _ready() -> void:
 	_last_era = gm().era
 	_select_tab(0)
 	_next_headline()
+	_apply_layout()
+	resized.connect(_apply_layout)
 	_silent_catchup()
 	_start_tutorial()
 	Economy.running = true
@@ -161,8 +168,11 @@ func _play(sound: String, pitch: float = 1.0) -> void:
 # =====================================================================
 func _build_header() -> Control:
 	var p: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
-	var h: HBoxContainer = HBoxContainer.new()
-	h.add_theme_constant_override("separation", 20)
+	header_grid = GridContainer.new()
+	header_grid.columns = 4
+	header_grid.add_theme_constant_override("h_separation", 16)
+	header_grid.add_theme_constant_override("v_separation", 6)
+	var h: GridContainer = header_grid
 	p.add_child(h)
 	var left: VBoxContainer = VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -191,6 +201,7 @@ func _build_header() -> Control:
 	mid.add_child(month_label)
 	# pila de notitas (avisos) arriba a la derecha: no tapa la empanada ni el panel central
 	var notes: Control = Control.new()
+	notes_box = notes
 	notes.custom_minimum_size = Vector2(300, 84)
 	notes.clip_contents = true
 	notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -253,12 +264,14 @@ func _build_left() -> Control:
 	remark_info = UIKit.label("", 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	remark_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rv.add_child(remark_info)
+	left_col = col
 	return col
 
 
 func _build_right() -> Control:
 	var col: VBoxContainer = VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_theme_constant_override("separation", 6)
 	var bar: HBoxContainer = HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 6)
@@ -347,7 +360,7 @@ func _build_biz_page() -> Control:
 		btn.pressed.connect(_on_buy_business.bind(def["id"]))
 		h.add_child(btn)
 		v.add_child(row)
-		biz_rows.append({"def": def, "row": row, "owned": owned, "income": income, "cost": cost_price, "btn": btn, "icon": icon})
+		biz_rows.append({"def": def, "row": row, "owned": owned, "income": income, "cost": cost_price, "btn": btn, "icon": icon, "desc": desc})
 	_refresh_qty_buttons()
 	return pr[0]
 
@@ -1582,3 +1595,33 @@ func _on_dollar_settled(res: Dictionary) -> void:
 	else:
 		_play("lose")
 		_toast(tr("timba.d.lose") % BigNumber.from_float(float(res["official"]) * 100.0).format(1), UIKit.C_RED)
+
+
+# =====================================================================
+#  Layout vertical (1080x1920) para clips y pantallas verticales
+# =====================================================================
+func _apply_layout() -> void:
+	var is_portrait: bool = size.y > size.x * 1.15
+	if body == null or (is_portrait == portrait and left_col.custom_minimum_size.x == (0.0 if portrait else 330.0)):
+		return
+	portrait = is_portrait
+	header_grid.columns = 2 if portrait else 4
+	race_meter.custom_minimum_size = Vector2(290 if portrait else 300, 84)
+	body.vertical = portrait
+	left_col.custom_minimum_size = Vector2(0, 0) if portrait else Vector2(330, 0)
+	left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if portrait else Control.SIZE_FILL
+	empanada.custom_minimum_size = Vector2(240, 150) if portrait else Vector2(280, 220)
+	notes_box.custom_minimum_size = Vector2(0, 84) if portrait else Vector2(300, 84)
+	for i in range(tab_buttons.size()):
+		var b: Button = tab_buttons[i]
+		b.add_theme_font_size_override("font_size", int((14 if portrait else 20) * UIKit.FS))
+		b.clip_text = portrait
+		b.custom_minimum_size = Vector2(0, 0)
+	for e in biz_rows:
+		e["owned"].visible = not portrait
+		e["income"].visible = not portrait
+		e["desc"].visible = not portrait
+		e["cost"].custom_minimum_size = Vector2(120 if portrait else 150, 40)
+		e["btn"].custom_minimum_size = Vector2(100 if portrait else 116, 44)
+	world.add_theme_constant_override("margin_left", 16 if portrait else 24)
+	world.add_theme_constant_override("margin_right", 16 if portrait else 24)

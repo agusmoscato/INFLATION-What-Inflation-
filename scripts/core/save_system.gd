@@ -3,6 +3,7 @@ extends Node
 
 ## Ruta de la partida. Los tests la cambian para no tocar la partida real.
 var save_path: String = "user://save.json"
+var ignore_close: bool = false      ## grabando un clip: ignora pedidos de cierre perdidos de la ventana
 
 var _timer: float = 0.0
 
@@ -49,6 +50,9 @@ func delete_save() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if ignore_close:
+			print("clip: pedido de cierre ignorado")
+			return
 		if Economy.running:
 			save_game()
 		get_tree().quit()

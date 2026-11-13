@@ -91,3 +91,21 @@ Nunca hay dinero real ni microtransacciones; hay un cartel fijo que lo dice en l
 
 ### C6. Logros de timba
 - "Timbero" (10 raspaditas), "Raspador serial" (50), "¡El pozo!", "Me salió la quiniela", "Dólar sabio" (3 apuestas ganadas), "Lo perdí todo (y está bien)" (8 pérdidas seguidas) y "Rasqué una dorada". Más los de figuritas: primer sobre, mitad del álbum, página completa, brillo de tiza, el chupi y El Gran Coleccionista.
+
+## Parte D: marketing
+
+### D1. Control de calidad de los exportados
+- `tools/export_all.ps1` y `.sh` abren cada `.exe` exportado con `--qa-screenshot`: menú, cómo se juega, partida nueva, negocios, álbum y timba, en español e inglés. Guarda capturas en `user://qa/` y **falla** si algún Label o botón visible muestra una clave de traducción (`ui.…`, `biz.…`). Fue la lección de los exportados que mostraban claves: ahora no se puede publicar uno así sin enterarse.
+
+### D2. Clips automáticos
+- `godot --write-movie out.avi --fixed-fps 30 -- --record-clip <nombre> --clip-size 1920x1080` graba un clip con el Movie Maker de Godot. Los guiones están en `scripts/ui/clip_director.gd`: se prepara el estado del juego, se dispara una línea de tiempo de acciones y se rotulan carteles de tiza grandes (el primero aparece a los 0,05 s: el gancho está en el primer segundo).
+- Clips (10 a 16 s): `precio_empanada` (el precio de una empanada en 60 s, con inflación del 100 % mensual solo para el clip), `trillon_cafe`, `tijera` (la reforma cortando ceros), `hiperinflacion`, `sobre_dorada`, `raspadita_pozo`, `quiniela`.
+- `tools/record_clips.ps1` los graba todos en horizontal (1920x1080, `_h`) y vertical (1080x1920, `_v`) en `export/clips/`. Si hay `ffmpeg` convierte a MP4 (H.264); si no, deja AVI (MJPEG) y avisa.
+- **Layout vertical:** `GameScreen._apply_layout()` pasa a una columna cuando la pantalla es más alta que ancha (cabecera en 2 columnas, mascota arriba, pestañas con texto recortado, filas de negocios compactas). También sirve para jugar en pantallas verticales. El contenido escala sobre una base de 720x1280.
+- **Detalles técnicos que costaron:** la pantalla del PC (1080 px de alto) recorta la ventana inicial, así que se arranca chica y el juego la agranda por código a `--clip-size`. Si la PC se traba, el motor avanza las animaciones de golpe: el director descarta esa toma (código de salida 3) y el script reintenta.
+
+### D3. Imágenes de Steam
+- `tools/steam_assets.ps1` genera todo en `export/steam_assets/` (no se commitea): 7 imágenes de cápsula/hero/logo con `tools/steam_assets.gd` (estilo pizarrón, empanada, billete de ceros, figuritas), 74 íconos de logros (256x256, desbloqueado y en gris) y los 8 screenshots 1920x1080 con el tour de capturas (`SHOT_PNG=1`). La tabla "archivo → lugar de Steamworks" está en `docs/STEAM_PAGE.md`.
+
+### D4. Steam
+- `docs/STEAM.md`: pasos de GodotSteam para 4.4.1, dónde va `steam_appid.txt`, cómo conectar el código y qué declarar en el cuestionario (apuestas simuladas sin dinero real). La lista de 37 logros en formato Steamworks está en `docs/steam_achievements.csv` (generada por `tools/make_achievements_csv.ps1`; el API name es el id del juego).

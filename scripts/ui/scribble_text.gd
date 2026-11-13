@@ -17,7 +17,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func show_text(t: String, seed_v: int = 1) -> void:
+func show_text(t: String, seed_v: int = 1, hold: float = 0.7) -> void:
 	text = t
 	_seed = seed_v
 	_active = true

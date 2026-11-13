@@ -28,6 +28,10 @@ To win you can't just earn more pesos. You have to earn more than inflation eats
 - **Minute to minute:** buy businesses that earn on their own, automate your repricing, and park your savings in refuges (dollars, bricks, gold or crypto) before they melt away. Spread your savings across refuges and earn a diversified-portfolio bonus.
 - **Hour to hour:** when the numbers become unmanageable, do a **monetary reform**. Cut zeros off your currency, start over, and earn permanent Credibility that boosts your income and lowers inflation. Each reform adds a fictional banknote to your album.
 
+
+- **Collect them all:** buy sticker packs with your (inflating) money, tear them open, and fill a 60-sticker album across six pages: Businesses, Characters, Banknotes, Headlines, Events and Golden ones. Duplicates can be traded in for the one you are missing, and every page you complete gives a permanent bonus.
+- **Feeling lucky?** Scratch cards, a quiniela with a ball-drum draw, and a bet on the dollar rate, all played with in-game pretend money. The odds are slightly against you (that is the joke), a wins-and-losses tally keeps you honest, and nothing you win or lose is real money.
+
 **Five eras, one goal**
 
 From a street stand to a world of 100-digit prices, you will pass through The Stand, The Neighborhood, The City, The Finances and Hyperinflation. In the final era your goal changes: bring the monthly inflation rate down to zero. Pick an **economic plan** (Stabilization, Pegged Currency or Printing Spree) along the way, each with its own rules.
@@ -46,7 +50,9 @@ It runs fine in the background: the game keeps counting while you are away, and 
 - Economic plans (second prestige layer) with different rules for each run
 - Random events: long weekend, year-end bonus, currency run, currency lock, strike
 - A final challenge: bring inflation to zero
-- 24 achievements
+- 60-sticker album with packs, duplicates, trades and a secret ending
+- Simulated gambling with fake money only: scratch cards, quiniela and a dollar bet
+- 37 achievements
 - Numbers that really grow: up to 1e100 and beyond, with abbreviated, scientific or engineering notation
 - Offline progress (with inflation running while you are away)
 - Fake newspaper ticker, screen shake, flying banknotes, and a red hyperinflation tint
@@ -62,7 +68,7 @@ Idle, Incremental, Clicker, Economy, Comedy, Satire, Casual, Relaxing, Singlepla
 
 - **Genres:** Casual, Indie, Simulation
 - **Languages:** English (interface and subtitles), Spanish (full interface)
-- **Content descriptor:** none expected
+- **Content descriptor:** simulated gambling with in-game money only (no real money, no microtransactions). Declare it in the Steamworks content survey (see STEAM.md section 5)
 - **Controller support:** none (mouse and keyboard; Space also clicks)
 
 ---
@@ -89,6 +95,10 @@ Para ganar no alcanza con tener más pesos: tenés que ganar más de lo que se c
 - **Minuto a minuto:** comprá negocios que producen solos, automatizá el remarcado y pasá tus ahorros a refugios (dólar, ladrillos, oro o cripto) antes de que se derritan. Repartí los ahorros entre varios refugios y ganá el bono de cartera diversificada.
 - **Hora a hora:** cuando los números se vuelven inmanejables, hacé una **reforma monetaria**. Sacale ceros a la moneda, empezá de nuevo y ganá Credibilidad permanente que sube tus ingresos y baja la inflación. Cada reforma suma un billete ficticio a tu álbum.
 
+
+- **Juntalas todas:** comprá sobres de figuritas con tu plata (que se infla), rasgalos y completá un álbum de 60 figuritas en seis páginas: Negocios, Personajes, Billetes, Titulares, Eventos y Doradas. Las repetidas se cambian por la que te falta y cada página completa da un bonus permanente.
+- **¿Te sentís con suerte?** Raspadita, quiniela con bolillero y apuesta al dólar, todo con plata ficticia del juego. Las probabilidades te juegan un poquito en contra (ese es el chiste), hay un resumen de ganadas y perdidas, y nada de lo que ganes o pierdas es plata real.
+
 **Cinco eras, un objetivo**
 
 De un puesto callejero a un mundo con precios de 100 dígitos, pasás por El puesto, El barrio, La ciudad, Las finanzas y la Hiperinflación. En la última era el objetivo cambia: bajar la tasa de inflación mensual a cero. En el camino elegís un **plan económico** (Estabilización, Convertibilidad o Emisión), cada uno con reglas propias.
@@ -107,7 +117,9 @@ Funciona en segundo plano: el juego sigue contando mientras no estás, y la infl
 - Planes económicos (segundo prestige) con reglas distintas en cada vuelta
 - Eventos al azar: feriado largo, aguinaldo, corrida cambiaria, cepo, paro
 - Un desafío final: bajar la inflación a cero
-- 24 logros
+- Álbum de 60 figuritas con sobres, repetidas, chupi y un final secreto
+- Apuestas simuladas solo con plata ficticia: raspadita, quiniela y apuesta al dólar
+- 37 logros
 - Números que crecen de verdad: hasta 1e100 y más, con notación abreviada, científica o de ingeniería
 - Progreso offline (con la inflación corriendo mientras no estás)
 - Cinta de titulares falsos, sacudidas de pantalla, billetes voladores y tinte rojo en la hiperinflación

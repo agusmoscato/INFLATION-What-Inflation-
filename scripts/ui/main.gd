@@ -28,7 +28,13 @@ func _ready() -> void:
 	add_child(sfx)
 	Settings.apply()
 	EventBus.offline_report.connect(func(r: Dictionary) -> void: _pending_offline = r)
+	var win: Window = get_window()
+	if win != null and win.size.y > win.size.x and not (get_viewport() is SubViewport):
+		win.content_scale_size = Vector2i(720, 1280)      # pantalla vertical: layout de 720x1280
 	show_menu()
+	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	if ua.has("--record-clip") and ua.find("--record-clip") + 1 < ua.size():
+		call_deferred("_start_clip", ua[ua.find("--record-clip") + 1])
 	if OS.get_cmdline_user_args().has("--qa-screenshot"):
 		call_deferred("_qa_run")
 
@@ -196,3 +202,21 @@ func _qa_run() -> void:
 	else:
 		printerr("QA FALLA: %d textos sin traducir:\n%s" % [failures.size(), "\n".join(failures)])
 	get_tree().quit(1 if not failures.is_empty() else 0)
+
+
+## Grabación de clips: godot --write-movie out.avi --fixed-fps 30 --resolution 1920x1080 -- --record-clip <nombre>
+func _start_clip(clip_name: String) -> void:
+	SaveSystem.save_path = "user://clip_save.json"
+	SaveSystem.ignore_close = true
+	Settings.path = "user://clip_settings.cfg"
+	Settings.tutorial_done = true
+	Settings.language = "es"
+	Settings.apply()
+	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	if ua.has("--clip-size"):
+		var wh: PackedStringArray = ua[ua.find("--clip-size") + 1].split("x")
+		get_window().size = Vector2i(int(wh[0]), int(wh[1]))
+		print("clip window: ", get_window().size)
+	start_game(false)
+	var d: ClipDirector = ClipDirector.new(self, clip_name)
+	add_child(d)

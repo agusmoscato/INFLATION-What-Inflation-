@@ -25,7 +25,8 @@ func _ready() -> void:
 	if res != "":
 		# Render offscreen a tamaño exacto, emulando el escalado del proyecto (canvas_items + expand).
 		sz = Vector2i(res.get_slice("x", 0).to_int(), res.get_slice("x", 1).to_int())
-		var s: float = minf(float(sz.x) / 1280.0, float(sz.y) / 720.0)
+		var base: Vector2 = Vector2(720.0, 1280.0) if sz.y > sz.x else Vector2(1280.0, 720.0)
+		var s: float = minf(float(sz.x) / base.x, float(sz.y) / base.y)
 		var sv: SubViewport = SubViewport.new()
 		sv.size = sz
 		sv.size_2d_override = Vector2i(int(round(float(sz.x) / s)), int(round(float(sz.y) / s)))
@@ -44,6 +45,7 @@ func _ready() -> void:
 		["02_negocios_era3", _mid],
 		["02b_remarcando", _remark],
 		["02c_decision", _decision],
+		["02d_inflacion_gana", _losing],
 		["03_mejoras", _tab.bind(1)],
 		["04_refugios", _tab.bind(2)],
 		["05_reforma", _tab.bind(3)],
@@ -99,7 +101,10 @@ func _shot(name: String) -> void:
 	if dir == "":
 		dir = "user://"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir) if dir.begins_with("user://") or dir.begins_with("res://") else dir)
-	shot_vp.get_texture().get_image().save_jpg("%s/%s_%s.jpg" % [dir, tag, name], 0.9)
+	if OS.get_environment("SHOT_PNG") != "":
+		shot_vp.get_texture().get_image().save_png("%s/%s_%s.png" % [dir, tag, name])
+	else:
+		shot_vp.get_texture().get_image().save_jpg("%s/%s_%s.jpg" % [dir, tag, name], 0.9)
 
 
 func _g() -> GameScreen:
@@ -158,6 +163,17 @@ func _mid() -> void:
 	EconomyLogic.start_event(m, "aguinaldo", 1)
 	Economy.flush()
 	_g()._select_tab(0)
+
+
+## Estado "la inflación te está ganando": precios subieron y los tuyos no, el ingreso real cayó bajo la referencia.
+func _losing() -> void:
+	var m: GameModel = GameState.m
+	m.pending_choice = {}
+	m.active_events = []
+	m.price_level = m.price_level.mul_f(3.0)
+	m.real_ref = EconomyLogic.income_per_sec(m).div(m.price_level).mul_f(2.5)
+	m.dirty = true
+	Economy.flush()
 
 
 func _remark() -> void:

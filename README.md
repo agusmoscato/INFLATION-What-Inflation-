@@ -109,3 +109,17 @@ Genera 13 capturas (JPG) (menú, juego en Era 1 y 3, las 6 pestañas, hiperinfla
 ## Página de Steam
 
 Borrador en español e inglés (descripción corta y larga, features y etiquetas): [docs/STEAM_PAGE.md](docs/STEAM_PAGE.md).
+
+## Build portable de Windows
+
+`export/windows/InflationWhatInflation_windows.zip` contiene un solo `InflationWhatInflation.exe` (PCK embebido, sin instalar nada). Se genera con:
+
+```
+godot --headless --import
+godot --headless --export-release "Windows Desktop" export/windows/InflationWhatInflation.exe
+```
+
+Requiere las export templates 4.4.1 (`tools/export_all.sh --install-templates`). `export/` está en `.gitignore`.
+
+- **Pendiente:** el .exe sale con el ícono de Godot porque no está `rcedit` (hace falta para incrustar un ícono y los datos de versión). Instalarlo y configurar `application/icon` en el preset.
+- Sin firmar: Windows SmartScreen puede mostrar una advertencia la primera vez.

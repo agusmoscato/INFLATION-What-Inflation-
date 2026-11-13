@@ -47,7 +47,10 @@ func _ready() -> void:
 		["03_mejoras", _tab.bind(1)],
 		["04_refugios", _tab.bind(2)],
 		["05_reforma", _tab.bind(3)],
-		["06_billetes", _tab.bind(4)],
+		["06_album", _album],
+		["06b_sobre_rasgando", _pack, 20],
+		["06c_sobre_figuritas", _noop, 150],
+		["06d_sobre_dorada", _noop, 60],
 		["07_logros", _tab.bind(5)],
 		["08_hiperinflacion", _hyper],
 		["09_reforma_tijera", _reform_anim],
@@ -57,15 +60,22 @@ func _ready() -> void:
 	]
 
 
+var _next_at: int = STEP
+var _idx: int = 0
+
+
+## Cada paso: [nombre_de_la_captura, acción, frames_de_espera_extra_antes_de_la_captura (opcional)].
 func _process(_delta: float) -> void:
 	frame += 1
-	if frame % STEP != 0:
+	if frame < _next_at:
 		return
-	var i: int = frame / STEP - 1
-	if i > 0 and i - 1 < steps.size():
-		_shot(steps[i - 1][0])
-	if i < steps.size():
-		steps[i][1].call()
+	if _idx > 0 and _idx - 1 < steps.size():
+		_shot(steps[_idx - 1][0])
+	if _idx < steps.size():
+		steps[_idx][1].call()
+		var extra: int = int(steps[_idx][2]) if steps[_idx].size() > 2 else 0
+		_next_at = frame + STEP + extra
+		_idx += 1
 	else:
 		SaveSystem.delete_save()
 		DirAccess.remove_absolute(Settings.path)
@@ -184,3 +194,30 @@ func _demo_end() -> void:
 func _credits() -> void:
 	GameState.m.won = true
 	main.show_credits(true)
+
+
+func _noop() -> void:
+	pass
+
+
+func _album() -> void:
+	var m: GameModel = GameState.m
+	m.era = 3
+	m.unlocked["album"] = true
+	m.owned["kiosco"] = 5
+	for id in ["biz_empanadas", "biz_kiosco", "biz_choripan", "biz_almacen", "pj_verdulera", "pj_perro", "pj_contador", "hl_1", "hl_3", "ev_corrida", "gold_3"]:
+		StickerLogic.give(m, id)
+	StickerLogic.give(m, "biz_kiosco")
+	StickerLogic.give(m, "biz_kiosco")
+	m.gamble_won = BigNumber.from_float(1200.0)
+	m.gamble_lost = BigNumber.from_float(5400.0)
+	m.gamble_best = BigNumber.from_float(900.0)
+	m.notifications.clear()
+	_g()._select_tab(4)
+
+
+func _pack() -> void:
+	var m: GameModel = GameState.m
+	var res: Array = StickerLogic.gift_pack(m, ["common", "rare", "common", "golden", "common"])
+	var ov: PackOpening = _g()._open_pack_overlay(res)
+	ov.auto_open(0.3)

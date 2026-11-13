@@ -14,6 +14,12 @@ signal event_choice(id: String)             ## se abrió una decisión (10 s par
 signal event_choice_done(id: String, idx: int)
 signal objective_done(id: String)
 signal unlock(feature: String)
+signal page_done(page: int)
+signal pack_opened
+signal sticker_won(id: String)
+signal secret_end
+signal quiniela_drawn(result: Dictionary)
+signal dollar_settled(result: Dictionary)
 signal refuge_changed
 signal reform_done(banknote_id: int, cut_zeros: int)
 signal plan_done(plan_id: String)

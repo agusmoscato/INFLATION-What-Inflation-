@@ -43,9 +43,9 @@ func run(t) -> void:
 	t.eq(EconomyLogic.reform_gain(m), 501, "(1e15/1e6)^0.3 = 501")
 	# álbum completo da bonus
 	var m3: GameModel = GameModel.new(3)
-	for i in range(12):
+	for i in range(10):
 		m3.album.append(i)
-	t.near(EconomyLogic.album_bonus(m3), 12 * 0.02 + 0.25, "bonus del álbum completo")
+	t.near(EconomyLogic.album_bonus(m3), 10 * 0.02 + 0.25, "bonus del álbum completo")
 	# ingresos reales -> eras
 	var m4: GameModel = GameModel.new(3)
 	EconomyLogic.earn(m4, BigNumber.from_float(6e7))

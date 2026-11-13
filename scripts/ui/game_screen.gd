@@ -38,8 +38,7 @@ var ref_rows: Dictionary = {}
 var ref_note: Label
 var reform_labels: Dictionary = {}
 var plan_buttons: Dictionary = {}
-var album_grid: GridContainer
-var album_info: Label
+var album_page: AlbumPage
 var ach_list: VBoxContainer
 var ach_info: Label
 var event_panel: PanelContainer
@@ -137,6 +136,9 @@ func _connect_bus() -> void:
 	EventBus.event_choice.connect(func(_id: String) -> void: _play("event"))
 	EventBus.objective_done.connect(_on_objective_done)
 	EventBus.unlock.connect(func(f: String) -> void: _unlock_queue.append(f))
+	EventBus.page_done.connect(_on_page_done)
+	EventBus.sticker_won.connect(_on_sticker_won)
+	EventBus.secret_end.connect(_show_secret)
 	EventBus.achievement_unlocked.connect(_on_achievement)
 	EventBus.reform_done.connect(_on_reform_done)
 	EventBus.plan_done.connect(_on_plan_done)
@@ -465,16 +467,10 @@ func _build_reform_page() -> Control:
 
 
 func _build_album_page() -> Control:
-	var pr: Array = _scroll_page()
-	var v: VBoxContainer = pr[1]
-	album_info = _wrap_label("", 15)
-	v.add_child(album_info)
-	album_grid = GridContainer.new()
-	album_grid.columns = 3
-	album_grid.add_theme_constant_override("h_separation", 10)
-	album_grid.add_theme_constant_override("v_separation", 10)
-	v.add_child(album_grid)
-	return pr[0]
+	album_page = AlbumPage.new()
+	album_page.pack_bought.connect(_open_pack_overlay)
+	album_page.message.connect(func(text: String) -> void: _toast(text, UIKit.C_GOLD))
+	return album_page
 
 
 func _build_timba_page() -> Control:
@@ -842,20 +838,7 @@ func _refresh_reform() -> void:
 
 
 func _refresh_album() -> void:
-	var m: GameModel = gm()
-	album_info.text = tr("ui.album.info") % [m.album.size(), GameData.banknotes.size(), int(round(EconomyLogic.album_bonus(m) * 100.0))]
-	if not _album_dirty and album_grid.get_child_count() == GameData.banknotes.size():
-		return
-	_album_dirty = false
-	UIKit.clear_children(album_grid)
-	for b in GameData.banknotes:
-		var v: BanknoteView = BanknoteView.new()
-		var idx: int = int(b["id"])
-		v.note_color = b["color"]
-		v.zeros = 3 + idx * 3
-		v.title = tr(b["name_key"])
-		v.unknown = not m.album.has(idx)
-		album_grid.add_child(v)
+	album_page.refresh(gm())
 
 
 func _refresh_ach() -> void:
@@ -1422,6 +1405,7 @@ func _refresh_hud_extras(m: GameModel) -> void:
 				UIKit.style_tab(b, i == _tab)
 		b.tooltip_text = (tr("tip.tab_locked") % tr("tip.locked_" + feat)) if locked else tr(TAB_TIPS[i])
 	_pump_unlock_queue()
+	_demo_gift(m)
 
 
 func _pump_unlock_queue() -> void:
@@ -1469,3 +1453,79 @@ func _upgrade_tip(u: Dictionary) -> String:
 		"remark_bonus":
 			return tr("tip.upg_remark") % vs
 	return ""
+
+
+# =====================================================================
+#  Parte B: figuritas (sobres, páginas completas, final secreto)
+# =====================================================================
+var _pack_overlay: PackOpening
+
+
+func _open_pack_overlay(results: Array) -> PackOpening:
+	if _pack_overlay != null and is_instance_valid(_pack_overlay):
+		_pack_overlay.queue_free()
+	_pack_overlay = PackOpening.new(results)
+	_pack_overlay.finished.connect(func() -> void:
+		_pack_overlay.queue_free()
+		_pack_overlay = null)
+	add_child(_pack_overlay)
+	return _pack_overlay
+
+
+func _on_page_done(page: int) -> void:
+	_play("win")
+	_toast(tr("toast.page_done") % tr("page." + str(GameData.sticker_pages[page]["id"])), UIKit.C_GREEN)
+	_burst(size / 2.0, UIKit.C_GREEN, 40)
+
+
+func _on_sticker_won(id: String) -> void:
+	_play("coin", 1.4)
+	_toast(tr("toast.sticker") % tr(StickerLogic.def(id)["name_key"]), UIKit.C_GOLD)
+
+
+## Final secreto: álbum de 60 figuritas completo.
+func _show_secret() -> void:
+	var m: GameModel = gm()
+	if m.secret_seen:
+		return
+	m.secret_seen = true
+	_play("win")
+	var ov: ColorRect = ColorRect.new()
+	ov.color = Color(0, 0, 0, 0.88)
+	ov.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(ov)
+	var v: VBoxContainer = VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 18)
+	ov.add_child(v)
+	v.add_child(UIKit.label(tr("secret.title"), 70, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_CENTER, true))
+	var body: Label = UIKit.label(tr("secret.body"), 24, Chalk.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(760, 0)
+	var holder: CenterContainer = CenterContainer.new()
+	holder.add_child(body)
+	v.add_child(holder)
+	var ok: Button = Button.new()
+	ok.text = tr("secret.ok")
+	ok.custom_minimum_size = Vector2(280, 56)
+	UIKit.style_button(ok, UIKit.C_GREEN.darkened(0.2), 22)
+	ok.pressed.connect(ov.queue_free)
+	var bh: CenterContainer = CenterContainer.new()
+	bh.add_child(ok)
+	v.add_child(bh)
+	_burst(size / 2.0, UIKit.C_GOLD, 80)
+
+
+## La demo regala un sobre de figuritas (una sola vez) apenas se desbloquea el álbum.
+func _demo_gift(m: GameModel) -> void:
+	if not m.demo_mode or m.gift_given or not Unlocks.has(m, "album") or not _unlock_queue.is_empty():
+		return
+	if _unlock_sign != null and is_instance_valid(_unlock_sign):
+		return
+	if _pack_overlay != null and is_instance_valid(_pack_overlay):
+		return
+	m.gift_given = true
+	var res: Array = StickerLogic.gift_pack(m)
+	_toast(tr("toast.gift_pack"), UIKit.C_GOLD)
+	_open_pack_overlay(res)

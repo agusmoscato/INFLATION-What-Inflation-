@@ -20,6 +20,9 @@ static var plan_idx: Dictionary = {}
 static var banknotes: Array = []
 static var achievements: Array = []
 static var headlines: Array = []
+static var stickers: Array = []             # {id,page,rarity,art,name_key,joke_key}
+static var sticker_idx: Dictionary = {}
+static var sticker_pages: Array = []         # {id,bonus}
 
 
 static func _read(file_name: String) -> Variant:
@@ -123,6 +126,16 @@ static func ensure() -> void:
 		achievements.append(d)
 
 	headlines = _read("headlines")
+
+	var sd: Dictionary = _read("stickers")
+	sticker_pages = sd["pages"]
+	stickers.clear()
+	sticker_idx.clear()
+	for s in sd["stickers"]:
+		s["name_key"] = "stk." + str(s["id"])
+		s["joke_key"] = "stk.%s.j" % s["id"]
+		sticker_idx[s["id"]] = stickers.size()
+		stickers.append(s)
 
 
 static func _add_upgrade(u: Dictionary) -> void:

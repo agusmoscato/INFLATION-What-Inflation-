@@ -40,6 +40,12 @@ func flush() -> void:
 			"event_choice": EventBus.event_choice.emit(n["args"][0])
 			"objective_done": EventBus.objective_done.emit(n["args"][0])
 			"unlock": EventBus.unlock.emit(n["args"][0])
+			"page_done": EventBus.page_done.emit(n["args"][0])
+			"pack_opened": EventBus.pack_opened.emit()
+			"sticker_won": EventBus.sticker_won.emit(n["args"][0])
+			"secret_end": EventBus.secret_end.emit()
+			"quiniela_drawn": EventBus.quiniela_drawn.emit(n["args"][0])
+			"dollar_settled": EventBus.dollar_settled.emit(n["args"][0])
 			"event_choice_done": EventBus.event_choice_done.emit(n["args"][0], n["args"][1])
 			"refuge_changed": EventBus.refuge_changed.emit()
 			"reform_done": EventBus.reform_done.emit(n["args"][0], n["args"][1])
@@ -106,5 +112,19 @@ func reform() -> bool:
 
 func plan(id: String) -> bool:
 	var ok: bool = EconomyLogic.do_plan(GameState.m, id)
+	flush()
+	return ok
+
+
+# ---- figuritas ----
+## Compra y abre un sobre. Devuelve las 5 figuritas ([] si no alcanza la plata).
+func buy_pack() -> Array:
+	var res: Array = StickerLogic.buy_pack(GameState.m)
+	flush()
+	return res
+
+
+func trade_sticker(id: String) -> bool:
+	var ok: bool = StickerLogic.trade(GameState.m, id)
 	flush()
 	return ok

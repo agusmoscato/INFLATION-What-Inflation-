@@ -88,6 +88,9 @@ var infl_up_mult: float = 1.0
 var fee_mult: float = 1.0
 var remark_bonus_mult: float = 1.0
 var refuge_mult: float = 1.0                    # bono de cartera diversificada
+var sticker_infl_mult: float = 1.0              # bonus permanente de páginas del álbum
+var sticker_remark_mult: float = 1.0
+var sticker_choice_bonus: float = 0.0
 
 ## Cola de notificaciones para la UI: [{sig: String, args: Array}]
 var notifications: Array = []

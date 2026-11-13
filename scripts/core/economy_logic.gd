@@ -73,6 +73,11 @@ static func recalc(m: GameModel) -> void:
 				m.fee_mult *= v
 			"remark_bonus":
 				m.remark_bonus_mult *= v
+	var sb: Dictionary = StickerLogic.bonuses(m)
+	gm *= 1.0 + float(sb["income"])
+	m.sticker_infl_mult = maxf(0.5, 1.0 - float(sb["inflation"]))
+	m.sticker_remark_mult = 1.0 + float(sb["remark"])
+	m.sticker_choice_bonus = float(sb["choice_time"])
 	m.global_mult = gm
 	var base: BigNumber = BigNumber.zero()
 	for def in GameData.businesses:
@@ -161,7 +166,7 @@ static func inflation_rate(m: GameModel) -> float:
 	var pd: Dictionary = plan_def(m)
 	if not pd.is_empty():
 		r *= float(pd["inflation_mult"])
-	r *= m.infl_up_mult
+	r *= m.infl_up_mult * m.sticker_infl_mult
 	r *= event_inflation_mult(m)
 	return r
 
@@ -372,7 +377,7 @@ static func remark(m: GameModel, manual: bool = true) -> BigNumber:
 		m.remarks += 1
 		m.remark_cd = B("remark_cooldown")
 	if on_time:
-		bonus = income_per_sec(m).mul_f(B("remark_bonus_seconds") * m.remark_bonus_mult)
+		bonus = income_per_sec(m).mul_f(B("remark_bonus_seconds") * m.remark_bonus_mult * m.sticker_remark_mult)
 		earn(m, bonus)
 		m.remark_window = 0.0
 	if manual:
@@ -477,12 +482,13 @@ static func default_choice(id: String) -> int:
 
 ## Abre la decisión de un evento (10 s para elegir). Si `choice` >= 0 se resuelve en el acto.
 static func start_event(m: GameModel, id: String, choice: int = -1) -> void:
+	ensure_fresh(m)
 	m.events_seen += 1
 	m.push("event_started", [id])
 	if choice >= 0:
 		apply_choice(m, id, choice)
 		return
-	m.pending_choice = {"id": id, "remaining": CHOICE_SECONDS}
+	m.pending_choice = {"id": id, "remaining": CHOICE_SECONDS + m.sticker_choice_bonus, "total": CHOICE_SECONDS + m.sticker_choice_bonus}
 	m.push("event_choice", [id])
 
 
@@ -503,6 +509,9 @@ static func apply_choice(m: GameModel, id: String, idx: int) -> void:
 	var ch: Dictionary = choices[clampi(idx, 0, choices.size() - 1)]
 	for fx in ch["fx"]:
 		_apply_fx(m, id, fx)
+	# a veces el evento deja una figurita de premio
+	if m.rng.randf() < 0.3:
+		StickerLogic.award(m)
 
 
 static func _apply_fx(m: GameModel, id: String, fx: Dictionary) -> void:
@@ -657,6 +666,8 @@ static func do_reform(m: GameModel) -> bool:
 		m.refuge_units[r["id"]] = m.refuge_units[r["id"]].mul_f(B("refuge_carry"))
 	m.reforms += 1
 	_reset_run(m)
+	if note >= 0:
+		StickerLogic.give(m, "note_%d" % note)
 	m.push("reform_done", [note, cut])
 	if m.demo_mode:
 		m.demo_finished = true
@@ -784,6 +795,9 @@ static func stats(m: GameModel) -> Dictionary:
 		"reforms": m.reforms, "plans": m.plans_done, "album": m.album.size(),
 		"minutes": m.time_played / 60.0, "zeros_cut": m.zeros_cut, "measures": m.measures,
 		"won": 1 if m.won else 0, "rate_pct": inflation_rate(m) * 100.0,
+		"stickers": m.stickers.size(), "pages_done": StickerLogic.pages_done(m), "packs": m.packs_opened, "trades": m.trades,
+		"golden_owned": _golden_owned(m), "scratches": m.scratches, "quiniela_wins": m.quiniela_wins, "dollar_wins": m.dollar_wins,
+		"pozo_wins": m.pozo_wins, "gold_scratches": m.gold_scratches, "loss_streak_max": m.loss_streak_max,
 		"refuge_any": 1 if not refuge_real.is_zero() else 0,
 		"money_log10": ml if not is_inf(ml) else -1.0,
 		"power_log10": pl if not is_inf(pl) else -1.0,
@@ -831,3 +845,11 @@ static func lag_loss(m: GameModel, income_nominal: BigNumber) -> BigNumber:
 	if not needs_remark(m):
 		return BigNumber.zero()
 	return income_nominal.mul(m.price_level.div(m.my_prices).sub(BigNumber.one()))
+
+
+static func _golden_owned(m: GameModel) -> int:
+	var n: int = 0
+	for id in m.stickers:
+		if StickerLogic.def(id)["rarity"] == "golden":
+			n += 1
+	return n

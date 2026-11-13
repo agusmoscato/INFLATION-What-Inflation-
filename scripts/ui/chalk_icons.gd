@@ -134,16 +134,29 @@ const ICONS: Dictionary = {
 
 
 ## Dibuja el ícono `id` dentro de `rect` (llamar desde _draw de un CanvasItem).
-static func draw(ci: CanvasItem, id: String, rect: Rect2, seed_v: int = 1) -> void:
-	if not ICONS.has(id):
+static func ops_for(id: String) -> Array:
+	if ICONS.has(id):
+		return ICONS[id]
+	if ChalkDoodles.DOODLES.has(id):
+		return ChalkDoodles.DOODLES[id]
+	if ChalkDoodles.GOLD_ALIAS.has(id):
+		return ops_for(str(ChalkDoodles.GOLD_ALIAS[id]))
+	return []
+
+
+static func draw(ci: CanvasItem, id: String, rect: Rect2, seed_v: int = 1, tint: Color = Color(0, 0, 0, 0)) -> void:
+	var ops: Array = ops_for(id)
+	if ops.is_empty():
 		return
+	if ChalkDoodles.GOLD_ALIAS.has(id):
+		tint = Chalk.YELLOW
 	var pad: float = rect.size.x * 0.06
 	var r: Rect2 = rect.grow(-pad)
 	var w: float = maxf(2.0, r.size.x * 0.05)
 	var i: int = 0
-	for op in ICONS[id]:
+	for op in ops:
 		var kind: String = op[0]
-		var col: Color = Chalk.key(op[1])
+		var col: Color = tint if tint.a > 0.0 else Chalk.key(op[1])
 		var sv: int = seed_v * 31 + i * 7
 		match kind:
 			"P":

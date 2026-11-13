@@ -41,3 +41,30 @@ RESULTADO: PASA (limite 60 s sin objetivo alcanzable)
 ```
 
 Con la cadena de objetivos actual el jugador nuevo siempre tiene algo alcanzable: en los tramos donde el objetivo principal tarda mas de 60 s (por ejemplo el cartel gigante de $3 K en el minuto 6) la notita muestra una meta chica comprable en menos de 45 s. El detalle de tiempos de cada objetivo esta en `docs/qa_newplayer.csv`.
+
+## Parte B: coleccionables
+
+### B1. Álbum de figuritas del barrio
+- 60 figuritas en 6 páginas de 10: **Negocios, Personajes del barrio, Billetes, Titulares, Eventos y Doradas** (`data/stickers.json`).
+- Rarezas: común (borde blanco), rara (celeste) y dorada (amarilla, con brillo de tiza animado: una banda diagonal que barre la figurita y destellos que titilan).
+- Todas dibujadas por código en estilo pizarra caricaturesca: negocios con los íconos de tiza, 10 personajes con cara y accesorio propios (verdulera, kiosquero, taxista, abuela, perro, gato, contador, economista, pibe del delivery y cartonero), billetes en miniatura, y 30 garabatos para titulares, eventos y doradas. Cada una tiene un chiste corto (tooltip).
+- El álbum de billetes pasó a ser la página **Billetes** (10 billetes). Se llena con las reformas, como antes; las figuritas se conservan entre reformas.
+
+### B2. Sobres
+- Se compran en la pestaña Álbum una vez abierto el Kiosco: 5 figuritas por sobre. El precio es 45 s de tus ingresos (con un piso que sigue al nivel de precios), así que **sube con la inflación**.
+- Abrirlos: se rasga arrastrando el mouse por el borde (con partículas de tiza y sonido de rasgado), las figuritas salen de a una dándose vuelta, el sello **¡REPE!** marca las repetidas, **¡NUEVA!** las que te faltaban y las **doradas** disparan un sonido especial, una lluvia de tiza y un temblor. "Abrir todo" salta la animación.
+- Probabilidades por figurita: dorada 3 %, rara 22 %, común 75 %. Los billetes no salen de sobres.
+
+### B3. Repetidas y chupi
+- Contador "Tengo X/60 - Me falta Y - Repetidas Z".
+- **Chupi:** 5 repetidas se cambian por 1 figurita faltante a elección (las doradas cuestan 15; sin eso, las 10 doradas serían demasiado fáciles de completar).
+
+### B4. Recompensas
+- Cada página completa da un bonus permanente: Negocios +10 % ingresos, Personajes -5 % inflación, Billetes +25 % ingresos (más 2 % por billete), Titulares +50 % al bono de remarcar a tiempo, Eventos +5 s para decidir y Doradas +15 % ingresos y -10 % inflación.
+- Álbum completo: logro "El Gran Coleccionista" y un **final secreto** (pantalla de pizarra).
+- Los bonus no afectan al simulador (el bot no colecciona), así que los tiempos de balance no cambian.
+
+### B5. Más fuentes de figuritas
+- Los eventos dejan una figurita de premio el 30 % de las veces (rareza 78 % común, 20 % rara, 2 % dorada).
+- La demo regala un sobre una sola vez al abrirse el álbum.
+- La timba (parte C) también da sobres y doradas.

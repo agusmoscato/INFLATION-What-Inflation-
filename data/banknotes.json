@@ -8,7 +8,5 @@
   {"id": 6,  "name_key": "note.6",  "color": "#b0a0c4"},
   {"id": 7,  "name_key": "note.7",  "color": "#a0c4a0"},
   {"id": 8,  "name_key": "note.8",  "color": "#a0b8c4"},
-  {"id": 9,  "name_key": "note.9",  "color": "#c4a0b8"},
-  {"id": 10, "name_key": "note.10", "color": "#d0c080"},
-  {"id": 11, "name_key": "note.11", "color": "#d09080"}
+  {"id": 9,  "name_key": "note.9",  "color": "#c4a0b8"}
 ]

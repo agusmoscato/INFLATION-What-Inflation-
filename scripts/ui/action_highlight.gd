@@ -8,6 +8,7 @@ var hint: String = ""
 var idle: float = 0.0           ## segundos sin que el jugador toque nada (lo actualiza GameScreen)
 ## De qué lado viene la flecha: "left", "right", "top", "bottom".
 var side: String = "left"
+var arrow_on: bool = true      ## false = solo el brillo (por ejemplo, una pestaña recién desbloqueada)
 var _t: float = 0.0
 var _grow: float = 0.0
 var _label: Label
@@ -38,7 +39,8 @@ func _ready() -> void:
 	add_child(_label)
 
 
-func set_target(c: Control, text: String, from_side: String) -> void:
+func set_target(c: Control, text: String, from_side: String, with_arrow: bool = true) -> void:
+	arrow_on = with_arrow
 	target = c
 	hint = text
 	side = from_side
@@ -57,6 +59,10 @@ func _process(delta: float) -> void:
 	_grow = move_toward(_grow, 1.0 if idle >= 10.0 else 0.0, delta * 1.5)
 	var show_it: bool = target != null and is_instance_valid(target) and target.is_visible_in_tree()
 	visible = show_it
+	if show_it and not is_in_group("attention"):
+		add_to_group("attention")      # el QA verifica que nunca haya dos notas o flechas a la vez
+	elif not show_it and is_in_group("attention"):
+		remove_from_group("attention")
 	if not show_it:
 		return
 	_compute()
@@ -88,8 +94,8 @@ func _compute() -> void:
 			anchor = Vector2(_ring.get_center().x, _ring.end.y)
 	_tip = anchor - _dir * bob
 	_tail = _tip - _dir * alen
-	_label.visible = hint != ""
-	if hint == "":
+	_label.visible = hint != "" and arrow_on
+	if hint == "" or not arrow_on:
 		return
 	_label.text = hint
 	_label.add_theme_font_size_override("font_size", int(24.0 + 10.0 * _grow))
@@ -125,6 +131,8 @@ func _draw() -> void:
 			pts.append(p + _ring.position)
 		draw_polyline(pts, Color("#1c1508", 0.55), 8.0 + _pulse * 2.0, true)
 		draw_polyline(pts, col, 4.5 + _pulse * 2.0, true)
+	if not arrow_on:
+		return
 	# flecha de tiza
 	var n: Vector2 = Vector2(-_dir.y, _dir.x)
 	for pass_i in range(2):

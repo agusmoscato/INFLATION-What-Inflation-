@@ -49,10 +49,12 @@ func _init() -> void:
 	h.add_child(v)
 	_title = UIKit.label("", 22, Chalk.GREEN, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_title.custom_minimum_size = Vector2(200, 0)
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_title)
 	_sub = UIKit.label("", 15, UIKit.C_TEXT)
 	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_sub.custom_minimum_size = Vector2(200, 0)
 	_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_sub)
 	set_state(true, true)

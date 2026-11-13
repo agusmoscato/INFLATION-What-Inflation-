@@ -1,22 +1,22 @@
-t_seg,plata,tipo_destacado,id,objetivo,tutorial,real_ms,pestana,cartel_desbloqueo
-000,$2,click,,click10,0,3053,0,false
-015,$22,4,buy,empanadas,inflation,2,4543,0,false
-030,$0,66,remark,,remark,3,6035,0,false
-045,$7,36,click,,click1,4,7536,0,true
-060,$81,1,buy,empanadas,cart_a,4,9033,1,true
-075,$85,4,click,,cart_a,4,10533,0,true
-090,$82,click,,cart_a,4,12049,0,true
-105,$96,3,click,,cart_a,4,13559,0,false
-120,$51,7,click,,kiosk2,4,15034,4,true
-135,$134,click,,kiosk2,4,16533,0,true
-150,$135,click,,kiosk3,4,18038,0,true
-165,$177,click,,kiosk3,4,19534,0,true
-180,$153,click,,kiosk5,4,21037,0,true
-195,$219,click,,kiosk5,4,22536,0,false
-210,$132,click,,kiosk_a,4,24047,0,false
-225,$66,click,,kiosk_a,4,25535,0,false
-240,$5,17 K,remark,,kiosk_a,4,44524,0,false
-255,$1,78 K,buy,kiosco,remarkbonus,4,48367,0,false
-270,$307,objective,,remarkbonus,4,49821,0,false
-285,$1,49 K,objective,,remarkbonus,4,51362,0,false
-300,$1,27 K,objective,,remarkbonus,4,52834,0,false
+t_seg,plata,tipo_destacado,id,objetivo,tutorial,pestana,cartel_desbloqueo,notas_visibles
+000,$1,click,,click10,0,0,false,1
+015,$7,13,objective,,cart3,2,0,false,1
+030,$14,2,objective,,cart3,2,0,false,1
+045,$20,6,objective,,kiosk,2,0,false,1
+060,$26,1,objective,,kiosk,2,0,false,1
+075,$29,3,objective,,kiosk,2,0,false,1
+090,$26,6,objective,,kiosk,2,0,false,1
+105,$16,9,objective,,kiosk,2,0,false,1
+120,$65,objective,,kiosk,2,0,false,1
+135,$43,2,objective,,kiosk,3,0,false,1
+150,$11,6,objective,,kiosk,3,0,false,1
+165,$66,7,objective,,kiosk,2,0,false,1
+180,$16,3,objective,,kiosk,2,0,false,1
+195,$73,4,objective,,kiosk,2,0,false,1
+210,$132,buy,empanadas,kiosk,2,0,false,1
+225,$60,5,objective,,kiosk,2,0,false,1
+240,$121,objective,,kiosk,2,0,false,1
+255,$90,3,objective,,kiosk,5,0,false,1
+270,$176,objective,,kiosk,5,0,false,1
+285,$125,objective,,kiosk2,5,0,false,1
+300,$38,9,objective,,kiosk2,5,0,false,1

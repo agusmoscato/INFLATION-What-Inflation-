@@ -97,3 +97,12 @@ static func sync_silent(m: GameModel) -> void:
 	for f in FEATURES:
 		if not m.unlocked.has(f) and is_met(m, f):
 			m.unlocked[f] = m.time_played
+
+
+## Para pruebas, capturas y clips: deja todas las mecánicas disponibles (la demo no incluye la quiniela ni el dólar).
+static func unlock_all(m: GameModel) -> void:
+	for f in FEATURES:
+		if m.demo_mode and (f == "quiniela" or f == "dollar"):
+			continue
+		if not m.unlocked.has(f):
+			m.unlocked[f] = m.time_played

@@ -1,24 +1,25 @@
 evento,minuto,detalle
-era,27.2,era=2
-reforma,40.0,n=1 cred=6 P=1e1.7
-reforma,80.0,n=2 cred=34 P=1e2.3
-era,97.4,era=3
-reforma,120.0,n=3 cred=177 P=1e2.6
-reforma,160.0,n=4 cred=1043 P=1e2.1
-era,176.5,era=4
-plan,176.5,plan=emission n=1
-reforma,216.5,n=5 cred=25387 P=1e6.5
-plan,216.5,plan=convertibility n=2
-reforma,256.5,n=6 cred=73194 P=1e3.3
-plan,256.6,plan=stabilization n=3
-reforma,296.6,n=7 cred=126112 P=1e1.8
-reforma,336.6,n=8 cred=367170 P=1e2.0
-era,338.0,era=5
-medida,339.0,medidas=1
-medida,351.0,medidas=2
-medida,371.5,medidas=3
-reforma,376.6,n=9 cred=4952275 P=1e3.9
-medida,389.5,medidas=4
-medida,402.0,medidas=5
-victoria,402.5,inflación 0 (medidas=5)
-fin,402.5,era=5 cred=4952275 reformas=9 planes=3 compras=921 max_espera_s=1320 medidas=5 refugios={ "parked": 1957; "sold": 0; "event_sells": 0; "strikes": 0; "events": 164; "event_feriado_1": 40; "event_paro_1": 23; "event_corrida_1": 24; "event_cepo_1": 26; "event_paro_0": 15; "event_aguinaldo_1": 34; "event_corrida_0": 2 }
+era,28.7,era=2
+reforma,40.0,n=1 cred=6 P=1e1.5
+reforma,80.0,n=2 cred=24 P=1e2.6
+era,104.5,era=3
+reforma,120.0,n=3 cred=120 P=1e2.7
+reforma,160.0,n=4 cred=679 P=1e2.2
+era,181.5,era=4
+plan,181.5,plan=emission n=1
+reforma,221.5,n=5 cred=20743 P=1e6.7
+plan,221.5,plan=convertibility n=2
+reforma,261.5,n=6 cred=64722 P=1e3.4
+plan,261.6,plan=stabilization n=3
+reforma,301.6,n=7 cred=106353 P=1e1.9
+reforma,341.6,n=8 cred=280209 P=1e1.9
+era,366.4,era=5
+medida,371.5,medidas=1
+medida,393.3,medidas=2
+reforma,399.2,n=9 cred=3021325 P=1e5.4
+medida,407.5,medidas=3
+medida,418.8,medidas=4
+reforma,445.1,n=10 cred=12285048 P=1e2.4
+medida,458.0,medidas=5
+victoria,458.5,inflación 0 (medidas=5)
+fin,458.5,era=5 cred=12285048 reformas=10 planes=3 compras=949 max_espera_s=2132 medidas=5 refugios={ "parked": 2196; "sold": 0; "event_sells": 0; "strikes": 0; "events": 187; "event_corrida_0": 9; "event_paro_0": 13; "event_paro_1": 24; "event_corrida_1": 28; "event_cepo_1": 29; "event_aguinaldo_1": 38; "event_feriado_1": 46 }

@@ -142,6 +142,7 @@ func _early() -> void:
 func _mid() -> void:
 	var m: GameModel = GameState.m
 	m.era = 3
+	Unlocks.unlock_all(m)
 	m.reforms = 3
 	m.credibility = 40
 	m.album = [0, 1, 2]
@@ -196,6 +197,7 @@ func _tab(i: int) -> void:
 func _hyper() -> void:
 	var m: GameModel = GameState.m
 	m.era = 5
+	Unlocks.unlock_all(m)
 	m.measures = 1
 	m.active_events = []
 	EconomyLogic.start_event(m, "cepo", 1)
@@ -232,6 +234,7 @@ func _noop() -> void:
 func _album() -> void:
 	var m: GameModel = GameState.m
 	m.era = 3
+	Unlocks.unlock_all(m)
 	m.unlocked["album"] = true
 	m.owned["kiosco"] = 5
 	for id in ["biz_empanadas", "biz_kiosco", "biz_choripan", "biz_almacen", "pj_verdulera", "pj_perro", "pj_contador", "hl_1", "hl_3", "ev_corrida", "gold_3"]:
@@ -255,6 +258,7 @@ func _pack() -> void:
 func _timba() -> void:
 	var m: GameModel = GameState.m
 	m.era = 3
+	Unlocks.unlock_all(m)
 	m.money = BigNumber.from_string("2.5e14")
 	m.base_income = BigNumber.from_float(5e9)
 	m.pool_real = BigNumber.from_float(4.2e11)

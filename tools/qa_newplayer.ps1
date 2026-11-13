@@ -27,9 +27,10 @@ foreach ($s in $shots) {
   $img = [System.Drawing.Image]::FromFile($s.FullName)
   $x = ($i % $cols) * $cw; $y = [math]::Floor($i / $cols) * $ch
   $g.DrawImage($img, $x, $y, $cw, $ch)
-  $sec = [int]($s.BaseName -replace "t_", "")
+  $sec = [int]($s.BaseName.Substring(2, 3))
   $label = "{0}:{1:00}" -f [math]::Floor($sec / 60), ($sec % 60)
-  $g.FillRectangle([System.Drawing.Brushes]::Black, $x, $y + $ch - 28, 70, 28)
+  if ($s.BaseName -like "*_cartel") { $label += " cartel" }
+  $g.FillRectangle([System.Drawing.Brushes]::Black, $x, $y + $ch - 28, 150, 28)
   $g.DrawString($label, $font, [System.Drawing.Brushes]::Yellow, $x + 3, $y + $ch - 27)
   $img.Dispose(); $i++
 }
@@ -39,3 +40,10 @@ $p.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing
 $sheet.Save((Join-Path (Get-Location) "docs\qa\primeros_5_min.jpg"), $enc, $p)
 $g.Dispose(); $sheet.Dispose()
 Write-Host "Hoja de contacto: docs\qa\primeros_5_min.jpg ($($shots.Count) capturas)"
+$res = Join-Path $src "result.txt"
+if (Test-Path $res) {
+  $lines = Get-Content $res
+  Write-Host ("QA jugador nuevo (carteles y notas): " + $lines[0])
+  $lines | Select-Object -Skip 1 | Where-Object { $_ } | ForEach-Object { Write-Host "  $_" }
+  if ($lines[0] -ne "PASS") { exit 1 }
+}

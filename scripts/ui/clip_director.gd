@@ -50,7 +50,7 @@ func _ready() -> void:
 		_:
 			push_error("Clip desconocido: " + clip)
 			get_tree().quit(1)
-	Unlocks.sync_silent(_m())
+	Unlocks.unlock_all(_m())
 	_m().notifications.clear()
 
 

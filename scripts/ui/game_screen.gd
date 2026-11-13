@@ -271,7 +271,7 @@ func _build_left() -> Control:
 	top_row.add_child(menu_btn)
 	empanada = EmpanadaButton.new()
 	empanada.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	empanada.custom_minimum_size = Vector2(250, 160)
+	empanada.custom_minimum_size = Vector2(230, 130)
 	empanada.pressed.connect(func(_pos: Vector2) -> void: Economy.click())
 	v.add_child(empanada)
 	click_label = UIKit.label("", 15, UIKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
@@ -287,7 +287,7 @@ func _build_left() -> Control:
 	rp.add_child(rv)
 	remark_btn = Button.new()
 	remark_btn.text = tr("ui.remark")
-	remark_btn.custom_minimum_size = Vector2(0, 50)
+	remark_btn.custom_minimum_size = Vector2(0, 42)
 	UIKit.style_button(remark_btn, UIKit.C_BLUE, 20)
 	remark_btn.pressed.connect(_on_remark_pressed)
 	rv.add_child(remark_btn)
@@ -299,8 +299,9 @@ func _build_left() -> Control:
 	remark_bar.add_theme_stylebox_override("background", UIKit.box(Color("#0f1820"), 4))
 	remark_bar.add_theme_stylebox_override("fill", UIKit.box(UIKit.C_GREEN, 4))
 	rv.add_child(remark_bar)
-	remark_info = UIKit.label("", 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	remark_info = UIKit.label("", 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	remark_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	remark_info.custom_minimum_size = Vector2(200, 0)      # sin ancho mínimo un texto con salto de línea automático se estira a miles de píxeles de alto
 	rv.add_child(remark_info)
 	left_col = col
 	return col
@@ -636,6 +637,7 @@ func _process(delta: float) -> void:
 	if _screen_age > 8.0 and Settings.quality < 2 and DisplayServer.get_name() != "headless":
 		if _fps_watch.update(Engine.get_frames_per_second(), delta):
 			_toast(tr("ui.fps_hint"), UIKit.C_GOLD)
+	_era_flash = maxf(0.0, _era_flash - delta)
 	_fast += delta
 	_reform_armed = maxf(0.0, _reform_armed - delta)
 	if _fast >= 0.1:
@@ -986,21 +988,47 @@ func _on_business_bought(_id: String, _n: int) -> void:
 	_burst(get_global_mouse_position(), UIKit.C_GOLD, 10)
 
 
+## A partir de este aumento mensual el garabato grande ("¡AUMENTO!") se justifica; los normales (3 %) van con un sello chico.
+const STRONG_HIKE: float = 0.12
+var _era_flash: float = 0.0
+
+
 func _on_month_passed(rate: float) -> void:
 	_scratch_costs()
+	var strong: bool = rate >= STRONG_HIKE or _era_flash > 0.0
 	_play("raise", clampf(1.0 - rate * 0.3, 0.6, 1.0))
-	_shake(clampf(4.0 + rate * 14.0, 4.0, 22.0), 0.35)
-	# garabato gigante que se dibuja rápido y se borra; abajo del HUD, nunca encima
-	var hud_bottom: float = 150.0
-	if money_label != null:
-		hud_bottom = money_label.get_global_rect().end.y + 70.0
-	raise_sign.size = Vector2(size.x, 170.0)
-	raise_sign.position = Vector2(0.0, hud_bottom + (size.y - hud_bottom) * 0.22)
-	raise_sign.font_size = 84 if size.x > 900.0 else 60
-	raise_sign.modulate.a = 0.8
-	raise_sign.show_text(tr("ui.raise") % BigNumber.from_float(rate * 100.0).format(1), int(rate * 1000.0) + 1)
+	_shake(clampf(4.0 + rate * 14.0, 3.0, 22.0) * (1.0 if strong else 0.5), 0.35)
+	var txt: String = tr("ui.raise") % BigNumber.from_float(rate * 100.0).format(1)
+	if strong:
+		# garabato grande, solo en la zona de arriba (sobre el semáforo de inflación), nunca sobre la lista de negocios
+		raise_sign.size = Vector2(560.0, 110.0)
+		raise_sign.position = Vector2(race_meter.global_position.x + race_meter.size.x / 2.0 - 280.0, race_meter.global_position.y - 6.0)
+		raise_sign.font_size = 58
+		raise_sign.modulate.a = 0.9
+		raise_sign.show_text(txt, int(rate * 1000.0) + 1, 0.5)
+	else:
+		_stamp("+%s %%" % BigNumber.from_float(rate * 100.0).format(1))
 	Chalk.wobble(rate_label, 0.12, 0.6)
 	_upg_dirty = true
+
+
+## Sello chico y rojo al lado del semáforo: avisa un aumento normal sin tapar nada.
+func _stamp(text: String) -> void:
+	var l: Label = UIKit.label(text, 30, Chalk.RED, HORIZONTAL_ALIGNMENT_CENTER, true)
+	l.add_theme_color_override("font_outline_color", Color("#1c1508"))
+	l.add_theme_constant_override("outline_size", 6)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.size = Vector2(120, 40)
+	l.pivot_offset = l.size / 2.0
+	l.position = race_meter.global_position + Vector2(race_meter.size.x + 4.0, 6.0)      # a la derecha del semáforo, sin tapar su texto
+	l.rotation = -0.08
+	l.scale = Vector2(1.6, 1.6)
+	fx_layer.add_child(l)
+	var tw: Tween = create_tween()
+	tw.tween_property(l, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.9)
+	tw.tween_property(l, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(l.queue_free)
 
 
 func _on_remarked(bonus: BigNumber, on_time: bool) -> void:
@@ -1010,6 +1038,7 @@ func _on_remarked(bonus: BigNumber, on_time: bool) -> void:
 		_toast(tr("ui.remark_bonus") % UIKit.money(bonus), UIKit.C_GREEN)
 
 func _on_era_changed(era: int) -> void:
+	_era_flash = 4.0
 	_play("win")
 	_toast(tr("ui.era_reached") % tr(GameData.era_def(era)["name_key"]), UIKit.C_GOLD)
 	_upg_dirty = true
@@ -1088,6 +1117,10 @@ func _update_juice(delta: float) -> void:
 
 
 func _floating_text(text: String, pos: Vector2, color: Color) -> void:
+	if _tutorial_note_open():
+		_fx_skip = not _fx_skip      # con una nota del tutorial a la vista: la mitad de los "+$" flotantes
+		if _fx_skip:
+			return
 	var l: Label = UIKit.label(text, 22, color)
 	l.add_theme_color_override("font_outline_color", Color.BLACK)
 	l.add_theme_constant_override("outline_size", 5)
@@ -1100,7 +1133,8 @@ func _floating_text(text: String, pos: Vector2, color: Color) -> void:
 	tw.tween_callback(l.queue_free)
 
 
-func _burst(pos: Vector2, color: Color, amount: int) -> void:
+func _burst(pos: Vector2, color: Color, amount_in: int) -> void:
+	var amount: int = maxi(1, amount_in / 2) if _tutorial_note_open() else amount_in      # y la mitad de las partículas
 	if fx_layer == null:
 		return
 	var p: CPUParticles2D = Chalk.particles()
@@ -1374,6 +1408,8 @@ func _tutorial_target(step: int) -> Control:
 		1:
 			return biz_rows[0]["btn"] if _tab == 0 else tab_buttons[0]
 		2:
+			return biz_rows[1]["btn"] if _tab == 0 else tab_buttons[0]
+		3:
 			return rate_label
 		_:
 			return remark_btn
@@ -1476,14 +1512,17 @@ func _refresh_hud_extras(m: GameModel) -> void:
 
 
 func _pump_unlock_queue() -> void:
-	if (_unlock_sign != null and is_instance_valid(_unlock_sign)) or _unlock_queue.is_empty() or (_guide != null and is_instance_valid(_guide)):
+	# un cartel por vez: si hay uno abierto (o una animación grande), el siguiente espera
+	if (_unlock_sign != null and is_instance_valid(_unlock_sign)) or _unlock_queue.is_empty() or _blocking_overlay():
 		return
 	var f: String = _unlock_queue.pop_front()
 	var target: Control = tab_buttons[0]
 	if Unlocks.TAB_OF.has(f):
 		target = tab_buttons[int(Unlocks.TAB_OF[f])]
-	elif f == "events":
+	elif f == "inflation" or f == "events":
 		target = rate_label
+	elif f == "remark":
+		target = remark_btn
 	_unlock_sign = UnlockSign.new()
 	fx_layer.add_child(_unlock_sign)
 	_unlock_sign.show_for(f, target)
@@ -1660,7 +1699,7 @@ func _apply_layout() -> void:
 	body.vertical = portrait
 	left_col.custom_minimum_size = Vector2(0, 0) if portrait else Vector2(340, 0)
 	left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if portrait else Control.SIZE_FILL
-	empanada.custom_minimum_size = Vector2(240, 150) if portrait else Vector2(250, 160)
+	empanada.custom_minimum_size = Vector2(240, 150) if portrait else Vector2(230, 130)
 	for i in range(tab_buttons.size()):
 		var b: Button = tab_buttons[i]
 		b.add_theme_font_size_override("font_size", maxi(int((14 if portrait else 20) * UIKit.FS), UIKit.MIN_FONT))
@@ -1692,10 +1731,10 @@ func _place_lock(b: Button, li: Node) -> void:
 ## Las primeras 2 eras muestran solo la plata, el semáforo, la empanada y los negocios. La tasa exacta y el poder
 ## adquisitivo aparecen cuando el tutorial los presenta (paso 3), y remarcar cuando presenta el paso 4. Desde la Era 3 todo.
 func _apply_detail(m: GameModel) -> void:
-	var step: int = EconomyLogic.tutorial_step(m)
-	var full: bool = m.era >= 3 or m.reforms > 0
-	var show_rate: bool = full or step >= 2
-	var show_remark: bool = full or step >= 3
+	# Cada mecánica aparece cuando la cadena de desbloqueos (Unlocks) la presenta: la tasa exacta con la inflación (minuto 2)
+	# y remarcar más tarde (minuto 4). Las partidas viejas lo tienen todo.
+	var show_rate: bool = Unlocks.has(m, "inflation")
+	var show_remark: bool = Unlocks.has(m, "remark")
 	rate_box.visible = show_rate
 	power_label.visible = show_rate
 	remark_panel.visible = show_remark
@@ -1743,18 +1782,25 @@ func _update_advice(delta: float) -> void:
 	var m: GameModel = gm()
 	var rec: Dictionary = _override if _override_t > 0.0 else Advisor.recommend(m, _seen_tabs)
 	_advice = rec
+	# UNA sola cosa a la vez: cartel de desbloqueo > nota del tutorial > acción destacada. Lo de menor prioridad espera.
+	var sign_open: bool = _unlock_sign != null and is_instance_valid(_unlock_sign) and not _unlock_sign._closing
+	var guide_alive: bool = _guide != null and is_instance_valid(_guide)
+	if guide_alive:
+		_guide.suppressed = sign_open
+	var guide_visible: bool = guide_alive and not sign_open and not EconomyLogic.tutorial_waiting(m) and EconomyLogic.tutorial_step(m) < EconomyLogic.TUTORIAL_STEPS      # la nota del tutorial manda (se calcula acá para no superponerse ni un cuadro)
 	var tgt: Dictionary = {}
-	# durante el tutorial mandan sus propias flechas
-	if (_guide == null or not is_instance_valid(_guide)) and not _blocking_overlay() and str(rec.get("kind", "")) != "":
+	if not sign_open and not guide_visible and not _blocking_overlay() and str(rec.get("kind", "")) != "":
 		tgt = _advice_target(rec)
 	if tgt.is_empty():
 		_highlight.set_target(null, "", "left")
 		_highlight.visible = false
 	else:
 		_highlight.idle = _idle
-		_highlight.set_target(tgt["ctl"], tr("ui." + str(rec["why"])) if str(rec["why"]) != "" else "", str(tgt["side"]))
+		# una pestaña recién desbloqueada solo brilla (sin flecha ni cartel); lo demás lleva flecha y frase corta
+		var glow_only: bool = str(rec.get("kind", "")) == "tab"
+		_highlight.set_target(tgt["ctl"], "" if glow_only else (tr("ui." + str(rec["why"])) if str(rec["why"]) != "" else ""), str(tgt["side"]), not glow_only)
 	# el botón de remarcar late cuando conviene
-	var pulse: bool = str(rec.get("kind", "")) == "remark"
+	var pulse: bool = str(rec.get("kind", "")) == "remark" and not tgt.is_empty()
 	remark_btn.scale = Vector2.ONE * (1.0 + (0.035 * sin(_clock * 6.0) if pulse else 0.0))
 	remark_btn.pivot_offset = remark_btn.size / 2.0
 
@@ -1787,3 +1833,10 @@ func _on_objective_go(go: Dictionary) -> void:
 			_on_remark_pressed()
 		"click":
 			pass
+
+
+var _fx_skip: bool = false
+
+
+func _tutorial_note_open() -> bool:
+	return _guide != null and is_instance_valid(_guide) and _guide._note.visible

@@ -184,6 +184,7 @@ func _qa_run() -> void:
 		_qa_shot("negocios_" + lang, failures)
 		var m: GameModel = GameState.m
 		m.era = 3
+		Unlocks.unlock_all(m)
 		m.money = BigNumber.from_string("5e12")
 		m.base_income = BigNumber.from_float(1e8)
 		m.owned["kiosco"] = 4
@@ -203,6 +204,8 @@ func _qa_run() -> void:
 		await _qa_wait(0.4)
 		_qa_shot("reforma_" + lang, failures)
 	await _qa_windows(failures)
+	get_window().size = Vector2i(1280, 720)
+	await _qa_newplayer(failures)      # 5 minutos de jugador nuevo: sin carteles/notas/flechas encimados ni órdenes repetidas
 	var f: FileAccess = FileAccess.open("user://qa/result.txt", FileAccess.WRITE)
 	f.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
 	f.close()
@@ -254,6 +257,7 @@ func _qa_translation(langs: Array) -> Array:
 		_qa_shot("negocios_" + lang, failures)
 		var m: GameModel = GameState.m
 		m.era = 3
+		Unlocks.unlock_all(m)
 		m.money = BigNumber.from_string("5e12")
 		m.base_income = BigNumber.from_float(1e8)
 		m.owned["kiosco"] = 4
@@ -289,6 +293,7 @@ func _qa_web(phase: int) -> void:
 	await _qa_wait(1.0)
 	var m: GameModel = GameState.m
 	m.era = 3
+	Unlocks.unlock_all(m)
 	m.money = BigNumber.from_string("5e12")
 	m.base_income = BigNumber.from_float(1e8)
 	m.dirty = true
@@ -372,6 +377,7 @@ func _qa_windows(failures: Array) -> void:
 		_qa_win_check("%s_juego_era1" % tag, failures)
 		var m: GameModel = GameState.m
 		m.era = 3
+		Unlocks.unlock_all(m)
 		m.money = BigNumber.from_string("5e12")
 		m.base_income = BigNumber.from_float(1e8)
 		m.owned["kiosco"] = 4
@@ -415,27 +421,105 @@ const NP_SPEED: float = 10.0
 func _qa_newplayer_shots() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://qa/newplayer"))
 	SaveSystem.save_path = "user://qa_np_save.json"
+	Settings.path = "user://qa_np_settings.cfg"
 	get_window().borderless = true
 	get_window().size = Vector2i(1280, 720)      # ventana sin bordes: si no, Windows puede dejar de dibujarla y las capturas salen viejas
+	var failures: Array = []
+	await _qa_newplayer(failures)
+	var out: FileAccess = FileAccess.open("user://qa/newplayer/result.txt", FileAccess.WRITE)
+	out.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
+	out.close()
+	SaveSystem.delete_save()
+	for f in failures:
+		printerr("QA newplayer FALLA: ", f)
+	print("QA newplayer: %s" % ("FALLA (%d problemas)" % failures.size() if not failures.is_empty() else "OK"))
+	get_tree().quit(1 if not failures.is_empty() else 0)
+
+
+## Un solo cartel, nota o flecha de acción a la vez; y ninguna orden del tutorial queda más de 30 s con el mismo texto.
+## `tr_state` guarda el texto visible de la nota del tutorial y desde cuándo (segundos de juego).
+func _qa_attention_check(gt: float, tr_state: Dictionary, failures: Array) -> void:
+	var seen: Array = []
+	for n in get_tree().get_nodes_in_group("attention"):
+		var ci: CanvasItem = n as CanvasItem
+		if ci == null or not ci.is_visible_in_tree():
+			continue
+		var a: float = 1.0
+		var p: Node = n
+		while p != null:
+			if p is CanvasItem:
+				a *= (p as CanvasItem).modulate.a
+			p = p.get_parent()
+		if a < 0.3:
+			continue
+		seen.append(n)
+	if seen.size() > 1:
+		var names: Array = []
+		var rects: Array = []
+		for n in seen:
+			names.append("%s (%s)" % [n.get_class(), n.get_path()])
+		var msg: String = "[%s] DOS CARTELES/NOTAS/FLECHAS A LA VEZ: %s" % [_fmt_t(gt), " + ".join(names)]
+		if not tr_state.get("reported_multi", {}).has(msg.substr(10)):
+			failures.append(msg)
+			tr_state["reported_multi"][msg.substr(10)] = true
+	# nota del tutorial: mismo texto > 30 s
+	var text: String = ""
+	if _game != null and _game._guide != null and is_instance_valid(_game._guide) and _game._guide._note.visible:
+		text = _game._guide.shown_text
+	if text != "" and text == str(tr_state.get("text", "")):
+		if gt - float(tr_state["since"]) > 30.0 and not tr_state.get("reported_text", {}).has(text):
+			failures.append("[%s] LA MISMA ORDEN DEL TUTORIAL DURANTE MÁS DE 30 s: «%s»" % [_fmt_t(gt), text])
+			tr_state["reported_text"][text] = true
+	else:
+		tr_state["text"] = text
+		tr_state["since"] = gt
+
+
+func _fmt_t(gt: float) -> String:
+	return "%d:%02d" % [int(gt) / 60, int(gt) % 60]
+
+
+func _qa_newplayer(failures: Array) -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://qa/newplayer"))
+	var save_before: String = SaveSystem.save_path
+	var settings_before: String = Settings.path
+	SaveSystem.save_path = "user://qa_np_save.json"
 	Settings.path = "user://qa_np_settings.cfg"
 	Settings.language = "es"
 	Settings.tutorial_done = false
 	Settings.apply()
 	start_game(false)
 	await _qa_wait(0.5)
-	Economy.time_scale = NP_SPEED
+	Engine.time_scale = NP_SPEED       # se acelera TODO (también los cartelitos y los tweens): la hoja de contacto muestra tiempos reales
 	var gt: float = 0.0
 	var next_shot: float = 0.0
 	var next_act: float = 0.0
+	var next_check: float = 0.0
 	var seen: Array = [0]
 	var last_us: int = Time.get_ticks_usec()
-	var log: Array = ["t_seg,plata,tipo_destacado,id,objetivo,tutorial,real_ms,pestana,cartel_desbloqueo"]
+	var log: Array = ["t_seg,plata,tipo_destacado,id,objetivo,tutorial,pestana,cartel_desbloqueo,notas_visibles"]
+	var tr_state: Dictionary = {"reported_multi": {}, "reported_text": {}, "text": "", "since": 0.0}
+	var last_sign: Node = null
+	var sign_shot_at: float = -1.0
 	while gt <= NP_SECONDS + 0.01:
 		await get_tree().process_frame
 		var now_us: int = Time.get_ticks_usec()
 		gt += minf(float(now_us - last_us) / 1e6, 0.2) * NP_SPEED
 		last_us = now_us
 		var m: GameModel = GameState.m
+		# captura extra cuando aparece un cartel de desbloqueo (para verlo en la hoja de contacto)
+		var sign_now: Node = _game._unlock_sign if (_game._unlock_sign != null and is_instance_valid(_game._unlock_sign)) else null
+		if sign_now != null and sign_now != last_sign:
+			last_sign = sign_now
+			sign_shot_at = gt + 1.0
+		if sign_shot_at > 0.0 and gt >= sign_shot_at:
+			sign_shot_at = -1.0
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%03d_cartel.png" % int(round(gt))))
+		if gt >= next_check:
+			next_check = gt + 0.5
+			_qa_attention_check(gt, tr_state, failures)
+			_qa_structure_check(gt, tr_state, failures)
 		if gt >= next_act:
 			next_act = gt + 0.4
 			var rec: Dictionary = Advisor.recommend(m, seen)
@@ -453,19 +537,45 @@ func _qa_newplayer_shots() -> void:
 					_game._select_tab(int(rec["id"]))
 				"decision":
 					Economy.choose_event(0)
+				"objective":
+					Economy.click()           # juntando plata para el objetivo: de a un clic cada tanto
 				_:
-					for i in range(2):
+					for i in range(1):
 						Economy.click()           # sin nada destacado, un jugador nuevo toca la empanada
 		if gt >= next_shot:
 			await RenderingServer.frame_post_draw      # sin esto la captura puede ser de un cuadro viejo
 			var tag: String = "%03d" % int(round(next_shot))
 			get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%s.png" % tag))
 			var rec2: Dictionary = Advisor.recommend(m, seen)
-			log.append("%s,%s,%s,%s,%s,%d,%d,%d,%s" % [tag, UIKit.money(m.money), str(rec2["kind"]), str(rec2["id"]), str(ObjectiveLogic.current(m)["id"]), EconomyLogic.tutorial_step(m), Time.get_ticks_msec(), _game._tab, str(is_instance_valid(_game._unlock_sign))])
+			var visible_notes: int = 0
+			for n in get_tree().get_nodes_in_group("attention"):
+				if (n as CanvasItem).is_visible_in_tree():
+					visible_notes += 1
+			log.append("%s,%s,%s,%s,%s,%d,%d,%s,%d" % [tag, UIKit.money(m.money), str(rec2["kind"]), str(rec2["id"]), str(ObjectiveLogic.current(m)["id"]), EconomyLogic.tutorial_step(m), _game._tab, str(is_instance_valid(_game._unlock_sign)), visible_notes])
 			next_shot += NP_SHOT_EVERY
+	Engine.time_scale = 1.0
 	var f: FileAccess = FileAccess.open("user://qa/newplayer/log.csv", FileAccess.WRITE)
 	f.store_string("\n".join(log) + "\n")
 	f.close()
 	SaveSystem.delete_save()
-	print("QA newplayer: %d capturas" % (log.size() - 1))
-	get_tree().quit(0)
+	SaveSystem.save_path = save_before
+	Settings.path = settings_before
+
+
+## La pantalla de juego tiene que entrar entera en la ventana (la cinta de titulares y la columna izquierda no se pueden
+## salir por abajo aunque el contenido crezca). Se avisa una sola vez por problema.
+func _qa_structure_check(gt: float, state: Dictionary, failures: Array) -> void:
+	if _game == null or not is_instance_valid(_game):
+		return
+	var vr: Rect2 = get_viewport().get_visible_rect()
+	var parts: Dictionary = {"cinta de titulares": _game.ticker_clip, "columna izquierda": _game.left_col, "cuerpo": _game.body}
+	for k in parts:
+		var c: Control = parts[k]
+		if c == null or not c.is_visible_in_tree():
+			continue
+		var r: Rect2 = c.get_global_rect()
+		if r.end.y > vr.end.y + 1.5 or r.end.x > vr.end.x + 1.5 or r.position.y < -1.5:
+			var key: String = "estructura_" + k
+			if not state.has(key):
+				state[key] = true
+				failures.append("[%s] LA PANTALLA SE SALE DE LA VENTANA: %s %s (ventana %s)" % [_fmt_t(gt), k, QaCheck._fmt(r), QaCheck._fmt(vr)])

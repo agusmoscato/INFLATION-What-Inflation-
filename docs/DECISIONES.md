@@ -50,3 +50,7 @@ Registro de decisiones tomadas de forma autónoma (más reciente al final).
 ## Modo demo (tanda 4)
 - Feature tag `demo` (presets "Windows Demo" y "Web Demo") o argumento `--demo`. Límite: Era 1, Era 2 y la primera reforma; tras la reforma se muestra la pantalla "¡Esto fue la demo!".
 - La demo guarda en `user://save_demo.json`: su progreso no se transfiere al juego completo. `DemoMode.STEAM_URL` queda vacía hasta tener el AppID (el botón avisa que la página no está publicada).
+
+## Build web (tanda 4)
+- Hallazgo: los `.csv` de traducción se importan y el original no entra al paquete exportado (el exe y el build web mostraban claves como `ui.new_game`). Se renombraron a `i18n/*.txt` (mismo formato) y los presets incluyen `data/*.json, i18n/*.txt` con `include_filter`.
+- Verificado en Chrome con WebGL 2 por software: arranca, traducciones, shaders de tiza y guardado en IndexedDB. Sin shader de respaldo (no hizo falta). Ver `docs/ITCH.md`.

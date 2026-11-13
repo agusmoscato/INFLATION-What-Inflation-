@@ -1,9 +1,9 @@
 class_name I18n
 extends RefCounted
-## Carga los CSV de i18n/ (columnas: keys, es, en) y los registra en el TranslationServer,
+## Carga los archivos de i18n/ (formato CSV con extensión .txt para que Godot los exporte crudos; columnas: keys, es, en) y los registra en el TranslationServer,
 ## así toda la UI usa tr(). El nombre del juego NO se traduce.
 
-const FILES: Array = ["res://i18n/translations.csv", "res://i18n/content.csv"]
+const FILES: Array = ["res://i18n/translations.txt", "res://i18n/content.txt"]
 const LOCALES: Array = ["es", "en"]
 
 static var _tables: Dictionary = {}

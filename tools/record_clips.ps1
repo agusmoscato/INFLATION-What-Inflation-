@@ -32,6 +32,9 @@ function Find-Ffmpeg {
   $p = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
   foreach ($d in ($p -split ";")) { if ($d -and (Test-Path (Join-Path $d "ffmpeg.exe"))) { return (Join-Path $d "ffmpeg.exe") } }
   foreach ($x in @("$env:LOCALAPPDATA\Microsoft\WinGet\Links\ffmpeg.exe", "C:\ProgramData\chocolatey\bin\ffmpeg.exe", "$env:USERPROFILE\scoop\shims\ffmpeg.exe")) { if (Test-Path $x) { return $x } }
+  # winget install Gyan.FFmpeg deja el exe dentro de su carpeta de paquetes (y no siempre lo agrega al PATH)
+  $pk = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Gyan.FFmpeg*" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($pk) { return $pk.FullName }
   return $null
 }
 $ff = Find-Ffmpeg

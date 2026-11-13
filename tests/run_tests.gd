@@ -17,6 +17,7 @@ const SUITES: Array = [
 	"res://tests/suites/test_objectives.gd",
 	"res://tests/suites/test_stickers.gd",
 	"res://tests/suites/test_gamble.gd",
+	"res://tests/suites/test_clarity.gd",
 ]
 
 

@@ -747,11 +747,20 @@ static func tick(m: GameModel, dt: float, offline: bool = false) -> void:
 		if m.auto_timer >= m.auto_remark_interval:
 			m.auto_timer = 0.0
 			remark(m, false)
-	m.month_progress += dt
+	# offline: la inflación corre a la mitad de velocidad y como mucho `offline_max_months` aumentos por ausencia
+	var month_dt: float = dt
+	if offline:
+		month_dt = 0.0 if m.offline_months_left == 0 else dt * B("offline_inflation_speed")
+	m.month_progress += month_dt
 	var ms: float = B("month_seconds")
 	while m.month_progress >= ms:
 		m.month_progress -= ms
 		month_end(m)
+		if offline and m.offline_months_left > 0:
+			m.offline_months_left -= 1
+			if m.offline_months_left == 0:
+				m.month_progress = 0.0
+				break
 	if m.auto_buy_interval > 0.0:
 		m.auto_buy_timer += dt
 		if m.auto_buy_timer >= m.auto_buy_interval:
@@ -764,23 +773,28 @@ static func tick(m: GameModel, dt: float, offline: bool = false) -> void:
 	Unlocks.update(m)
 
 
-## Progreso offline: la inflación corre igual, pero no hay clics ni eventos.
+## Progreso offline: la inflación corre igual pero más despacio (offline_inflation_speed) y con tope de aumentos por
+## ausencia (offline_max_months); el ingreso sigue entrando todo el tiempo ausente (hasta el tope de horas). Sin clics ni eventos.
 static func simulate_offline(m: GameModel, seconds: float) -> Dictionary:
 	var cap: float = B("offline_cap_hours") * 3600.0
 	var total: float = clampf(seconds, 0.0, cap)
 	var step: float = B("offline_step")
 	var money_before: BigNumber = m.money
 	var power_before: BigNumber = purchasing_power(m)
+	var price_before: BigNumber = m.price_level
 	var months_before: int = m.month_count
+	m.offline_months_left = int(B("offline_max_months"))
 	var t: float = 0.0
 	while t < total:
 		var dt: float = minf(step, total - t)
 		tick(m, dt, true)
 		t += dt
+	m.offline_months_left = -1
 	return {
 		"seconds": total, "capped": seconds > cap, "months": m.month_count - months_before,
 		"money_before": money_before, "money_after": m.money,
 		"power_before": power_before, "power_after": purchasing_power(m),
+		"price_before": price_before, "price_after": m.price_level,
 	}
 
 

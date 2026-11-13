@@ -259,3 +259,72 @@ static func reachable(m: GameModel) -> bool:
 	if eta(m, LIST[m.obj_index]) <= 60.0:
 		return true
 	return not micro(m).is_empty()
+
+
+# =====================================================================
+#  Estado accionable del objetivo: ¿ya se puede? ¿cuánto falta? ¿a dónde ir?
+# =====================================================================
+## Devuelve {ready, need, money, n, go}:
+##   ready: ya se puede hacer ahora ("¡YA PODÉS!").
+##   need: "money" (falta plata: `money`), "count" (faltan `n` cosas), "wait" (hay que esperar) o "none".
+##   go: a dónde llevar al jugador: {kind: "click"|"buy"|"upgrade"|"remark"|"tab", id}. {} si no hay nada que tocar.
+static func status(m: GameModel, o: Dictionary) -> Dictionary:
+	var r: Dictionary = {"ready": false, "need": "none", "money": BigNumber.zero(), "n": 0, "go": {}}
+	match str(o["kind"]):
+		"clicks":
+			r["need"] = "count"
+			r["n"] = maxi(0, int(o["n"]) - m.clicks)
+			r["go"] = {"kind": "click"}
+		"money_biz", "own":
+			var bid: String = str(o["biz"])
+			var def: Dictionary = GameData.businesses[GameData.business_idx[bid]]
+			var cost: BigNumber = EconomyLogic.business_cost(m, def, 1)
+			r["go"] = {"kind": "buy", "id": bid}
+			if str(o["kind"]) == "own":
+				r["n"] = maxi(0, int(o["n"]) - m.owned_count(bid))
+			if m.money.ge(cost):
+				r["ready"] = true
+			else:
+				r["need"] = "money"
+				r["money"] = cost.sub(m.money)
+		"upg_id":
+			var uid: String = str(o["upg"])
+			var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[uid]]
+			var ucost: BigNumber = EconomyLogic.upgrade_cost(m, u)
+			r["go"] = {"kind": "upgrade", "id": uid}
+			if m.money.ge(ucost):
+				r["ready"] = true
+			else:
+				r["need"] = "money"
+				r["money"] = ucost.sub(m.money)
+		"upgrades":
+			r["need"] = "count"
+			r["n"] = maxi(0, int(o["n"]) - m.upgrades.size())
+			r["go"] = {"kind": "tab", "id": 1}
+		"months":
+			r["need"] = "wait"
+			r["n"] = maxi(0, int(o["n"]) - m.month_count)
+		"remarks":
+			r["go"] = {"kind": "remark"}
+			if EconomyLogic.needs_remark(m):
+				r["ready"] = true
+			else:
+				r["need"] = "wait"
+		"refuge", "refuges_n":
+			r["go"] = {"kind": "tab", "id": 2}
+			r["ready"] = Unlocks.has(m, "refuges")
+			if str(o["kind"]) == "refuges_n":
+				r["need"] = "count"
+				r["n"] = maxi(0, int(o["n"]) - EconomyLogic.refuge_diversified_count(m))
+		"packs", "stickers":
+			r["go"] = {"kind": "tab", "id": 4}
+			r["ready"] = Unlocks.has(m, "album")
+		"scratches":
+			r["go"] = {"kind": "tab", "id": 5}
+			r["ready"] = Unlocks.has(m, "timba")
+		"reforms", "plans", "measures":
+			r["go"] = {"kind": "tab", "id": 3}
+			r["ready"] = Unlocks.has(m, "reform")
+		_:
+			r["need"] = "wait"
+	return r

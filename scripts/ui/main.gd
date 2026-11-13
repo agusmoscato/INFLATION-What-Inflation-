@@ -37,6 +37,8 @@ func _ready() -> void:
 	var ua: PackedStringArray = OS.get_cmdline_user_args()
 	if ua.has("--record-clip") and ua.find("--record-clip") + 1 < ua.size():
 		call_deferred("_start_clip", ua[ua.find("--record-clip") + 1])
+	if OS.get_cmdline_user_args().has("--qa-windows"):
+		call_deferred("_qa_windows_only")
 	if OS.get_cmdline_user_args().has("--qa-screenshot"):
 		call_deferred("_qa_run")
 	if OS.has_feature("web"):
@@ -381,3 +383,18 @@ func _qa_windows(failures: Array) -> void:
 			_game._select_tab(i)
 			await _qa_wait(0.5)
 			_qa_win_check("%s_%s" % [tag, QA_TABS[i]], failures)
+
+
+## Solo la parte de ventana real del QA (más rápido para iterar): godot -- --qa-windows
+func _qa_windows_only() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://qa"))
+	SaveSystem.save_path = "user://qa_save.json"
+	Settings.path = "user://qa_settings.cfg"
+	var failures: Array = []
+	await _qa_windows(failures)
+	var out: FileAccess = FileAccess.open("user://qa/result_windows.txt", FileAccess.WRITE)
+	out.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
+	out.close()
+	SaveSystem.delete_save()
+	print("QA ventanas: %d problemas" % failures.size())
+	get_tree().quit(1 if not failures.is_empty() else 0)

@@ -40,8 +40,16 @@ var reform_labels: Dictionary = {}
 var plan_buttons: Dictionary = {}
 var body: BoxContainer
 var header_grid: GridContainer
+var rate_box: Control
+var remark_panel: Control
+var _seen_tabs: Array = [0]
+var _advice: Dictionary = {}
+var _highlight: ActionHighlight
+var _idle: float = 0.0
+var _override: Dictionary = {}
+var _override_t: float = 0.0
 var left_col: Control
-var notes_box: Control
+
 var portrait: bool = false
 var album_page: AlbumPage
 var timba_page: TimbaPage
@@ -129,6 +137,23 @@ func _ready() -> void:
 	add_child(fx_layer)
 	raise_sign = ScribbleText.new()
 	fx_layer.add_child(raise_sign)
+	# notitas de aviso: abajo a la derecha, sobre la cinta de titulares (no tapan la plata ni la empanada)
+	toast_box = VBoxContainer.new()
+	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast_box.add_theme_constant_override("separation", 4)
+	toast_box.anchor_left = 1.0
+	toast_box.anchor_right = 1.0
+	toast_box.anchor_top = 1.0
+	toast_box.anchor_bottom = 1.0
+	toast_box.offset_left = -400.0
+	toast_box.offset_right = -24.0
+	toast_box.offset_bottom = -70.0
+	toast_box.offset_top = -70.0
+	toast_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	fx_layer.add_child(toast_box)
+	# la acción recomendada: una sola cosa brilla y late, con una flecha de tiza
+	_highlight = ActionHighlight.new()
+	fx_layer.add_child(_highlight)
 
 	_connect_bus()
 	_last_era = gm().era
@@ -183,26 +208,33 @@ func _play(sound: String, pitch: float = 1.0) -> void:
 func _build_header() -> Control:
 	var p: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	header_grid = GridContainer.new()
-	header_grid.columns = 4
-	header_grid.add_theme_constant_override("h_separation", 16)
-	header_grid.add_theme_constant_override("v_separation", 6)
+	header_grid.columns = 3
+	header_grid.add_theme_constant_override("h_separation", 24)
+	header_grid.add_theme_constant_override("v_separation", 8)
 	var h: GridContainer = header_grid
 	p.add_child(h)
+	# 1) la plata: lo más grande y brillante de la pantalla
 	var left: VBoxContainer = VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 0)
 	h.add_child(left)
-	money_label = UIKit.label("$0", 46, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
+	money_label = UIKit.label("$0", 64, Color("#FFE45C"), HORIZONTAL_ALIGNMENT_LEFT, true)
+	money_label.add_theme_color_override("font_outline_color", Color("#1c1508"))
+	money_label.add_theme_constant_override("outline_size", 9)
 	left.add_child(money_label)
 	power_label = UIKit.label("", 15, UIKit.C_DIM)
 	left.add_child(power_label)
+	# 2) el semáforo de la inflación
 	race_meter = RaceMeter.new()
-	race_meter.custom_minimum_size = Vector2(300, 84)
+	race_meter.custom_minimum_size = Vector2(380, 92)
 	h.add_child(race_meter)
+	# 3) la tasa exacta: recién aparece cuando el tutorial la presenta
 	var mid: VBoxContainer = VBoxContainer.new()
-	mid.custom_minimum_size = Vector2(230, 0)
+	mid.custom_minimum_size = Vector2(190, 0)
+	rate_box = mid
 	h.add_child(mid)
 	mid.add_child(UIKit.label(tr("ui.inflation"), 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER))
-	rate_label = UIKit.label("3 %", 32, UIKit.C_RED, HORIZONTAL_ALIGNMENT_CENTER, true)
+	rate_label = UIKit.label("3 %", 36, UIKit.C_RED, HORIZONTAL_ALIGNMENT_CENTER, true)
 	mid.add_child(rate_label)
 	month_bar = ChalkBar.new()
 	month_bar.show_percentage = false
@@ -211,33 +243,21 @@ func _build_header() -> Control:
 	month_bar.add_theme_stylebox_override("background", UIKit.box(Color("#0f1820"), 4))
 	month_bar.add_theme_stylebox_override("fill", UIKit.box(UIKit.C_RED, 4))
 	mid.add_child(month_bar)
-	month_label = UIKit.label("", 12, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	month_label = UIKit.label("", 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	mid.add_child(month_label)
-	# pila de notitas (avisos) arriba a la derecha: no tapa la empanada ni el panel central
-	var notes: Control = Control.new()
-	notes_box = notes
-	notes.custom_minimum_size = Vector2(300, 84)
-	notes.clip_contents = true
-	notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	notes.set_meta("qa_ignore", true)
-	h.add_child(notes)
-	toast_box = VBoxContainer.new()
-	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast_box.add_theme_constant_override("separation", 2)
-	notes.add_child(toast_box)
-	toast_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	return p
 
 
 func _build_left() -> Control:
 	var col: VBoxContainer = VBoxContainer.new()
-	col.custom_minimum_size = Vector2(330, 0)
-	col.add_theme_constant_override("separation", 10)
+	col.custom_minimum_size = Vector2(340, 0)
+	col.add_theme_constant_override("separation", 12)
 	var p: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	p.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(p)
 	var v: VBoxContainer = VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 6)
 	p.add_child(v)
 	var top_row: HBoxContainer = HBoxContainer.new()
 	v.add_child(top_row)
@@ -251,20 +271,23 @@ func _build_left() -> Control:
 	top_row.add_child(menu_btn)
 	empanada = EmpanadaButton.new()
 	empanada.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	empanada.custom_minimum_size = Vector2(280, 220)
+	empanada.custom_minimum_size = Vector2(250, 160)
 	empanada.pressed.connect(func(_pos: Vector2) -> void: Economy.click())
 	v.add_child(empanada)
-	click_label = UIKit.label("", 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	click_label = UIKit.label("", 15, UIKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	v.add_child(click_label)
 	objective_note = ObjectiveNote.new()
+	objective_note.go_pressed.connect(_on_objective_go)
 	col.add_child(objective_note)
+	# remarcar: recién aparece cuando el tutorial lo presenta (o desde la Era 3)
 	var rp: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
+	remark_panel = rp
 	col.add_child(rp)
 	var rv: VBoxContainer = VBoxContainer.new()
 	rp.add_child(rv)
 	remark_btn = Button.new()
 	remark_btn.text = tr("ui.remark")
-	remark_btn.custom_minimum_size = Vector2(0, 54)
+	remark_btn.custom_minimum_size = Vector2(0, 50)
 	UIKit.style_button(remark_btn, UIKit.C_BLUE, 20)
 	remark_btn.pressed.connect(_on_remark_pressed)
 	rv.add_child(remark_btn)
@@ -276,7 +299,7 @@ func _build_left() -> Control:
 	remark_bar.add_theme_stylebox_override("background", UIKit.box(Color("#0f1820"), 4))
 	remark_bar.add_theme_stylebox_override("fill", UIKit.box(UIKit.C_GREEN, 4))
 	rv.add_child(remark_bar)
-	remark_info = UIKit.label("", 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	remark_info = UIKit.label("", 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	remark_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rv.add_child(remark_info)
 	left_col = col
@@ -588,6 +611,8 @@ func _build_ticker() -> Control:
 # =====================================================================
 func _select_tab(i: int) -> void:
 	_tab = i
+	if not _seen_tabs.has(i):
+		_seen_tabs.append(i)
 	for k in range(pages.size()):
 		pages[k].visible = (k == i)
 
@@ -617,6 +642,7 @@ func _process(delta: float) -> void:
 		_fast = 0.0
 		_refresh_all()
 	_update_juice(delta)
+	_update_advice(delta)
 	_update_ticker(delta)
 
 
@@ -664,7 +690,7 @@ func _refresh_remark() -> void:
 	if EconomyLogic.needs_remark(m):
 		lag = 1.0 - clampf(m.my_prices.div(m.price_level).to_float(), 0.0, 1.0)
 	if lag > 0.0005:
-		remark_info.text = tr("ui.remark_lag") % int(round(lag * 100.0))
+		remark_info.text = tr("ui.remark_lag") % mini(999, int(round((1.0 / maxf(0.01, 1.0 - lag) - 1.0) * 100.0)))      # cuánto más ganarías al remarcar
 		remark_info.add_theme_color_override("font_color", UIKit.C_RED if lag > 0.2 else UIKit.C_GOLD)
 	else:
 		remark_info.text = tr("ui.remark_ok")
@@ -791,7 +817,7 @@ func _rebuild_upgrades() -> void:
 		btn.pressed.connect(func() -> void: Economy.buy_upgrade(uid))
 		h.add_child(btn)
 		upg_list.add_child(row)
-		upg_buttons.append({"btn": btn, "cost_fn": func() -> BigNumber: return EconomyLogic.upgrade_cost(gm(), u)})
+		upg_buttons.append({"btn": btn, "id": uid, "cost_fn": func() -> BigNumber: return EconomyLogic.upgrade_cost(gm(), u)})
 	if list.size() > shown:
 		upg_list.add_child(UIKit.label(tr("ui.upg.more") % (list.size() - shown), 13, UIKit.C_DIM))
 
@@ -1211,26 +1237,54 @@ func _play_reform_animation(cut: int) -> void:
 # ---- informe offline ----
 func show_offline_report(report: Dictionary) -> void:
 	var ov: ColorRect = ColorRect.new()
-	ov.color = Color(0, 0, 0, 0.75)
+	ov.color = Color(0, 0, 0, 0.78)
 	ov.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(ov)
-	var p: PanelContainer = UIKit.panel(UIKit.C_PANEL, 12)
-	p.custom_minimum_size = Vector2(520, 0)
-	p.position = size / 2.0 - Vector2(260, 130)
-	ov.add_child(p)
+	var cc: CenterContainer = CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ov.add_child(cc)
+	var gained: BigNumber = (report["money_after"] as BigNumber).sub(report["money_before"])
+	if gained.is_negative():
+		gained = BigNumber.zero()
+	var p_after: BigNumber = report.get("price_after", BigNumber.one())
+	var p_before: BigNumber = report.get("price_before", BigNumber.one())
+	var price_up: BigNumber = p_after.div(p_before).sub(BigNumber.one()).mul_f(100.0)
+	var won: bool = (report["power_after"] as BigNumber).ge(report["power_before"])
+	var col: Color = Chalk.GREEN if won else Chalk.RED
+	var p: PanelContainer = PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UIKit.chalk_box(col, Color(0.06, 0.1, 0.08, 0.96), 3.2))
+	p.custom_minimum_size = Vector2(620, 0)
+	cc.add_child(p)
 	var v: VBoxContainer = VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 12)
 	p.add_child(v)
-	v.add_child(UIKit.label(tr("ui.offline.title"), 26, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER))
-	var body: Label = _wrap_label(tr("ui.offline.body") % [
-		UIKit.duration(float(report["seconds"])), int(report["months"]),
-		UIKit.money(report["money_before"]), UIKit.money(report["money_after"]),
-		(report["power_before"] as BigNumber).format(), (report["power_after"] as BigNumber).format()], 16)
-	v.add_child(body)
+	v.add_child(UIKit.label(tr("ui.offline.title"), 38, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, true))
+	v.add_child(UIKit.label(tr("ui.offline.away") % UIKit.duration(float(report["seconds"])), 18, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	var money_line: Label = _wrap_label(tr("ui.offline.gain") % UIKit.money(gained) + " " + tr("ui.offline.prices") % (price_up.format(1) + " %"), 22, Chalk.WHITE)
+	money_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(money_line)
+	# resultado: flecha verde (ganaste poder de compra) o roja (perdiste)
+	var res_row: HBoxContainer = HBoxContainer.new()
+	res_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	res_row.add_theme_constant_override("separation", 14)
+	v.add_child(res_row)
+	var arrow: RaceMeter._Arrow = RaceMeter._Arrow.new()
+	arrow.up = won
+	arrow.custom_minimum_size = Vector2(80, 80)
+	res_row.add_child(arrow)
+	var res: Label = _wrap_label(tr("ui.offline.win") if won else tr("ui.offline.lose"), 24, col)
+	res.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	res_row.add_child(res)
+	var pw: Label = UIKit.label(tr("ui.offline.power") % [(report["power_before"] as BigNumber).format(), (report["power_after"] as BigNumber).format()], 16, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	v.add_child(pw)
+	if int(report["months"]) >= int(EconomyLogic.B("offline_max_months")) or bool(report.get("capped", false)):
+		var cap: Label = _wrap_label(tr("ui.offline.cap"), 15, UIKit.C_DIM)
+		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(cap)
 	var ok: Button = Button.new()
 	ok.text = tr("ui.ok")
-	ok.custom_minimum_size = Vector2(0, 44)
-	UIKit.style_button(ok, UIKit.C_GREEN.darkened(0.2), 18)
+	ok.custom_minimum_size = Vector2(0, 54)
+	UIKit.style_button(ok, UIKit.C_GREEN.darkened(0.2), 22)
 	ok.pressed.connect(ov.queue_free)
 	v.add_child(ok)
 
@@ -1367,12 +1421,19 @@ func _on_objective_done(_id: String) -> void:
 
 
 func _refresh_hud_extras(m: GameModel) -> void:
-	# ¿le ganás a la inflación?
+	_apply_detail(m)
+	# semáforo de la inflación, con palabras simples y UNA razón accionable
 	var race: Dictionary = EconomyLogic.race(m)
-	race_meter.set_state(bool(race["winning"]))
+	var is_winning: bool = bool(race["winning"])
+	race_meter.set_state(is_winning)
+	if is_winning:
+		race_meter.set_reason(tr("ui.race.why.ok"))
+	elif EconomyLogic.needs_remark(m) and Advisor.lag(m) >= 0.05:
+		race_meter.set_reason(tr("ui.race.why.remark"))
+	else:
+		race_meter.set_reason(tr("ui.race.why.buy"))
 	var rn: String = UIKit.money(race["real_now"])
 	var rr: String = UIKit.money(race["real_ref"])
-	race_meter.set_numbers(rn, rr)
 	race_meter.tooltip_text = tr("tip.race") % [rn, rr]
 	# objetivo
 	objective_note.refresh(m)
@@ -1405,7 +1466,7 @@ func _refresh_hud_extras(m: GameModel) -> void:
 				li.name = "Lock"
 				b.add_child(li)
 				_place_lock(b, li)
-				b.resized.connect(_place_lock.bind(b, li))
+				b.resized.connect(func() -> void: _place_lock(b, li))
 			else:
 				UIKit.style_tab(b, i == _tab)
 		b.tooltip_text = (tr("tip.tab_locked") % tr("tip.locked_" + feat)) if locked else tr(TAB_TIPS[i])
@@ -1590,19 +1651,18 @@ func _on_dollar_settled(res: Dictionary) -> void:
 # =====================================================================
 func _apply_layout() -> void:
 	var is_portrait: bool = size.y > size.x * 1.15
-	if body == null or (is_portrait == portrait and left_col.custom_minimum_size.x == (0.0 if portrait else 330.0)):
+	if body == null or (is_portrait == portrait and left_col.custom_minimum_size.x == (0.0 if portrait else 340.0)):
 		return
 	portrait = is_portrait
-	header_grid.columns = 2 if portrait else 4
-	race_meter.custom_minimum_size = Vector2(290 if portrait else 300, 84)
+	header_grid.columns = 1 if portrait else 3
+	race_meter.custom_minimum_size = Vector2(290 if portrait else 380, 92)
 	body.vertical = portrait
-	left_col.custom_minimum_size = Vector2(0, 0) if portrait else Vector2(330, 0)
+	left_col.custom_minimum_size = Vector2(0, 0) if portrait else Vector2(340, 0)
 	left_col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if portrait else Control.SIZE_FILL
-	empanada.custom_minimum_size = Vector2(240, 150) if portrait else Vector2(280, 220)
-	notes_box.custom_minimum_size = Vector2(0, 84) if portrait else Vector2(300, 84)
+	empanada.custom_minimum_size = Vector2(240, 150) if portrait else Vector2(250, 160)
 	for i in range(tab_buttons.size()):
 		var b: Button = tab_buttons[i]
-		b.add_theme_font_size_override("font_size", int((14 if portrait else 20) * UIKit.FS))
+		b.add_theme_font_size_override("font_size", maxi(int((14 if portrait else 20) * UIKit.FS), UIKit.MIN_FONT))
 		b.clip_text = portrait
 		b.custom_minimum_size = Vector2(0, 0)
 	for e in biz_rows:
@@ -1623,3 +1683,104 @@ func _place_lock(b: Button, li: Node) -> void:
 	var fs: int = b.get_theme_font_size("font_size")
 	var tw: float = font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	(li as Control).position = Vector2(maxf(2.0, (b.size.x - tw) * 0.5 - 40.0), (b.size.y - 26.0) * 0.5)
+
+
+# =====================================================================
+#  Claridad: detalles progresivos y una sola acción destacada
+# =====================================================================
+## Las primeras 2 eras muestran solo la plata, el semáforo, la empanada y los negocios. La tasa exacta y el poder
+## adquisitivo aparecen cuando el tutorial los presenta (paso 3), y remarcar cuando presenta el paso 4. Desde la Era 3 todo.
+func _apply_detail(m: GameModel) -> void:
+	var step: int = EconomyLogic.tutorial_step(m)
+	var full: bool = m.era >= 3 or m.reforms > 0
+	var show_rate: bool = full or step >= 2
+	var show_remark: bool = full or step >= 3
+	rate_box.visible = show_rate
+	power_label.visible = show_rate
+	remark_panel.visible = show_remark
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton or event is InputEventKey or event is InputEventScreenTouch:
+		_idle = 0.0
+
+
+## Control que corresponde a la recomendación del asesor (y de qué lado viene la flecha).
+func _advice_target(a: Dictionary) -> Dictionary:
+	match str(a["kind"]):
+		"click":
+			return {"ctl": empanada, "side": "right"}
+		"remark":
+			return {"ctl": remark_btn, "side": "right"}
+		"decision":
+			if decision_panel.visible:
+				return {"ctl": decision_buttons[EconomyLogic.default_choice(str(gm().pending_choice.get("id", ""))) ], "side": "top"}
+		"tab":
+			var ti: int = int(a["id"])
+			if ti >= 0 and ti < tab_buttons.size():
+				return {"ctl": tab_buttons[ti], "side": "bottom"}
+		"buy":
+			if _tab != 0:
+				return {"ctl": tab_buttons[0], "side": "bottom"}
+			for e in biz_rows:
+				if e["def"]["id"] == str(a["id"]) and e["row"].visible:
+					return {"ctl": e["btn"], "side": "left"}
+		"upgrade":
+			if _tab != 1:
+				return {"ctl": tab_buttons[1], "side": "bottom"}
+			for ub in upg_buttons:
+				if ub.get("id", "") == str(a["id"]):
+					return {"ctl": ub["btn"], "side": "left"}
+	return {}
+
+
+func _update_advice(delta: float) -> void:
+	_idle += delta
+	_override_t = maxf(0.0, _override_t - delta)
+	var m: GameModel = gm()
+	var rec: Dictionary = _override if _override_t > 0.0 else Advisor.recommend(m, _seen_tabs)
+	_advice = rec
+	var tgt: Dictionary = {}
+	# durante el tutorial mandan sus propias flechas
+	if (_guide == null or not is_instance_valid(_guide)) and not _blocking_overlay() and str(rec.get("kind", "")) != "":
+		tgt = _advice_target(rec)
+	if tgt.is_empty():
+		_highlight.set_target(null, "", "left")
+		_highlight.visible = false
+	else:
+		_highlight.idle = _idle
+		_highlight.set_target(tgt["ctl"], tr("ui." + str(rec["why"])) if str(rec["why"]) != "" else "", str(tgt["side"]))
+	# el botón de remarcar late cuando conviene
+	var pulse: bool = str(rec.get("kind", "")) == "remark"
+	remark_btn.scale = Vector2.ONE * (1.0 + (0.035 * sin(_clock * 6.0) if pulse else 0.0))
+	remark_btn.pivot_offset = remark_btn.size / 2.0
+
+
+func _blocking_overlay() -> bool:
+	for n in [_pack_overlay, _scratch_overlay, _bolillero, _busy_overlay]:
+		if n != null and is_instance_valid(n):
+			return true
+	return false
+
+
+## Botón [IR] del objetivo: lleva directo a donde hay que tocar y lo destaca unos segundos.
+func _on_objective_go(go: Dictionary) -> void:
+	if go.is_empty():
+		return
+	_idle = 0.0
+	var kind: String = str(go["kind"])
+	_override = {"kind": kind, "id": go.get("id", ""), "why": "ui.adv.obj"}
+	_override_t = 8.0
+	match kind:
+		"buy":
+			_select_tab(0)
+		"upgrade":
+			_select_tab(1)
+		"tab":
+			_select_tab(int(go["id"]))
+			_override_t = 0.0
+		"remark":
+			_override_t = 0.0
+			_on_remark_pressed()
+		"click":
+			pass

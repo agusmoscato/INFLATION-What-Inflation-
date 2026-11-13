@@ -15,7 +15,8 @@ var _blink: float = 0.0
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(280, 220)
+	if custom_minimum_size == Vector2.ZERO:
+		custom_minimum_size = Vector2(280, 220)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_update_pivot()
 	resized.connect(_update_pivot)

@@ -38,6 +38,7 @@ var time_played: float = 0.0
 var run_time: float = 0.0
 var month_progress: float = 0.0
 var month_count: int = 0
+var offline_months_left: int = -1        ## solo durante la simulación offline: cuántos aumentos más pueden pasar (-1 = sin límite)
 var remark_window: float = 0.0
 var remark_cd: float = 0.0
 var auto_timer: float = 0.0

@@ -83,6 +83,7 @@ static func jitter_line(a: Vector2, b: Vector2, seed_v: int, amp: float = 1.4, s
 	var len: float = d.length()
 	if len < 0.01:
 		out.append(a)
+		out.append(a + Vector2(0.01, 0.0))      # draw_polyline necesita al menos 2 puntos
 		return out
 	var n: int = maxi(2, int(len / step) + 1)
 	var perp: Vector2 = Vector2(-d.y, d.x) / len

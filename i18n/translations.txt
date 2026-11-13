@@ -10,7 +10,7 @@
 "ui.month","Próximo aumento en %d s","Next price hike in %d s"
 "ui.click_hint","¡Hacé clic!","Click me!"
 "ui.remark","REMARCAR PRECIOS","REPRICE EVERYTHING"
-"ui.remark_lag","Tus precios están %d %% atrasados","Your prices are %d %% behind"
+"ui.remark_lag","Tus precios quedaron viejos. ¡Remarcá! (+%d%%)","Your prices are stale. Reprice! (+%d%%)"
 "ui.remark_ok","Tus precios están al día","Your prices are up to date"
 "ui.remark_now","¡Remarcá ahora y cobrá el bono!","Reprice now for the bonus!"
 "ui.remark_bonus","Bono por remarcar a tiempo: +%s","On-time reprice bonus: +%s"

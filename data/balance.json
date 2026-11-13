@@ -27,6 +27,8 @@
   "strike_settle_seconds": 25.0,
   "offline_cap_hours": 12.0,
   "offline_step": 10.0,
+  "offline_inflation_speed": 0.5,
+  "offline_max_months": 12,
   "autosave_seconds": 30.0,
   "measure_reduction": 0.2,
   "measures": ["1e25", "1e26", "1e27", "5e27", "2e28"],

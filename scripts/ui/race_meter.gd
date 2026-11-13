@@ -35,7 +35,7 @@ class _Arrow:
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(330, 84)
+	custom_minimum_size = Vector2(380, 92)
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	var h: HBoxContainer = HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
@@ -47,11 +47,12 @@ func _init() -> void:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 0)
 	h.add_child(v)
-	_title = UIKit.label("", 17, Chalk.GREEN, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_title = UIKit.label("", 22, Chalk.GREEN, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_title)
-	_sub = UIKit.label("", 13, UIKit.C_DIM)
+	_sub = UIKit.label("", 15, UIKit.C_TEXT)
+	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_sub)
 	set_state(true, true)
@@ -70,5 +71,6 @@ func set_state(is_winning: bool, force: bool = false) -> void:
 		Chalk.pop(self, 1.06, 0.4)
 
 
-func set_numbers(real_now: String, real_ref: String) -> void:
-	_sub.text = tr("ui.race.sub") % [real_now, real_ref]
+## Una sola razón accionable, en chico: "Remarcá tus precios" / "Comprá más negocios" / "Seguí así".
+func set_reason(text: String) -> void:
+	_sub.text = text

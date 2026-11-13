@@ -47,7 +47,7 @@ func run(t) -> void:
 	var m4: GameModel = GameModel.new(1)
 	var rep2: Dictionary = SaveIO.load_into(m4, PATH, now + 3600.0)
 	t.near(float(rep2["seconds"]), 3600.0, "1 h offline", 0.01)
-	t.check(int(rep2["months"]) >= 119 and int(rep2["months"]) <= 121, "~120 meses offline")
+	t.eq(int(rep2["months"]), 12, "tope de 12 meses de inflación por ausencia")
 	t.check(m4.price_level.gt(m.price_level), "P subió offline")
 	t.check(m4.lifetime_real.ge(m.lifetime_real), "el progreso offline no pierde ganancias")
 	# archivo corrupto / inexistente

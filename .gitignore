@@ -5,3 +5,6 @@ export/
 
 # Binarios de Godot descargados
 tools/godot*
+
+# Generados por Godot a partir de los CSV de i18n/
+*.translation

@@ -1779,6 +1779,14 @@ func _advice_target(a: Dictionary) -> Dictionary:
 	return {}
 
 
+## Segundos sin tocar nada para que, ahorrando para el objetivo, aparezca la flecha; y cuánto dura.
+const WAIT_ARROW_AFTER: float = 15.0
+const WAIT_ARROW_FOR: float = 5.0
+var _wait_arrow_t: float = 0.0
+var _occ_t: float = 0.0
+var _occ_rects: Array = []
+
+
 func _update_advice(delta: float) -> void:
 	_idle += delta
 	_override_t = maxf(0.0, _override_t - delta)
@@ -1797,15 +1805,58 @@ func _update_advice(delta: float) -> void:
 	if tgt.is_empty():
 		_highlight.set_target(null, "", "left")
 		_highlight.visible = false
+		_wait_arrow_t = 0.0
 	else:
 		_highlight.idle = _idle
+		var kind: String = str(rec.get("kind", ""))
 		# una pestaña recién desbloqueada solo brilla (sin flecha ni cartel); lo demás lleva flecha y frase corta
-		var glow_only: bool = str(rec.get("kind", "")) == "tab" and str(rec.get("why", "")) == "adv.tab"
-		_highlight.set_target(tgt["ctl"], "" if glow_only else (tr("ui." + str(rec["why"])) if str(rec["why"]) != "" else ""), str(tgt["side"]), not glow_only)
+		var glow_only: bool = kind == "tab" and str(rec.get("why", "")) == "adv.tab"
+		# ahorrando para el objetivo la flecha no está siempre: aparece si el jugador no hace nada 15 s y dura 5 s
+		var arrow_ok: bool = not glow_only
+		if kind == "objective":
+			if _wait_arrow_t > 0.0:
+				_wait_arrow_t -= delta
+				if _wait_arrow_t <= 0.0:
+					_idle = 0.0
+			elif _idle >= WAIT_ARROW_AFTER:
+				_wait_arrow_t = WAIT_ARROW_FOR
+			arrow_ok = _wait_arrow_t > 0.0
+		else:
+			_wait_arrow_t = 0.0
+		# la flecha nunca se dibuja sobre texto: se le pasan los lugares ocupados (si no hay lugar, solo late el aro)
+		_occ_t -= delta
+		if _occ_t <= 0.0:
+			_occ_t = 0.2
+			_occ_rects = _text_rects(tgt["ctl"])
+		_highlight.occupied = _occ_rects
+		_highlight.set_target(tgt["ctl"], "" if glow_only else (tr("ui." + str(rec["why"])) if str(rec["why"]) != "" else ""), str(tgt["side"]), arrow_ok)
 	# el botón de remarcar late cuando conviene
 	var pulse: bool = str(rec.get("kind", "")) == "remark" and not tgt.is_empty()
 	remark_btn.scale = Vector2.ONE * (1.0 + (0.035 * sin(_clock * 6.0) if pulse else 0.0))
 	remark_btn.pivot_offset = remark_btn.size / 2.0
+
+
+## Rectángulos de todos los textos visibles de la pantalla (menos los del control destacado).
+func _text_rects(exclude: Control) -> Array:
+	var out: Array = []
+	_collect_text(world, exclude, out)
+	return out
+
+
+func _collect_text(n: Node, exclude: Control, out: Array) -> void:
+	if n is Control:
+		var c: Control = n as Control
+		if not c.visible:
+			return
+		if c == exclude or (exclude != null and exclude.is_ancestor_of(c)):
+			return
+		if c.has_meta("qa_ignore"):
+			return
+		var has_text: bool = (c is Label and (c as Label).text.strip_edges() != "") or (c is Button and (c as Button).text != "") or c is ChalkPrice
+		if has_text and c.size.x > 4.0 and c.size.y > 4.0:
+			out.append(c.get_global_rect())
+	for k in n.get_children():
+		_collect_text(k, exclude, out)
 
 
 func _blocking_overlay() -> bool:

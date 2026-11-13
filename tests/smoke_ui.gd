@@ -7,6 +7,10 @@ var frame: int = 0
 
 
 func _ready() -> void:
+	# Modo test: nunca tocar la partida ni las opciones reales.
+	SaveSystem.save_path = "user://test_save.json"
+	Settings.path = "user://test_settings.cfg"
+	SaveSystem.delete_save()
 	main = load("res://scenes/Main.tscn").instantiate()
 	add_child(main)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -86,6 +90,8 @@ func _process(_delta: float) -> void:
 		Settings.language = "es"
 		Settings.apply()
 	if frame == 345:
+		SaveSystem.delete_save()
+		DirAccess.remove_absolute(Settings.path)
 		print("SMOKE OK (frames=%d)" % frame)
 		get_tree().quit(0)
 

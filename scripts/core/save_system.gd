@@ -1,7 +1,8 @@
 extends Node
 ## Autoload: guardado en user://, autosave cada 30 s y progreso offline al cargar.
 
-const SAVE_PATH: String = "user://save.json"
+## Ruta de la partida. Los tests la cambian para no tocar la partida real.
+var save_path: String = "user://save.json"
 
 var _timer: float = 0.0
 
@@ -20,17 +21,17 @@ func _process(delta: float) -> void:
 
 
 func has_save() -> bool:
-	return FileAccess.file_exists(SAVE_PATH)
+	return FileAccess.file_exists(save_path)
 
 
 func save_game() -> bool:
-	return SaveIO.save_model(GameState.m, SAVE_PATH)
+	return SaveIO.save_model(GameState.m, save_path)
 
 
 ## Carga la partida y simula el tiempo offline. Devuelve false si no hay save.
 func load_game() -> bool:
 	var model: GameModel = GameModel.new()
-	var report: Dictionary = SaveIO.load_into(model, SAVE_PATH, Time.get_unix_time_from_system())
+	var report: Dictionary = SaveIO.load_into(model, save_path, Time.get_unix_time_from_system())
 	if report.is_empty():
 		return false
 	GameState.adopt(model)
@@ -41,7 +42,7 @@ func load_game() -> bool:
 
 
 func delete_save() -> void:
-	SaveIO.remove(SAVE_PATH)
+	SaveIO.remove(save_path)
 
 
 func _notification(what: int) -> void:

@@ -2,7 +2,7 @@ class_name Settings
 extends RefCounted
 ## Opciones del jugador (volumen, idioma, notación). Se guardan en user://settings.cfg.
 
-const PATH: String = "user://settings.cfg"
+static var path: String = "user://settings.cfg"
 
 static var volume: float = 0.8
 static var music: float = 0.35
@@ -13,7 +13,7 @@ static var fullscreen: bool = false
 
 static func load_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
-	var ok: bool = cfg.load(PATH) == OK
+	var ok: bool = cfg.load(path) == OK
 	volume = float(cfg.get_value("audio", "volume", 0.8)) if ok else 0.8
 	music = float(cfg.get_value("audio", "music", 0.35)) if ok else 0.35
 	notation = int(cfg.get_value("game", "notation", 0)) if ok else 0
@@ -30,7 +30,7 @@ static func save_settings() -> void:
 	cfg.set_value("game", "notation", notation)
 	cfg.set_value("game", "language", language)
 	cfg.set_value("display", "fullscreen", fullscreen)
-	cfg.save(PATH)
+	cfg.save(path)
 
 
 static func apply() -> void:

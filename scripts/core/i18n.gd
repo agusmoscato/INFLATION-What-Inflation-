@@ -57,3 +57,8 @@ static func set_language(code: String) -> void:
 
 static func current_language() -> String:
 	return TranslationServer.get_locale().substr(0, 2)
+
+
+static func get_text(key: String, locale: String) -> String:
+	load_all()
+	return str(_tables.get(locale, {}).get(key, ""))

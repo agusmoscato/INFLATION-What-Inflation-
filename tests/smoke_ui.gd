@@ -75,7 +75,17 @@ func _process(_delta: float) -> void:
 		main.show_credits(true)
 	if frame == 300:
 		main.show_menu()
-	if frame == 320:
+	if frame == 150:
+		print("save:", SaveSystem.save_game(), " load:", SaveSystem.load_game())
+	if frame == 305:
+		Settings.language = "en"
+		Settings.apply()
+		main.start_game(true)
+	if frame == 330:
+		_shot("8_english")
+		Settings.language = "es"
+		Settings.apply()
+	if frame == 345:
 		print("SMOKE OK (frames=%d)" % frame)
 		get_tree().quit(0)
 

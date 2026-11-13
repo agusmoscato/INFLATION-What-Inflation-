@@ -6,9 +6,9 @@ extends SceneTree
 ##  - 1 clic por segundo.
 ##  - Remarca apenas aparece el cartel de aumento (cobra el bono "a tiempo").
 ##  - Compra lo más rentable (EconomyLogic.smart_buy) cada 2 s.
-##  - Hace reforma cuando la Credibilidad ganada >= max(REFORM_MIN_GAIN, credibilidad_actual * REFORM_RATIO).
-##  - Hace plan económico apenas puede (alterna Emisión / Estabilización).
-##  - Compra medidas antiinflacionarias en la Era 5 apenas puede.
+##  - Reforma cada >= 40 min si la Credibilidad ganada >= max(REFORM_MIN_GAIN, credibilidad_actual * REFORM_RATIO).
+##  - Hace cada plan económico (Emisión, Convertibilidad, Estabilización) apenas puede.
+##  - En la Era 5 ahorra para las medidas antiinflacionarias y las compra apenas puede.
 ## No usa refugios (solo su arrastre en reformas): documentado en README.
 
 const REFORM_MIN_GAIN: int = 4

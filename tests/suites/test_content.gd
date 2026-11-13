@@ -62,3 +62,10 @@ func run(t) -> void:
 		t.check(I18n.has_key(tab, "es") and I18n.has_key(tab, "en"), "pestaña " + tab)
 	for k in ["toast.measure", "toast.shock"]:
 		t.check(I18n.has_key(k, "es") and I18n.has_key(k, "en"), k)
+	# los marcadores de formato (%s, %d) coinciden entre español e inglés
+	var ph: RegEx = RegEx.new()
+	ph.compile("%[sd]")
+	for k in I18n.all_keys():
+		var es_n: int = ph.search_all(I18n.get_text(k, "es")).size()
+		var en_n: int = ph.search_all(I18n.get_text(k, "en")).size()
+		t.eq(es_n, en_n, "marcadores de formato iguales en " + str(k))

@@ -71,7 +71,8 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	if rect.size != _cache_size:
 		_rebuild(rect.size)
 	var c: Vector2 = rect.size / 2.0
-	var xf: Transform2D = Transform2D(0.0, rect.position + c) * Transform2D(tilt, Vector2.ZERO) * Transform2D(0.0, -c)
+	var max_tilt: float = 4.0 / maxf(c.x, 1.0)      # en paneles anchos la rotación no desplaza más de ~4 px
+	var xf: Transform2D = Transform2D(0.0, rect.position + c) * Transform2D(clampf(tilt, -max_tilt, max_tilt), Vector2.ZERO) * Transform2D(0.0, -c)
 	RenderingServer.canvas_item_add_set_transform(ci, xf)
 	var sc: Color = Color(stroke, stroke.a * (0.4 if faded else 0.95))
 	var sc2: Color = Color(stroke, sc.a * 0.5)

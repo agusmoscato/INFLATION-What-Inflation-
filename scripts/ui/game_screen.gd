@@ -154,7 +154,7 @@ func _build_header() -> Control:
 	var left: VBoxContainer = VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(left)
-	money_label = UIKit.label("$0", 42, UIKit.C_GOLD)
+	money_label = UIKit.label("$0", 46, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
 	left.add_child(money_label)
 	power_label = UIKit.label("", 15, UIKit.C_DIM)
 	left.add_child(power_label)
@@ -162,7 +162,7 @@ func _build_header() -> Control:
 	mid.custom_minimum_size = Vector2(260, 0)
 	h.add_child(mid)
 	mid.add_child(UIKit.label(tr("ui.inflation"), 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER))
-	rate_label = UIKit.label("3 %", 30, UIKit.C_RED, HORIZONTAL_ALIGNMENT_CENTER)
+	rate_label = UIKit.label("3 %", 32, UIKit.C_RED, HORIZONTAL_ALIGNMENT_CENTER, true)
 	mid.add_child(rate_label)
 	month_bar = ChalkBar.new()
 	month_bar.show_percentage = false
@@ -287,8 +287,8 @@ func _build_biz_page() -> Control:
 		var h: HBoxContainer = HBoxContainer.new()
 		h.add_theme_constant_override("separation", 10)
 		row.add_child(h)
-		var icon: PanelContainer = UIKit.panel(def["color"], 10)
-		icon.custom_minimum_size = Vector2(46, 46)
+		var icon: BusinessIcon = BusinessIcon.new(def["id"])
+		icon.custom_minimum_size = Vector2(58, 58)
 		h.add_child(icon)
 		var info: VBoxContainer = VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -300,16 +300,25 @@ func _build_biz_page() -> Control:
 		var owned: Label = UIKit.label("", 20, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 		owned.custom_minimum_size = Vector2(60, 0)
 		h.add_child(owned)
-		var income: Label = UIKit.label("", 14, UIKit.C_GREEN, HORIZONTAL_ALIGNMENT_RIGHT)
-		income.custom_minimum_size = Vector2(120, 0)
+		var income: ChalkPrice = ChalkPrice.new()
+		income.color = UIKit.C_GREEN
+		income.font_size = int(21 * UIKit.FS)
+		income.custom_minimum_size = Vector2(150, 40)
+		income.seed_v = 5 + int(def["idx"]) * 3
 		h.add_child(income)
+		var cost_price: ChalkPrice = ChalkPrice.new()
+		cost_price.color = UIKit.C_GOLD
+		cost_price.font_size = int(22 * UIKit.FS)
+		cost_price.custom_minimum_size = Vector2(150, 40)
+		cost_price.seed_v = 9 + int(def["idx"]) * 3
+		h.add_child(cost_price)
 		var btn: Button = Button.new()
-		btn.custom_minimum_size = Vector2(190, 44)
-		UIKit.style_button(btn, UIKit.C_GREEN.darkened(0.25), 15)
+		btn.custom_minimum_size = Vector2(116, 44)
+		UIKit.style_button(btn, UIKit.C_GREEN.darkened(0.25), 17)
 		btn.pressed.connect(_on_buy_business.bind(def["id"]))
 		h.add_child(btn)
 		v.add_child(row)
-		biz_rows.append({"def": def, "row": row, "owned": owned, "income": income, "btn": btn})
+		biz_rows.append({"def": def, "row": row, "owned": owned, "income": income, "cost": cost_price, "btn": btn, "icon": icon})
 	_refresh_qty_buttons()
 	return pr[0]
 
@@ -534,6 +543,12 @@ func _refresh_all() -> void:
 	var era_def: Dictionary = GameData.era_def(m.era)
 	era_label.text = tr(era_def["name_key"])
 	era_label.add_theme_color_override("font_color", era_def["color"])
+	empanada.rate = _rate
+	if ChalkBoard.instance != null:
+		var smudge: float = clampf((_rate - 0.03) * 1.2, 0.0, 1.0)
+		ChalkBoard.instance.set_smudge(smudge)
+		if ChalkPost.instance != null:
+			ChalkPost.instance.set_strength(1.0 - smudge * 0.3)
 	click_label.text = tr("ui.click_hint") + "  +" + UIKit.money(EconomyLogic.click_value(m))
 	_refresh_remark()
 	_refresh_events()
@@ -603,12 +618,15 @@ func _refresh_biz() -> void:
 		e["owned"].text = "x%d" % n
 		var bm: float = float(m.biz_up_mult.get(def["id"], 1.0)) * EconomyLogic.milestone_mult(n)
 		var per_sec: BigNumber = def["base_income"].mul_f(float(n) * bm * m.global_mult).mul(m.my_prices).mul_f(EconomyLogic.event_income_mult(m))
-		e["income"].text = "+%s%s" % [UIKit.money(per_sec), tr("ui.per_sec")]
+		e["income"].rate = _rate
+		e["cost"].rate = _rate
+		e["income"].set_text("+%s%s" % [UIKit.money(per_sec), tr("ui.per_sec")])
 		var qty: int = _buy_mode
 		if qty < 0:
 			qty = maxi(1, EconomyLogic.max_affordable(m, def))
 		var cost: BigNumber = EconomyLogic.business_cost(m, def, qty)
-		e["btn"].text = "%s x%d  %s" % [tr("ui.buy"), qty, UIKit.money(cost)]
+		e["cost"].set_text(UIKit.money(cost))
+		e["btn"].text = "%s x%d" % [tr("ui.buy"), qty]
 		e["btn"].disabled = cost.gt(m.money)
 
 
@@ -845,6 +863,7 @@ func _on_business_bought(_id: String, _n: int) -> void:
 
 
 func _on_month_passed(rate: float) -> void:
+	_scratch_costs()
 	_play("raise", clampf(1.0 - rate * 0.3, 0.6, 1.0))
 	_shake(clampf(4.0 + rate * 14.0, 4.0, 22.0), 0.35)
 	raise_label.text = tr("ui.raise") % BigNumber.from_float(rate * 100.0).format(1)
@@ -861,6 +880,7 @@ func _on_month_passed(rate: float) -> void:
 
 
 func _on_remarked(bonus: BigNumber, on_time: bool) -> void:
+	_remark_wipe()
 	_play("register")
 	if on_time and not bonus.is_zero():
 		_toast(tr("ui.remark_bonus") % UIKit.money(bonus), UIKit.C_GREEN)
@@ -1136,3 +1156,41 @@ func show_offline_report(report: Dictionary) -> void:
 	UIKit.style_button(ok, UIKit.C_GREEN.darkened(0.2), 18)
 	ok.pressed.connect(ov.queue_free)
 	v.add_child(ok)
+
+
+# ---- remarcar: el trapo borra los precios y se reescriben a mano ----
+func _visible_price_rects(field: String) -> Array:
+	var out: Array = []
+	if _tab != 0:
+		return out
+	var view: Rect2 = pages[0].get_global_rect()
+	for e in biz_rows:
+		if e["row"].visible:
+			var p: ChalkPrice = e[field]
+			var r: Rect2 = p.get_global_rect()
+			if view.has_point(r.get_center()):
+				out.append({"price": p, "rect": r})
+	return out
+
+
+func _remark_wipe() -> void:
+	var items: Array = _visible_price_rects("income")
+	if items.is_empty():
+		return
+	var rects: Array = []
+	var row_time: float = 0.075
+	for i in range(items.size()):
+		var p: ChalkPrice = items[i]["price"]
+		p.request_rewrite(1, float(i) * row_time + 0.05)
+		rects.append(items[i]["rect"])
+	RagWipe.sweep(fx_layer, rects, row_time)
+	_burst(money_label.global_position + Vector2(80, 30), UIKit.C_TEXT, 14)
+
+
+## Cada aumento tacha los costos viejos y los escribe de nuevo (tachón rosa).
+func _scratch_costs() -> void:
+	var i: int = 0
+	for it in _visible_price_rects("cost"):
+		var p: ChalkPrice = it["price"]
+		p.request_rewrite(2, randf() * 0.45 + float(i % 3) * 0.05)
+		i += 1

@@ -41,6 +41,7 @@ func _ready() -> void:
 		["menu", _menu],
 		["01_juego_era1", _early],
 		["02_negocios_era3", _mid],
+		["02b_remarcando", _remark],
 		["03_mejoras", _tab.bind(1)],
 		["04_refugios", _tab.bind(2)],
 		["05_reforma", _tab.bind(3)],
@@ -124,6 +125,10 @@ func _mid() -> void:
 	EconomyLogic.start_event(m, "aguinaldo")
 	Economy.flush()
 	_g()._select_tab(0)
+
+
+func _remark() -> void:
+	Economy.remark()
 
 
 func _tab(i: int) -> void:

@@ -36,4 +36,5 @@ func _draw() -> void:
 		x += 5.0
 		i += 1
 	pts.append(Vector2(x_end, mid))
-	draw_polyline(pts, fill_color, 3.2, true)
+	if pts.size() >= 2:   # con el control todavia sin ancho (primer cuadro) queda un solo punto
+		draw_polyline(pts, fill_color, 3.2, true)

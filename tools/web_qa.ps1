@@ -10,14 +10,17 @@ param(
   [int]$Port = 8061,
   [int]$DebugPort = 9334,
   [int]$TimeoutSec = 400,
-  [string]$Chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe",
+  [string]$Chrome = "",   # vacio: Chrome si esta, si no el Edge de Windows (tools/_env.ps1 Find-Browser)
   [string]$OutDir = "export/qa_web"
 )
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "_env.ps1")
 Set-Location (Split-Path $PSScriptRoot -Parent)
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 $OutDir = (Resolve-Path $OutDir).Path
-if (-not (Test-Path $Chrome)) { Write-Error "No encontre Chrome en $Chrome"; exit 2 }
+if ($Chrome -eq "") { $Chrome = Find-Browser }
+if (-not $Chrome -or -not (Test-Path $Chrome)) { Write-Error "No encontre Chrome ni Edge (corre tools/setup.ps1)"; exit 2 }
+Write-Host "Navegador: $Chrome"
 
 $serve = Start-Job -ScriptBlock { param($root, $d, $port) & powershell -NoProfile -File (Join-Path $root "tools\serve_web.ps1") -Dir (Join-Path $root $d) -Port $port } -ArgumentList (Get-Location).Path, $Dir, $Port
 Start-Sleep 2

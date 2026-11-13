@@ -4,7 +4,7 @@ param(
   [string]$Url = "http://localhost:8060/",
   [string]$Out = "web_probe.png",
   [int]$Wait = 45,
-  [string]$Chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe",
+  [string]$Chrome = "",   # vacio: Chrome si esta, si no el Edge de Windows
   [int]$Port = 9333,
   [string]$Click = "",
   [int]$Wait2 = 35,
@@ -12,6 +12,9 @@ param(
   [string]$Width = "1280",
   [string]$Height = "720"
 )
+. (Join-Path $PSScriptRoot "_env.ps1")
+if ($Chrome -eq "") { $Chrome = Find-Browser }
+if (-not $Chrome) { Write-Error "No encontre Chrome ni Edge (corre tools/setup.ps1)"; exit 2 }
 $profile = Join-Path $env:TEMP ("chrome_probe_" + [guid]::NewGuid().ToString("N"))
 $p = Start-Process $Chrome -ArgumentList @("--headless=new", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist",
   "--window-size=$Width,$Height", "--remote-debugging-port=$Port", "--user-data-dir=$profile", "about:blank") -PassThru

@@ -3,30 +3,38 @@
 # y cada build web se prueba con Chrome headless (tools/web_qa.ps1: textos, raspadita y sobre con mouse, guardado al recargar),
 # guarda capturas en user://qa/ y FALLA si algun Label visible es una clave de traduccion ("ui.", "biz.", ...).
 #
+# Si falta Godot 4.4.1, las templates, rcedit o el navegador del QA web, llama a tools/setup.ps1 y los instala.
+# Cada build web queda tambien comprimido para itch.io: export/web/InflationWhatInflation_web.zip y
+# export/web_demo/InflationWhatInflation_web_demo.zip (index.html en la raiz).
+#
 # Uso:
-#   powershell -File tools/export_all.ps1                     # todo
-#   powershell -File tools/export_all.ps1 -Targets windows,web # solo algunos
-#   powershell -File tools/export_all.ps1 -NoQa                # sin control de calidad
+#   powershell -File tools/export_all.ps1                            # todo
+#   powershell -File tools/export_all.ps1 -Targets windows,web_demo  # solo algunos
+#   powershell -File tools/export_all.ps1 -NoQa                      # sin control de calidad
 param(
   [string[]]$Targets = @("windows", "windows_demo", "linux", "web", "web_demo"),
   [switch]$NoQa,
   [string]$Godot = ""
 )
 $ErrorActionPreference = "Stop"
-Set-Location (Split-Path $PSScriptRoot -Parent)
+. (Join-Path $PSScriptRoot "_env.ps1")
+Set-Location $RepoRoot
 $Name = "InflationWhatInflation"
-if ($Godot -eq "") {
-  $found = Get-Command godot -ErrorAction SilentlyContinue
-  if ($found) { $Godot = $found.Source }
-  else { $Godot = (Get-ChildItem "tools\godot_bin\Godot_v*_console.exe" | Select-Object -First 1).FullName }
-}
-if (-not $Godot) { Write-Error "No encontre Godot. Pasalo con -Godot ruta o ponelo en el PATH."; exit 1 }
+$Targets = Split-List $Targets
+$valid = @("windows", "windows_demo", "linux", "web", "web_demo")
+foreach ($t in $Targets) { if ($valid -notcontains $t) { Write-Error "Destino desconocido: $t (validos: $($valid -join ', '))"; exit 1 } }
+
+# Lo que falte se instala con setup.ps1
+$need = @()
+if ($Godot -eq "" -and -not (Find-Godot)) { $need += "godot" }
+if (-not (Test-Templates)) { $need += "templates" }
+if (($Targets -match "^windows") -and -not (Test-RceditConfigured)) { $need += "rcedit" }
+if (-not $NoQa -and ($Targets -match "^web") -and -not (Find-Browser)) { $need += "browser" }
+if ($need.Count -gt 0) { Invoke-Setup $need }
+if ($Godot -eq "") { $Godot = Find-Godot }
+if (-not $Godot) { Write-Error "No encontre Godot $GodotVersion ni despues de tools\setup.ps1"; exit 1 }
+if (-not (Test-Templates)) { Write-Error "Faltan las export templates en $TemplatesDir ni despues de tools\setup.ps1"; exit 2 }
 Write-Host "Godot: $Godot"
-$templates = Join-Path $env:APPDATA "Godot\export_templates\4.4.1.stable"
-if (-not (Test-Path $templates)) {
-  Write-Error "Faltan las export templates 4.4.1 en $templates. Instalalas desde el editor o con tools/export_all.sh --install-templates."
-  exit 2
-}
 & $Godot --headless --import | Out-Null
 
 function Export-One($preset, $out) {
@@ -68,7 +76,6 @@ foreach ($t in $Targets) {
     "linux"        { Export-One "Linux" "export\linux\$Name.x86_64"; Qa-Linux "export\linux\$Name.x86_64" }
     "web"          { Export-One "Web" "export\web\index.html" }
     "web_demo"     { Export-One "Web Demo" "export\web_demo\index.html" }
-    default        { Write-Error "Destino desconocido: $t"; exit 1 }
   }
   if ($t -eq "web" -or $t -eq "web_demo") {
     $dir = if ($t -eq "web") { "export\web" } else { "export\web_demo" }
@@ -77,6 +84,12 @@ foreach ($t in $Targets) {
     }
     Write-Host "Build web OK ($dir)."
     Qa-Web ($dir -replace "\\", "/") $(if ($t -eq "web") { 8061 } else { 8062 })
+    # Zip para itch.io (index.html en la raiz, sin .import ni zips viejos)
+    $zip = Join-Path (Resolve-Path $dir).Path "${Name}_$t.zip"
+    if (Test-Path $zip) { Remove-Item $zip }
+    $files = Get-ChildItem $dir -File | Where-Object { $_.Extension -notin ".import", ".zip" }
+    Compress-Archive -Path $files.FullName -DestinationPath $zip
+    Write-Host ("Zip: {0} ({1:N1} MB)" -f $zip, ((Get-Item $zip).Length / 1MB))
   }
 }
 Write-Host "Listo. Archivos en export\"

@@ -6,9 +6,29 @@ Diseño completo: [docs/DISENO.md](docs/DISENO.md). Decisiones tomadas durante e
 
 > El nombre del juego es igual en español y en inglés. Para archivos y ejecutables se usa `InflationWhatInflation`.
 
+## Primera vez en una PC nueva
+
+Después de clonar, un solo comando instala todo lo que hace falta (Windows; no pide nada y se puede correr de nuevo sin romper nada):
+
+```
+powershell -File tools/setup.ps1
+```
+
+Instala Godot 4.4.1 (editor y consola) en `tools\godot_bin\`, las export templates 4.4.1 de Windows, Web y Linux en `%APPDATA%\Godot\export_templates\4.4.1.stable\`, rcedit en `tools\` (configurado en el editor), ffmpeg con winget si no está, y usa Chrome o el Edge de Windows para el QA web. Al final muestra un resumen ✔/✘ con la ruta de cada herramienta.
+
+Después:
+
+```
+powershell -File tools/export_all.ps1                            # exporta todo con QA (Windows, demo, Web, demo web y Linux)
+powershell -File tools/export_all.ps1 -Targets windows,web_demo  # solo algunos destinos
+powershell -File tools/record_clips.ps1                          # graba los 14 clips de marketing en MP4 (export\clips\)
+```
+
+`export_all.ps1` y `record_clips.ps1` llaman solos a `setup.ps1` si falta algo. `tools\godot_bin\` y `tools\rcedit*` están en `.gitignore`.
+
 ## Cómo correrlo
 
-1. Instalar Godot 4.4.x (estable). En este repo se usó `tools/godot_bin/Godot_v4.4.1-stable_win64_console.exe` (ignorado por git; bajarlo de https://godotengine.org/download).
+1. `powershell -File tools/setup.ps1` (o instalar Godot 4.4.1 a mano). El editor queda en `tools\godot_bin\Godot_v4.4.1-stable_win64.exe` y la consola en `tools\godot_bin\Godot_v4.4.1-stable_win64_console.exe` (en los comandos de abajo, `godot` es esa consola).
 2. Primera vez (genera el caché de clases): `godot --headless --import`
 3. Abrir el proyecto en el editor y presionar F5, o `godot --path .`
 
@@ -112,7 +132,7 @@ Borrador en español e inglés (descripción corta y larga, features y etiquetas
 
 ## Builds y exportación
 
-Presets en `export_presets.cfg`: **Windows Desktop**, **Linux**, **Web**, **Windows Demo** y **Web Demo** (los dos últimos con el feature tag `demo`). Requieren las export templates 4.4.1 (`tools/export_all.sh --install-templates`). `export/` está en `.gitignore`.
+Presets en `export_presets.cfg`: **Windows Desktop**, **Linux**, **Web**, **Windows Demo** y **Web Demo** (los dos últimos con el feature tag `demo`). Requieren las export templates 4.4.1 (en Windows las instala `tools/setup.ps1`; en Linux/macOS `tools/export_all.sh --install-templates`). `export/` está en `.gitignore`. En Windows, `powershell -File tools/export_all.ps1` hace todo esto, con QA, y deja los zips para itch.io en `export\web\InflationWhatInflation_web.zip` y `export\web_demo\InflationWhatInflation_web_demo.zip`.
 
 ```
 godot --headless --import

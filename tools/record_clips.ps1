@@ -2,11 +2,11 @@
 # Salida: export/clips/<clip>_h.mp4 (1920x1080) y <clip>_v.mp4 (1080x1920), 30 fps, 10-16 s.
 # MP4: H.264 -preset veryfast, CRF 20, AAC. Los verticales tienen que pesar < 50 MB y durar < 60 s: si pasan de 50 MB se
 # reconvierte subiendo el CRF de a 2 hasta que entren. Despues de convertir se borra el AVI.
-# ffmpeg: parametro -Ffmpeg, variable FFMPEG, el PATH o WinGet/Chocolatey/Scoop. Sin ffmpeg el AVI queda y se avisa.
+# Si falta Godot 4.4.1 o ffmpeg, llama a tools/setup.ps1 (ffmpeg via winget). -Ffmpeg fuerza una ruta.
 #
 # Uso:
 #   powershell -File tools/record_clips.ps1                       # todos los clips, horizontal y vertical
-#   powershell -File tools/record_clips.ps1 -Clips sobre_dorada -Formats v
+#   powershell -File tools/record_clips.ps1 -Clips sobre_dorada,quiniela -Formats v
 #   powershell -File tools/record_clips.ps1 -ConvertOnly          # solo convierte los AVI que ya existen
 param(
   [string[]]$Clips = @("precio_empanada", "trillon_cafe", "tijera", "hiperinflacion", "sobre_dorada", "raspadita_pozo", "quiniela"),
@@ -16,28 +16,20 @@ param(
   [switch]$ConvertOnly
 )
 $ErrorActionPreference = "Stop"
-Set-Location (Split-Path $PSScriptRoot -Parent)
-if ($Godot -eq "") {
-  $found = Get-Command godot -ErrorAction SilentlyContinue
-  if ($found) { $Godot = $found.Source }
-  else { $Godot = (Get-ChildItem "tools\godot_bin\Godot_v*_console.exe" | Select-Object -First 1).FullName }
-}
+. (Join-Path $PSScriptRoot "_env.ps1")
+Set-Location $RepoRoot
+$Clips = Split-List $Clips
+$Formats = Split-List $Formats
 
-function Find-Ffmpeg {
-  if ($Ffmpeg -ne "" -and (Test-Path $Ffmpeg)) { return (Resolve-Path $Ffmpeg).Path }
-  if ($env:FFMPEG -and (Test-Path $env:FFMPEG)) { return $env:FFMPEG }
-  $c = Get-Command ffmpeg -ErrorAction SilentlyContinue
-  if ($c) { return $c.Source }
-  # el PATH de esta sesion puede estar desactualizado: se relee de Windows
-  $p = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
-  foreach ($d in ($p -split ";")) { if ($d -and (Test-Path (Join-Path $d "ffmpeg.exe"))) { return (Join-Path $d "ffmpeg.exe") } }
-  foreach ($x in @("$env:LOCALAPPDATA\Microsoft\WinGet\Links\ffmpeg.exe", "C:\ProgramData\chocolatey\bin\ffmpeg.exe", "$env:USERPROFILE\scoop\shims\ffmpeg.exe")) { if (Test-Path $x) { return $x } }
-  # winget install Gyan.FFmpeg deja el exe dentro de su carpeta de paquetes (y no siempre lo agrega al PATH)
-  $pk = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Gyan.FFmpeg*" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($pk) { return $pk.FullName }
-  return $null
-}
-$ff = Find-Ffmpeg
+# Lo que falte (Godot 4.4.1, ffmpeg) se instala con setup.ps1
+$need = @()
+if ($Godot -eq "" -and -not $ConvertOnly -and -not (Find-Godot)) { $need += "godot" }
+if (-not ($Ffmpeg -ne "" -and (Test-Path $Ffmpeg)) -and -not (Find-Ffmpeg)) { $need += "ffmpeg" }
+if ($need.Count -gt 0) { Invoke-Setup $need }
+if ($Godot -eq "") { $Godot = Find-Godot }
+if (-not $ConvertOnly -and -not $Godot) { Write-Error "No encontre Godot $GodotVersion ni despues de tools\setup.ps1"; exit 1 }
+
+$ff = if ($Ffmpeg -ne "" -and (Test-Path $Ffmpeg)) { (Resolve-Path $Ffmpeg).Path } else { Find-Ffmpeg }
 if ($ff) { Write-Host "ffmpeg: $ff" }
 
 # AVI -> MP4. Devuelve la ruta del mp4 (o $null si no hay ffmpeg).

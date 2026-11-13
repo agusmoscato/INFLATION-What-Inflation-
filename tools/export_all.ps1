@@ -1,5 +1,6 @@
 # Exporta INFLATION? What Inflation? a Windows, Windows Demo, Linux, Web y Web Demo en export/ (equivalente de export_all.sh).
 # Despues de exportar cada .exe lo abre con --qa-screenshot (menu -> partida nueva -> negocios -> album -> timba, en es y en),
+# y cada build web se prueba con Chrome headless (tools/web_qa.ps1: textos, raspadita y sobre con mouse, guardado al recargar),
 # guarda capturas en user://qa/ y FALLA si algun Label visible es una clave de traduccion ("ui.", "biz.", ...).
 #
 # Uso:
@@ -46,11 +47,25 @@ function Qa-Exe($exe) {
   Write-Host "QA OK: $exe"
 }
 
+
+# QA del build web con Chrome headless (tools/web_qa.ps1): textos sin traducir, raspadita y sobre con el mouse, guardado al recargar.
+function Qa-Web($dir, $port) {
+  if ($NoQa) { Write-Host "QA web: salteado (-NoQa)"; return }
+  Write-Host "QA web: $dir ..."
+  & powershell -NoProfile -ExecutionPolicy Bypass -File "tools\web_qa.ps1" -Dir $dir -Port $port
+  if ($LASTEXITCODE -ne 0) { Write-Error "El QA web de $dir fallo (ver capturas en export\qa_web\)"; exit 6 }
+}
+
+# QA de Linux: el binario solo se puede correr en Linux. En Windows se saltea (esta documentado en docs/DISENO_CAMBIOS.md).
+function Qa-Linux($bin) {
+  if ($NoQa) { return }
+  Write-Host "QA Linux: salteado (el binario de Linux no se puede correr en Windows). Correr tools/export_all.sh en una maquina Linux."
+}
 foreach ($t in $Targets) {
   switch ($t) {
     "windows"      { Export-One "Windows Desktop" "export\windows\$Name.exe"; Qa-Exe "export\windows\$Name.exe" }
     "windows_demo" { Export-One "Windows Demo" "export\windows_demo\${Name}Demo.exe"; Qa-Exe "export\windows_demo\${Name}Demo.exe" }
-    "linux"        { Export-One "Linux" "export\linux\$Name.x86_64" }
+    "linux"        { Export-One "Linux" "export\linux\$Name.x86_64"; Qa-Linux "export\linux\$Name.x86_64" }
     "web"          { Export-One "Web" "export\web\index.html" }
     "web_demo"     { Export-One "Web Demo" "export\web_demo\index.html" }
     default        { Write-Error "Destino desconocido: $t"; exit 1 }
@@ -61,6 +76,7 @@ foreach ($t in $Targets) {
       if (-not (Test-Path "$dir\$f")) { Write-Error "Falta $dir\$f"; exit 3 }
     }
     Write-Host "Build web OK ($dir)."
+    Qa-Web ($dir -replace "\\", "/") $(if ($t -eq "web") { 8061 } else { 8062 })
   }
 }
 Write-Host "Listo. Archivos en export\"

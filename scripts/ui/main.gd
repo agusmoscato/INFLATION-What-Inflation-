@@ -1,8 +1,9 @@
 extends Control
-## Raíz del juego: administra las pantallas (menú, juego, opciones, créditos).
+## Raíz del juego: administra las pantallas (menú, juego, opciones, créditos) y las capas del pizarrón.
 
 var current: Control
 var sfx: SoundFx
+var board: ChalkBoard
 var _pending_offline: Dictionary = {}
 var _game: GameScreen
 
@@ -10,6 +11,19 @@ var _game: GameScreen
 func _ready() -> void:
 	I18n.load_all()
 	Settings.load_settings()
+	Chalk.load_fonts()
+	theme = ChalkTheme.build()
+	# capas: pizarrón (abajo) -> pantallas -> efecto tiza (pantalla completa) -> marco de madera
+	board = ChalkBoard.new()
+	add_child(board)
+	var post_layer: CanvasLayer = CanvasLayer.new()
+	post_layer.layer = 50
+	add_child(post_layer)
+	post_layer.add_child(ChalkPost.new())
+	var frame_layer: CanvasLayer = CanvasLayer.new()
+	frame_layer.layer = 60
+	add_child(frame_layer)
+	frame_layer.add_child(WoodFrame.new())
 	sfx = SoundFx.new()
 	add_child(sfx)
 	Settings.apply()
@@ -22,6 +36,7 @@ func _set_screen(screen: Control) -> void:
 		current.queue_free()
 	current = screen
 	add_child(screen)
+	move_child(screen, 1)      # justo encima del pizarrón, debajo de las capas de efecto
 	if screen is GameScreen:
 		_game = screen
 	else:
@@ -39,6 +54,8 @@ func show_menu() -> void:
 		SaveSystem.save_game()
 		get_tree().quit())
 	_set_screen(s)
+	if board != null:
+		board.set_smudge(0.0)
 
 
 func show_options() -> void:

@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c0qvgmqemyypc"
+
+[deps]
+
+files=["res://docs/balance_sin_refugios.minuto.translation", "res://docs/balance_sin_refugios.detalle.translation"]
+
+source_file="res://docs/balance_sin_refugios.csv"
+dest_files=["res://docs/balance_sin_refugios.minuto.translation", "res://docs/balance_sin_refugios.detalle.translation"]
+
+[params]
+
+compress=true
+delimiter=0

@@ -16,13 +16,13 @@ var raise_label: Label
 var money_label: Label
 var power_label: Label
 var rate_label: Label
-var month_bar: ProgressBar
+var month_bar: ChalkBar
 var month_label: Label
 var era_label: Label
 var empanada: EmpanadaButton
 var remark_btn: Button
 var remark_info: Label
-var remark_bar: ProgressBar
+var remark_bar: ChalkBar
 var click_label: Label
 
 var tab_buttons: Array = []
@@ -69,14 +69,11 @@ func gm() -> GameModel:
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg: ColorRect = ColorRect.new()
-	bg.color = UIKit.C_BG
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
 	world = MarginContainer.new()
 	world.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
-		world.add_theme_constant_override("margin_" + side, 10)
+		world.add_theme_constant_override("margin_" + side, 24)
+	world.add_theme_constant_override("margin_bottom", 34)
 	add_child(world)
 	var root: VBoxContainer = VBoxContainer.new()
 	root.add_theme_constant_override("separation", 8)
@@ -167,7 +164,7 @@ func _build_header() -> Control:
 	mid.add_child(UIKit.label(tr("ui.inflation"), 13, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	rate_label = UIKit.label("3 %", 30, UIKit.C_RED, HORIZONTAL_ALIGNMENT_CENTER)
 	mid.add_child(rate_label)
-	month_bar = ProgressBar.new()
+	month_bar = ChalkBar.new()
 	month_bar.show_percentage = false
 	month_bar.custom_minimum_size = Vector2(0, 8)
 	month_bar.max_value = 1.0
@@ -216,7 +213,8 @@ func _build_left() -> Control:
 	UIKit.style_button(remark_btn, UIKit.C_BLUE, 20)
 	remark_btn.pressed.connect(_on_remark_pressed)
 	rv.add_child(remark_btn)
-	remark_bar = ProgressBar.new()
+	remark_bar = ChalkBar.new()
+	remark_bar.fill_color = UIKit.C_GREEN
 	remark_bar.show_percentage = false
 	remark_bar.custom_minimum_size = Vector2(0, 8)
 	remark_bar.max_value = 1.0
@@ -241,7 +239,7 @@ func _build_right() -> Control:
 		b.text = tr(TABS[i])
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.toggle_mode = false
-		UIKit.style_button(b, UIKit.C_PANEL2, 15)
+		UIKit.style_tab(b, false)
 		b.pressed.connect(_select_tab.bind(i))
 		bar.add_child(b)
 		tab_buttons.append(b)
@@ -497,8 +495,8 @@ func _select_tab(i: int) -> void:
 	_tab = i
 	for k in range(pages.size()):
 		pages[k].visible = (k == i)
-		var base: Color = UIKit.C_BLUE if k == i else UIKit.C_PANEL2
-		UIKit.style_button(tab_buttons[k], base, 15)
+
+		UIKit.style_tab(tab_buttons[k], k == i)
 	_upg_dirty = true
 	_refresh_page()
 

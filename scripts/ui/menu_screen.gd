@@ -19,10 +19,6 @@ var _confirm_t: float = 0.0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bg: ColorRect = ColorRect.new()
-	bg.color = UIKit.C_BG
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
 	var bills_layer: Control = Control.new()
 	bills_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bills_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE

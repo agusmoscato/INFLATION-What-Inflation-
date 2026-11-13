@@ -11,7 +11,7 @@ var world: MarginContainer
 var fx_layer: Control
 var tint: ColorRect
 var toast_box: VBoxContainer
-var raise_label: Label
+var raise_sign: ScribbleText
 
 var money_label: Label
 var power_label: Label
@@ -97,17 +97,8 @@ func _ready() -> void:
 	fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fx_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fx_layer)
-	toast_box = VBoxContainer.new()
-	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast_box.position = Vector2(16, 150)
-	toast_box.custom_minimum_size = Vector2(318, 0)
-	fx_layer.add_child(toast_box)
-	raise_label = UIKit.label("", 54, UIKit.C_RED, HORIZONTAL_ALIGNMENT_CENTER)
-	raise_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	raise_label.add_theme_constant_override("outline_size", 8)
-	raise_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	raise_label.modulate.a = 0.0
-	fx_layer.add_child(raise_label)
+	raise_sign = ScribbleText.new()
+	fx_layer.add_child(raise_sign)
 
 	_connect_bus()
 	_last_era = gm().era
@@ -173,16 +164,17 @@ func _build_header() -> Control:
 	mid.add_child(month_bar)
 	month_label = UIKit.label("", 12, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	mid.add_child(month_label)
-	var right: VBoxContainer = VBoxContainer.new()
-	right.alignment = BoxContainer.ALIGNMENT_CENTER
-	h.add_child(right)
-	era_label = UIKit.label("", 18, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
-	right.add_child(era_label)
-	var menu_btn: Button = Button.new()
-	menu_btn.text = tr("ui.menu")
-	UIKit.style_button(menu_btn, UIKit.C_PANEL2, 14)
-	menu_btn.pressed.connect(func() -> void: request_menu.emit())
-	right.add_child(menu_btn)
+	# pila de notitas (avisos) arriba a la derecha: no tapa la empanada ni el panel central
+	var notes: Control = Control.new()
+	notes.custom_minimum_size = Vector2(340, 84)
+	notes.clip_contents = true
+	notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(notes)
+	toast_box = VBoxContainer.new()
+	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast_box.add_theme_constant_override("separation", 2)
+	notes.add_child(toast_box)
+	toast_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	return p
 
 
@@ -196,6 +188,16 @@ func _build_left() -> Control:
 	var v: VBoxContainer = VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	p.add_child(v)
+	var top_row: HBoxContainer = HBoxContainer.new()
+	v.add_child(top_row)
+	era_label = UIKit.label("", 20, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
+	era_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.add_child(era_label)
+	var menu_btn: Button = Button.new()
+	menu_btn.text = tr("ui.menu")
+	UIKit.style_button(menu_btn, UIKit.C_PANEL2, 15)
+	menu_btn.pressed.connect(func() -> void: request_menu.emit())
+	top_row.add_child(menu_btn)
 	empanada = EmpanadaButton.new()
 	empanada.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	empanada.custom_minimum_size = Vector2(280, 220)
@@ -484,8 +486,7 @@ func _build_ticker() -> Control:
 	var p: PanelContainer = UIKit.panel(Color("#0d141b"), 6)
 	var h: HBoxContainer = HBoxContainer.new()
 	p.add_child(h)
-	var tag: Label = UIKit.label(tr("ui.news"), 13, Color.WHITE)
-	tag.add_theme_stylebox_override("normal", UIKit.box(UIKit.C_RED, 4))
+	var tag: ChalkTag = ChalkTag.new(tr("ui.news"))
 	h.add_child(tag)
 	ticker_clip = Control.new()
 	ticker_clip.clip_contents = true
@@ -866,16 +867,15 @@ func _on_month_passed(rate: float) -> void:
 	_scratch_costs()
 	_play("raise", clampf(1.0 - rate * 0.3, 0.6, 1.0))
 	_shake(clampf(4.0 + rate * 14.0, 4.0, 22.0), 0.35)
-	raise_label.text = tr("ui.raise") % BigNumber.from_float(rate * 100.0).format(1)
-	raise_label.position = Vector2(size.x / 2.0 - 250, 60)
-	raise_label.size = Vector2(500, 70)
-	raise_label.pivot_offset = Vector2(250, 35)
-	raise_label.modulate.a = 1.0
-	raise_label.scale = Vector2(1.6, 1.6)
-	var tw: Tween = create_tween()
-	tw.tween_property(raise_label, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(0.8)
-	tw.tween_property(raise_label, "modulate:a", 0.0, 0.5)
+	# garabato gigante que se dibuja rápido y se borra; abajo del HUD, nunca encima
+	var hud_bottom: float = 150.0
+	if money_label != null:
+		hud_bottom = money_label.get_global_rect().end.y + 70.0
+	raise_sign.size = Vector2(size.x, 170.0)
+	raise_sign.position = Vector2(0.0, hud_bottom + (size.y - hud_bottom) * 0.22)
+	raise_sign.font_size = 104 if size.x > 900.0 else 70
+	raise_sign.show_text(tr("ui.raise") % BigNumber.from_float(rate * 100.0).format(1), int(rate * 1000.0) + 1)
+	Chalk.wobble(rate_label, 0.12, 0.6)
 	_upg_dirty = true
 
 
@@ -1036,18 +1036,30 @@ func _burst(pos: Vector2, color: Color, amount: int) -> void:
 func _toast(text: String, color: Color) -> void:
 	if toast_box == null:
 		return
-	var p: PanelContainer = UIKit.panel(Color(0.05, 0.08, 0.11, 0.92), 8)
+	# notita de tiza: la más nueva arriba; solo entran 3
+	var p: PanelContainer = PanelContainer.new()
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var l: Label = UIKit.label(text, 16, color, HORIZONTAL_ALIGNMENT_CENTER)
+	var st: ChalkStyle = UIKit.chalk_box(Chalk.nearest(color), Color(0, 0, 0, 0.3), 2.0)
+	st.content_margin_top = 2.0
+	st.content_margin_bottom = 2.0
+	st.content_margin_left = 8.0
+	st.content_margin_right = 8.0
+	p.add_theme_stylebox_override("panel", st)
+	var l: Label = UIKit.label(text, 14, color, HORIZONTAL_ALIGNMENT_CENTER)
+	l.clip_text = true
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(l)
-	toast_box.position = Vector2(16.0, maxf(150.0, size.y - 450.0))
 	toast_box.add_child(p)
-	while toast_box.get_child_count() > 4:
-		toast_box.get_child(0).queue_free()
-		toast_box.remove_child(toast_box.get_child(0))
+	toast_box.move_child(p, 0)
+	while toast_box.get_child_count() > 3:
+		var old: Node = toast_box.get_child(toast_box.get_child_count() - 1)
+		toast_box.remove_child(old)
+		old.queue_free()
+	p.pivot_offset = Vector2(170, 12)
+	p.scale = Vector2(0.6, 0.6)
 	var tw: Tween = create_tween()
-	tw.tween_interval(3.0)
+	tw.tween_property(p, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(3.2)
 	tw.tween_property(p, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(p.queue_free)
 
@@ -1099,7 +1111,9 @@ func _play_reform_animation(cut: int) -> void:
 	note.position = size / 2.0 - note.size / 2.0
 	ov.add_child(note)
 	var sc: ScissorsView = ScissorsView.new()
-	sc.size = Vector2(120, 120)
+	sc.size = Vector2(150, 130)
+	sc.scale = Vector2(1.9, 1.9)
+	sc.pivot_offset = Vector2(75, 65)
 	sc.position = Vector2(size.x + 60, note.position.y + 60)
 	sc.open = 0.5
 	ov.add_child(sc)
@@ -1114,8 +1128,9 @@ func _play_reform_animation(cut: int) -> void:
 		note.cut_zeros = cut
 		note.queue_redraw()
 		_shake(14.0, 0.35)
+		_chalk_chips(Vector2(cut_x, note.position.y + 110.0), ov)
 		for k in range(mini(cut, 12)):
-			var z: Label = UIKit.label("0", 40, UIKit.C_RED)
+			var z: Label = UIKit.label("0", 44, Chalk.WHITE, HORIZONTAL_ALIGNMENT_LEFT, true)
 			z.position = Vector2(cut_x + k * 10, note.position.y + 80)
 			ov.add_child(z)
 			var zt: Tween = create_tween()
@@ -1194,3 +1209,26 @@ func _scratch_costs() -> void:
 		var p: ChalkPrice = it["price"]
 		p.request_rewrite(2, randf() * 0.45 + float(i % 3) * 0.05)
 		i += 1
+
+
+## Pedacitos de tiza que saltan y caen cuando la tijera corta los ceros.
+func _chalk_chips(pos: Vector2, parent: Control) -> void:
+	var p: CPUParticles2D = CPUParticles2D.new()
+	p.position = pos
+	p.emitting = true
+	p.one_shot = true
+	p.amount = 34
+	p.lifetime = 1.1
+	p.explosiveness = 1.0
+	p.direction = Vector2(0, -1)
+	p.spread = 100.0
+	p.initial_velocity_min = 140.0
+	p.initial_velocity_max = 380.0
+	p.gravity = Vector2(0, 1100)
+	p.angular_velocity_min = -540.0
+	p.angular_velocity_max = 540.0
+	p.scale_amount_min = 3.0
+	p.scale_amount_max = 7.0
+	p.color = Chalk.WHITE
+	parent.add_child(p)
+	get_tree().create_timer(1.6).timeout.connect(p.queue_free)

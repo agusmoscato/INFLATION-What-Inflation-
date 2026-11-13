@@ -105,3 +105,17 @@ func run(t) -> void:
 		if fw2.update(fps, 0.1):
 			fired2 += 1
 	t.eq(fired2, 0, "FPS que se recuperan: no avisa")
+	# detector de claves sin traducir (control de calidad de los exportados)
+	t.check(QaCheck.looks_like_key("ui.new_game"), "detecta ui.new_game")
+	t.check(QaCheck.looks_like_key("biz.kiosco.d"), "detecta biz.kiosco.d")
+	t.check(QaCheck.looks_like_key("timba.scratch.title"), "detecta timba.scratch.title")
+	t.check(not QaCheck.looks_like_key("Nueva partida"), "no confunde texto normal")
+	t.check(not QaCheck.looks_like_key("$1.234,5 K"), "no confunde plata")
+	t.check(not QaCheck.looks_like_key("v0.1 - algo"), "no confunde la versión")
+	t.check(not QaCheck.looks_like_key("Hola. Chau."), "no confunde frases")
+	var probe: Label = Label.new()
+	probe.text = "ui.back"
+	t.eq(QaCheck.scan(probe).size(), 1, "scan encuentra una etiqueta con clave")
+	probe.text = "Volver"
+	t.eq(QaCheck.scan(probe).size(), 0, "scan ignora texto traducido")
+	probe.free()

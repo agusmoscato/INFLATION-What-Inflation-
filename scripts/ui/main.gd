@@ -29,6 +29,8 @@ func _ready() -> void:
 	Settings.apply()
 	EventBus.offline_report.connect(func(r: Dictionary) -> void: _pending_offline = r)
 	show_menu()
+	if OS.get_cmdline_user_args().has("--qa-screenshot"):
+		call_deferred("_qa_run")
 
 
 func _set_screen(screen: Control) -> void:
@@ -125,3 +127,72 @@ func show_howto() -> void:
 	var s: HowToScreen = HowToScreen.new()
 	s.closed.connect(show_menu)
 	_set_screen(s)
+
+
+# =====================================================================
+#  Control de calidad: godot/exe --qa-screenshot
+#  Recorre menú -> partida nueva -> negocios -> álbum -> timba (en español e inglés), saca capturas a user://qa/
+#  y falla (código de salida 1) si algún texto visible es una clave de traducción sin traducir.
+# =====================================================================
+func _qa_wait(seconds: float) -> void:
+	await get_tree().create_timer(seconds).timeout
+
+
+func _qa_shot(name: String, failures: Array) -> void:
+	var bad: Array = QaCheck.scan(self)
+	for b in bad:
+		failures.append("[%s] %s" % [name, b])
+	if DisplayServer.get_name() != "headless":
+		var img: Image = get_viewport().get_texture().get_image()
+		img.save_png(ProjectSettings.globalize_path("user://qa/%s.png" % name))
+	print("QA captura %-22s claves sin traducir: %d" % [name, bad.size()])
+
+
+func _qa_run() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://qa"))
+	SaveSystem.save_path = "user://qa_save.json"
+	Settings.path = "user://qa_settings.cfg"
+	var failures: Array = []
+	for lang in ["es", "en"]:
+		Settings.language = lang
+		Settings.apply()
+		show_menu()
+		await _qa_wait(0.8)
+		_qa_shot("menu_" + lang, failures)
+		show_howto()
+		await _qa_wait(0.6)
+		_qa_shot("comojuega_" + lang, failures)
+		Settings.tutorial_done = false
+		start_game(false)
+		await _qa_wait(1.0)
+		_qa_shot("negocios_" + lang, failures)
+		var m: GameModel = GameState.m
+		m.era = 3
+		m.money = BigNumber.from_string("5e12")
+		m.base_income = BigNumber.from_float(1e8)
+		m.owned["kiosco"] = 4
+		m.owned["empanadas"] = 10
+		m.dirty = true
+		for id in ["biz_empanadas", "biz_kiosco", "pj_perro", "hl_2", "gold_1", "note_0"]:
+			StickerLogic.give(m, id)
+		m.notifications.clear()
+		await _qa_wait(0.4)
+		_game._select_tab(4)
+		await _qa_wait(0.6)
+		_qa_shot("album_" + lang, failures)
+		_game._select_tab(5)
+		await _qa_wait(0.6)
+		_qa_shot("timba_" + lang, failures)
+		_game._select_tab(3)
+		await _qa_wait(0.4)
+		_qa_shot("reforma_" + lang, failures)
+	var f: FileAccess = FileAccess.open("user://qa/result.txt", FileAccess.WRITE)
+	f.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
+	f.close()
+	SaveSystem.delete_save()
+	DirAccess.remove_absolute(Settings.path)
+	if failures.is_empty():
+		print("QA OK: ningún texto visible es una clave de traducción")
+	else:
+		printerr("QA FALLA: %d textos sin traducir:\n%s" % [failures.size(), "\n".join(failures)])
+	get_tree().quit(1 if not failures.is_empty() else 0)

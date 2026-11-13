@@ -5,7 +5,8 @@
 #   tools/export_all.sh                      # exporta los tres (requiere export templates instaladas)
 #   tools/export_all.sh --install-templates  # baja e instala las templates de Godot (~1 GB) y exporta
 #   tools/export_all.sh --check              # solo verifica que todo esté listo
-#   tools/export_all.sh windows web          # exporta solo algunos
+#   tools/export_all.sh windows web          # exporta solo algunos (windows, windows_demo, linux, web, web_demo)
+#   tools/export_all.sh --no-qa              # sin el control de calidad (--qa-screenshot) de los .exe
 #
 # Variables opcionales:
 #   GODOT=/ruta/a/godot   (por defecto: godot del PATH o tools/godot_bin/Godot_v*_console.exe)
@@ -52,10 +53,12 @@ install_templates() {
 
 ARGS=()
 CHECK_ONLY=0
+NO_QA=0
 for a in "$@"; do
   case "$a" in
     --install-templates) install_templates ;;
     --check) CHECK_ONLY=1 ;;
+    --no-qa) NO_QA=1 ;;
     *) ARGS+=("$a") ;;
   esac
 done
@@ -73,8 +76,8 @@ if [[ $CHECK_ONLY -eq 1 ]]; then
   exit 0
 fi
 
-TARGETS=("${ARGS[@]:-windows linux web}")
-[[ ${#ARGS[@]} -eq 0 ]] && TARGETS=(windows linux web)
+TARGETS=("${ARGS[@]:-windows windows_demo linux web web_demo}")
+[[ ${#ARGS[@]} -eq 0 ]] && TARGETS=(windows windows_demo linux web web_demo)
 
 echo "Importando recursos..."
 "$GODOT" --headless --import >/dev/null 2>&1 || true
@@ -87,19 +90,44 @@ export_one() {
   [[ -s "$out" ]] || { echo "ERROR: no se generó $out" >&2; exit 3; }
 }
 
+# Control de calidad: abre el exe con --qa-screenshot (menú -> partida nueva -> negocios -> álbum -> timba, en es y en),
+# guarda capturas en user://qa/ y falla si algún Label visible es una clave de traducción ("ui.", "biz.", ...).
+# Solo se puede correr el exe de la plataforma donde estamos (Windows acá).
+qa_windows_exe() {
+  local exe="$1"
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) ;;
+    *) echo "QA: salteado (no se puede correr un .exe en este sistema)"; return 0 ;;
+  esac
+  [[ $NO_QA -eq 1 ]] && { echo "QA: salteado (--no-qa)"; return 0; }
+  echo "QA: abriendo $exe --qa-screenshot ..."
+  local winpath
+  winpath="$(cygpath -w "$(realpath "$exe")")"
+  if ! powershell.exe -NoProfile -Command "\$p = Start-Process -FilePath '$winpath' -ArgumentList '--','--qa-screenshot' -PassThru -Wait; exit \$p.ExitCode"; then
+    echo "ERROR: el control de calidad de $exe falló (hay textos sin traducir o el juego no arrancó)." >&2
+    echo "       Revisá user://qa/result.txt (en %APPDATA%/Godot/app_userdata/<proyecto>/qa/)." >&2
+    exit 4
+  fi
+  echo "QA OK: $exe (capturas en %APPDATA%/Godot/app_userdata/<proyecto>/qa/)"
+}
+
 for t in "${TARGETS[@]}"; do
   case "$t" in
-    windows) export_one "Windows Desktop" "export/windows/${NAME}.exe" ;;
-    linux)   export_one "Linux" "export/linux/${NAME}.x86_64" ;;
-    web)
-      export_one "Web" "export/web/index.html"
-      for f in index.js index.wasm index.pck; do
-        [[ -s "export/web/$f" ]] || { echo "ERROR: falta export/web/$f" >&2; exit 3; }
+    windows)      export_one "Windows Desktop" "export/windows/${NAME}.exe"; qa_windows_exe "export/windows/${NAME}.exe" ;;
+    windows_demo) export_one "Windows Demo" "export/windows_demo/${NAME}Demo.exe"; qa_windows_exe "export/windows_demo/${NAME}Demo.exe" ;;
+    linux)        export_one "Linux" "export/linux/${NAME}.x86_64" ;;
+    web)          export_one "Web" "export/web/index.html" ;;
+    web_demo)     export_one "Web Demo" "export/web_demo/index.html" ;;
+    *) echo "Destino desconocido: $t (usá windows, windows_demo, linux, web o web_demo)" >&2; exit 1 ;;
+  esac
+  case "$t" in
+    web|web_demo)
+      dir="export/web"; [[ "$t" == "web_demo" ]] && dir="export/web_demo"
+      for f in index.js index.wasm index.pck index.html; do
+        [[ -s "$dir/$f" ]] || { echo "ERROR: falta $dir/$f" >&2; exit 3; }
       done
-      echo "Build web OK. Para probarlo localmente (necesita servidor HTTP):"
-      echo "  cd export/web && python3 -m http.server 8060   # y abrir http://localhost:8060"
+      echo "Build web OK ($dir). Probarlo: powershell -File tools/serve_web.ps1 -Dir $dir -Port 8060 y tools/web_probe.ps1"
       ;;
-    *) echo "Destino desconocido: $t (usá windows, linux o web)" >&2; exit 1 ;;
   esac
 done
 echo "Listo. Archivos en export/"

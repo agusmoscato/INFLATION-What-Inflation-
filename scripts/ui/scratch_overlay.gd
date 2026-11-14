@@ -93,6 +93,9 @@ class _Prize:
 				draw_string(f, c + Vector2(-70, 72), "x5", HORIZONTAL_ALIGNMENT_CENTER, 140, 44, Chalk.WHITE)
 			"golden":
 				draw_string(f, Vector2(0, 66), tr("timba.golden"), HORIZONTAL_ALIGNMENT_CENTER, size.x, 54, Chalk.YELLOW)
+			"frenzy":
+				draw_string(f, Vector2(0, c.y - 10), tr("bill.frenzy"), HORIZONTAL_ALIGNMENT_CENTER, size.x, 70, Chalk.ORANGE)
+				draw_string(f, Vector2(0, c.y + 60), tr("timba.frenzy"), HORIZONTAL_ALIGNMENT_CENTER, size.x, 32, Chalk.WHITE)
 			"pozo":
 				draw_string(f, Vector2(0, c.y - 30), tr("timba.pozo"), HORIZONTAL_ALIGNMENT_CENTER, size.x, 84, Chalk.YELLOW)
 				draw_string(f, Vector2(0, c.y + 50), amount, HORIZONTAL_ALIGNMENT_CENTER, size.x, 64, Chalk.WHITE)

@@ -1,5 +1,7 @@
 extends Control
 ## Raíz del juego: administra las pantallas (menú, juego, opciones, créditos) y las capas del pizarrón.
+## También corre el QA de los exportados (--qa-screenshot), el del build web (?qa=web) y el del jugador nuevo
+## (--qa-newplayer-shots: 60 minutos de juego real a velocidad x20 con capturas para las hojas de contacto).
 
 var current: Control
 var sfx: SoundFx
@@ -31,17 +33,15 @@ func _ready() -> void:
 	var win: Window = get_window()
 	if win != null and not (get_viewport() is SubViewport):
 		_fit_initial_window(win)
-	if win != null and win.size.y > win.size.x and not (get_viewport() is SubViewport):
-		win.content_scale_size = Vector2i(1080, 1920)     # pantalla vertical (con escala 1,5: layout de 720x1280)
 	show_menu()
 	var ua: PackedStringArray = OS.get_cmdline_user_args()
 	if ua.has("--record-clip") and ua.find("--record-clip") + 1 < ua.size():
 		call_deferred("_start_clip", ua[ua.find("--record-clip") + 1])
-	if OS.get_cmdline_user_args().has("--qa-newplayer-shots"):
+	if ua.has("--qa-newplayer-shots"):
 		call_deferred("_qa_newplayer_shots")
-	if OS.get_cmdline_user_args().has("--qa-windows"):
+	if ua.has("--qa-windows"):
 		call_deferred("_qa_windows_only")
-	if OS.get_cmdline_user_args().has("--qa-screenshot"):
+	if ua.has("--qa-screenshot"):
 		call_deferred("_qa_run")
 	if OS.has_feature("web"):
 		var q: String = str(JavaScriptBridge.eval("window.location.search"))
@@ -55,10 +55,7 @@ func _set_screen(screen: Control) -> void:
 	current = screen
 	add_child(screen)
 	move_child(screen, 1)      # justo encima del pizarrón, debajo de las capas de efecto
-	if screen is GameScreen:
-		_game = screen
-	else:
-		_game = null
+	_game = screen if screen is GameScreen else null
 
 
 func show_menu() -> void:
@@ -105,6 +102,9 @@ func start_game(continue_save: bool, resume_memory: bool = false) -> void:
 	else:
 		SaveSystem.delete_save()
 		GameState.new_game()
+	if GameState.m.demo_finished:
+		show_demo_end()
+		return
 	var g: GameScreen = GameScreen.new()
 	g.request_menu.connect(func() -> void:
 		SaveSystem.save_game()
@@ -115,10 +115,6 @@ func start_game(continue_save: bool, resume_memory: bool = false) -> void:
 			GameState.m.won_notified = true
 			SaveSystem.save_game()
 			show_credits(true))
-	if GameState.m.demo_finished:
-		g.free()
-		show_demo_end()
-		return
 	_set_screen(g)
 	if not _pending_offline.is_empty():
 		g.show_offline_report(_pending_offline)
@@ -128,7 +124,6 @@ func start_game(continue_save: bool, resume_memory: bool = false) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _game != null and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SPACE:
 		Economy.click()
-		_game.empanada.poke()
 
 
 func show_demo_end() -> void:
@@ -145,10 +140,42 @@ func show_howto() -> void:
 	_set_screen(s)
 
 
+## Ventana inicial: 1600x900 o el 80 % de la pantalla (la menor, en 16:9), centrada y redimensionable.
+func _fit_initial_window(win: Window) -> void:
+	if OS.has_feature("web") or DisplayServer.get_name() == "headless":
+		return
+	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	for a in ["--record-clip", "--qa-screenshot", "--clip-size", "--qa-newplayer-shots"]:
+		if ua.has(a):
+			return
+	var usable: Rect2i = DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
+	var k: float = minf(1.0, minf(float(usable.size.x) * 0.8 / 1600.0, float(usable.size.y) * 0.8 / 900.0))
+	win.min_size = Vector2i(960, 540)
+	win.size = Vector2i(int(1600.0 * k), int(900.0 * k))
+	win.position = usable.position + (usable.size - win.size) / 2
+
+
+## Grabación de clips: godot --write-movie out.avi --fixed-fps 30 --resolution 1920x1080 -- --record-clip <nombre>
+func _start_clip(clip_name: String) -> void:
+	SaveSystem.save_path = "user://clip_save.json"
+	SaveSystem.ignore_close = true
+	get_window().always_on_top = true      # una ventana tapada por otras se queda sin dibujar y el video sale salteado
+	Settings.path = "user://clip_settings.cfg"
+	Settings.language = "es"
+	Settings.apply()
+	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	if ua.has("--clip-size"):
+		var wh: PackedStringArray = ua[ua.find("--clip-size") + 1].split("x")
+		get_window().size = Vector2i(int(wh[0]), int(wh[1]))
+	start_game(false)
+	var d: ClipDirector = ClipDirector.new(self, clip_name)
+	add_child(d)
+
+
 # =====================================================================
-#  Control de calidad: godot/exe --qa-screenshot
-#  Recorre menú -> partida nueva -> negocios -> álbum -> timba (en español e inglés), saca capturas a user://qa/
-#  y falla (código de salida 1) si algún texto visible es una clave de traducción sin traducir.
+#  QA de los exportados: godot/exe --qa-screenshot
+#  Menú, cómo se juega, juego, árbol, álbum, raspadita, logros y reforma en español e inglés (falla si algún texto visible
+#  es una clave de traducción); después el layout en 4 tamaños de ventana y 10 minutos de jugador nuevo.
 # =====================================================================
 func _qa_wait(seconds: float) -> void:
 	await get_tree().create_timer(seconds).timeout
@@ -159,9 +186,61 @@ func _qa_shot(name: String, failures: Array) -> void:
 	for b in bad:
 		failures.append("[%s] %s" % [name, b])
 	if DisplayServer.get_name() != "headless" and not OS.has_feature("web"):
-		var img: Image = get_viewport().get_texture().get_image()
-		img.save_png(ProjectSettings.globalize_path("user://qa/%s.png" % name))
+		get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/%s.png" % name))
 	print("QA captura %-22s claves sin traducir: %d" % [name, bad.size()])
+
+
+## Partida "avanzada" para mostrar todo: árbol medio comprado, álbum y raspadita desbloqueados, plata y negocios.
+func _qa_setup_rich() -> void:
+	var m: GameModel = GameState.m
+	for n in GameData.tree:
+		if int(n["ring"]) <= 3 and not bool(n["final"]) and not TreeLogic.demo_locked(m, n["id"]):
+			m.tree[n["id"]] = true
+	m.credibility = 240
+	m.reforms = maxi(m.reforms, 2)
+	m.tutorial_done = true
+	m.money = BigNumber.from_string("5e9")
+	m.owned["empanadas"] = 30
+	m.owned["kiosco"] = 18
+	m.owned["choripan"] = 8
+	m.owned["lavadero"] = 3
+	m.run_clicks = 300
+	m.dirty = true
+	for id in ["biz_empanadas", "biz_kiosco", "pj_perro", "hl_2", "gold_1", "note_0"]:
+		StickerLogic.give(m, id)
+	m.notifications.clear()
+
+
+func _qa_screens(lang: String, failures: Array, tag: String = "") -> void:
+	var suffix: String = lang + tag
+	_qa_setup_rich()
+	await _qa_wait(0.5)
+	_qa_shot("juego_" + suffix, failures)
+	_game._open_tree()
+	await _qa_wait(0.5)
+	_qa_shot("arbol_" + suffix, failures)
+	_game._open_album()
+	await _qa_wait(0.5)
+	_qa_shot("album_" + suffix, failures)
+	_game._open_achievements()
+	await _qa_wait(0.5)
+	_qa_shot("logros_" + suffix, failures)
+	_game._close_overlay()
+	GameState.m.collapse_shown = true
+	GameState.m.run_earned = BigNumber.from_string("3e9")
+	_game._open_reform_dialog()
+	await _qa_wait(0.5)
+	_qa_shot("reforma_" + suffix, failures)
+	_game._close_overlay()
+	var ov: ScratchOverlay = _game._open_scratch("x10")
+	await _qa_wait(0.5)
+	if ov != null:
+		ov.auto_scratch(0.3)
+		await _qa_wait(0.8)
+	_qa_shot("raspadita_" + suffix, failures)
+	if _game._scratch_overlay != null and is_instance_valid(_game._scratch_overlay):
+		_game._scratch_overlay.queue_free()
+		_game._scratch_overlay = null
 
 
 func _qa_run() -> void:
@@ -178,105 +257,29 @@ func _qa_run() -> void:
 		show_howto()
 		await _qa_wait(0.6)
 		_qa_shot("comojuega_" + lang, failures)
-		Settings.tutorial_done = false
 		start_game(false)
 		await _qa_wait(1.0)
-		_qa_shot("negocios_" + lang, failures)
-		var m: GameModel = GameState.m
-		m.era = 3
-		Unlocks.unlock_all(m)
-		m.money = BigNumber.from_string("5e12")
-		m.base_income = BigNumber.from_float(1e8)
-		m.owned["kiosco"] = 4
-		m.owned["empanadas"] = 10
-		m.dirty = true
-		for id in ["biz_empanadas", "biz_kiosco", "pj_perro", "hl_2", "gold_1", "note_0"]:
-			StickerLogic.give(m, id)
-		m.notifications.clear()
-		await _qa_wait(0.4)
-		_game._select_tab(4)
-		await _qa_wait(0.6)
-		_qa_shot("album_" + lang, failures)
-		_game._select_tab(5)
-		await _qa_wait(0.6)
-		_qa_shot("timba_" + lang, failures)
-		_game._select_tab(3)
-		await _qa_wait(0.4)
-		_qa_shot("reforma_" + lang, failures)
+		_qa_shot("inicio_" + lang, failures)
+		await _qa_screens(lang, failures)
 	await _qa_windows(failures)
 	get_window().size = Vector2i(1280, 720)
-	await _qa_newplayer(failures)      # 5 minutos de jugador nuevo: sin carteles/notas/flechas encimados ni órdenes repetidas
+	await _qa_newplayer(failures, 600.0, false)      # 10 minutos de jugador nuevo con la interfaz real
 	var f: FileAccess = FileAccess.open("user://qa/result.txt", FileAccess.WRITE)
 	f.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
 	f.close()
 	SaveSystem.delete_save()
 	DirAccess.remove_absolute(Settings.path)
 	if failures.is_empty():
-		print("QA OK: ningún texto visible es una clave de traducción")
+		print("QA OK")
 	else:
-		printerr("QA FALLA: %d textos sin traducir:\n%s" % [failures.size(), "\n".join(failures)])
+		printerr("QA FALLA: %d problemas:\n%s" % [failures.size(), "\n".join(failures)])
 	get_tree().quit(1 if not failures.is_empty() else 0)
 
 
-## Grabación de clips: godot --write-movie out.avi --fixed-fps 30 --resolution 1920x1080 -- --record-clip <nombre>
-func _start_clip(clip_name: String) -> void:
-	SaveSystem.save_path = "user://clip_save.json"
-	SaveSystem.ignore_close = true
-	get_window().always_on_top = true      # una ventana tapada por otras se queda sin dibujar y el video sale salteado
-	Settings.path = "user://clip_settings.cfg"
-	Settings.tutorial_done = true
-	Settings.language = "es"
-	Settings.apply()
-	var ua: PackedStringArray = OS.get_cmdline_user_args()
-	if ua.has("--clip-size"):
-		var wh: PackedStringArray = ua[ua.find("--clip-size") + 1].split("x")
-		get_window().size = Vector2i(int(wh[0]), int(wh[1]))
-		print("clip window: ", get_window().size)
-	start_game(false)
-	var d: ClipDirector = ClipDirector.new(self, clip_name)
-	add_child(d)
-
-
 # =====================================================================
-#  QA del build web: http://.../index.html?qa=web  (fase 1) y ?qa=web&phase=2 (despues de recargar).
-#  tools/web_qa.ps1 lo maneja con Chrome headless: mira las lineas "QA_*" de la consola y hace los arrastres del mouse.
+#  QA del build web: http://.../index.html?qa=web  (fase 1) y ?qa=web&phase=2 (después de recargar).
+#  tools/web_qa.ps1 lo maneja con Chrome headless: mira las líneas "QA_*" de la consola y hace los arrastres del mouse.
 # =====================================================================
-func _qa_translation(langs: Array) -> Array:
-	var failures: Array = []
-	for lang in langs:
-		Settings.language = lang
-		Settings.apply()
-		show_menu()
-		await _qa_wait(0.8)
-		_qa_shot("menu_" + lang, failures)
-		show_howto()
-		await _qa_wait(0.6)
-		_qa_shot("comojuega_" + lang, failures)
-		Settings.tutorial_done = false
-		start_game(false)
-		await _qa_wait(1.0)
-		_qa_shot("negocios_" + lang, failures)
-		var m: GameModel = GameState.m
-		m.era = 3
-		Unlocks.unlock_all(m)
-		m.money = BigNumber.from_string("5e12")
-		m.base_income = BigNumber.from_float(1e8)
-		m.owned["kiosco"] = 4
-		m.owned["empanadas"] = 10
-		m.dirty = true
-		for id in ["biz_empanadas", "biz_kiosco", "pj_perro", "hl_2", "gold_1", "note_0"]:
-			StickerLogic.give(m, id)
-		m.notifications.clear()
-		await _qa_wait(0.4)
-		_game._select_tab(4)
-		await _qa_wait(0.6)
-		_qa_shot("album_" + lang, failures)
-		_game._select_tab(5)
-		await _qa_wait(0.6)
-		_qa_shot("timba_" + lang, failures)
-	return failures
-
-
 func _qa_web(phase: int) -> void:
 	SaveSystem.save_path = "user://qa_web_save.json"
 	Settings.path = "user://qa_web_settings.cfg"
@@ -285,22 +288,33 @@ func _qa_web(phase: int) -> void:
 		var ok: bool = SaveSystem.load_game()
 		print("QA_PERSIST loaded=%s clicks=%d packs=%d" % [ok, GameState.m.clicks, GameState.m.packs_opened])
 		return
-	var failures: Array = await _qa_translation(["es", "en"])
+	var failures: Array = []
+	for lang in ["es", "en"]:
+		Settings.language = lang
+		Settings.apply()
+		show_menu()
+		await _qa_wait(0.8)
+		_qa_shot("menu_" + lang, failures)
+		start_game(false)
+		await _qa_wait(1.0)
+		_qa_shot("inicio_" + lang, failures)
+		_qa_setup_rich()
+		_game._open_tree()
+		await _qa_wait(0.6)
+		_qa_shot("arbol_" + lang, failures)
+		_game._open_album()
+		await _qa_wait(0.6)
+		_qa_shot("album_" + lang, failures)
+		_game._close_overlay()
 	print("QA_I18N bad=%d %s" % [failures.size(), " | ".join(failures)])
 	Settings.language = "es"
 	Settings.apply()
-	Settings.tutorial_done = true
 	start_game(false)
 	await _qa_wait(1.0)
+	_qa_setup_rich()
 	var m: GameModel = GameState.m
-	m.era = 3
-	Unlocks.unlock_all(m)
-	m.money = BigNumber.from_string("5e12")
-	m.base_income = BigNumber.from_float(1e8)
-	m.dirty = true
 	Input.use_accumulated_input = false      # Chrome headless corre a pocos cuadros por segundo: sin esto se pierden los movimientos del mouse
-	# raspadita con el mouse
-	var ov: ScratchOverlay = _game._open_scratch(0.05)
+	var ov: ScratchOverlay = _game._open_scratch()
 	await _qa_wait(0.8)
 	var st: Transform2D = get_viewport().get_screen_transform()
 	var a: Vector2 = st * ov._card.position
@@ -313,7 +327,6 @@ func _qa_web(phase: int) -> void:
 	_game._scratch_overlay.queue_free()
 	_game._scratch_overlay = null
 	await _qa_wait(0.4)
-	# sobre de figuritas con el mouse
 	var pk: PackOpening = _game._open_pack_overlay(StickerLogic.gift_pack(m))
 	await _qa_wait(0.8)
 	st = get_viewport().get_screen_transform()
@@ -324,31 +337,16 @@ func _qa_web(phase: int) -> void:
 	while is_instance_valid(pk) and pk.state != PackOpening.State.DONE and Time.get_ticks_msec() - t0 < 25000:
 		await _qa_wait(0.2)
 	print("QA_PACK state=%d tear=%.2f" % [pk.state, pk.tear])
-	# guardado: se marca la partida y se guarda; la fase 2 (tras recargar la pagina) tiene que verla
 	m.clicks = 4242
 	print("QA_SAVE ok=%s" % str(SaveSystem.save_game()))
 	print("QA_SAVED clicks=4242 packs=%d" % m.packs_opened)
 
 
-## Ventana inicial: 1600x900 o el 80 % de la pantalla (la menor, en 16:9), centrada y redimensionable.
-func _fit_initial_window(win: Window) -> void:
-	if OS.has_feature("web") or DisplayServer.get_name() == "headless":
-		return
-	var ua: PackedStringArray = OS.get_cmdline_user_args()
-	for a in ["--record-clip", "--qa-screenshot", "--clip-size"]:
-		if ua.has(a):
-			return
-	var usable: Rect2i = DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
-	var k: float = minf(1.0, minf(float(usable.size.x) * 0.8 / 1600.0, float(usable.size.y) * 0.8 / 900.0))
-	win.min_size = Vector2i(960, 540)
-	win.size = Vector2i(int(1600.0 * k), int(900.0 * k))
-	win.position = usable.position + (usable.size - win.size) / 2
-
-
-## QA de la ventana real: menú, juego y todas las pestañas en 1280x720, 1366x768, 1600x900 y 1920x1080.
-## Falla si algún botón o texto queda fuera de la ventana o se pisa con otro. Capturas win_<tamaño>_<pantalla>.png en user://qa/.
+# =====================================================================
+#  QA de la ventana real: menú, juego, árbol, álbum y logros en 1280x720, 1366x768, 1600x900 y 1920x1080.
+#  Falla si algún botón o texto queda fuera de la ventana o se pisa con otro.
+# =====================================================================
 const QA_WINDOW_SIZES: Array = [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080)]
-const QA_TABS: Array = ["negocios", "mejoras", "refugios", "reforma", "album", "timba", "logros"]
 
 
 func _qa_win_check(name: String, failures: Array) -> void:
@@ -372,26 +370,23 @@ func _qa_windows(failures: Array) -> void:
 		show_menu()
 		await _qa_wait(0.8)
 		_qa_win_check("%s_menu" % tag, failures)
-		Settings.tutorial_done = true
 		start_game(false)
+		GameState.m.tutorial_done = true
 		await _qa_wait(1.0)
-		_qa_win_check("%s_juego_era1" % tag, failures)
-		var m: GameModel = GameState.m
-		m.era = 3
-		Unlocks.unlock_all(m)
-		m.money = BigNumber.from_string("5e12")
-		m.base_income = BigNumber.from_float(1e8)
-		m.owned["kiosco"] = 4
-		m.owned["empanadas"] = 10
-		m.dirty = true
-		for id in ["biz_empanadas", "biz_kiosco", "pj_perro", "hl_2", "gold_1", "note_0"]:
-			StickerLogic.give(m, id)
-		m.notifications.clear()
+		_qa_win_check("%s_juego_inicio" % tag, failures)
+		_qa_setup_rich()
+		await _qa_wait(0.6)
+		_qa_win_check("%s_juego" % tag, failures)
+		_game._open_tree()
 		await _qa_wait(0.5)
-		for i in range(QA_TABS.size()):
-			_game._select_tab(i)
-			await _qa_wait(0.5)
-			_qa_win_check("%s_%s" % [tag, QA_TABS[i]], failures)
+		_qa_win_check("%s_arbol" % tag, failures)
+		_game._open_album()
+		await _qa_wait(0.5)
+		_qa_win_check("%s_album" % tag, failures)
+		_game._open_achievements()
+		await _qa_wait(0.5)
+		_qa_win_check("%s_logros" % tag, failures)
+		_game._close_overlay()
 
 
 ## Solo la parte de ventana real del QA (más rápido para iterar): godot -- --qa-windows
@@ -405,18 +400,21 @@ func _qa_windows_only() -> void:
 	out.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
 	out.close()
 	SaveSystem.delete_save()
+	for f in failures:
+		printerr("QA ventanas FALLA: ", f)
 	print("QA ventanas: %d problemas" % failures.size())
 	get_tree().quit(1 if not failures.is_empty() else 0)
 
 
 # =====================================================================
-#  QA de la primera partida de un jugador nuevo: godot -- --qa-newplayer-shots
-#  Un "jugador que hace lo que le marca la pantalla" (sigue la acción destacada) juega 5 minutos a velocidad x10 y se saca
-#  una captura cada 15 s de juego en user://qa/newplayer/. tools/qa_newplayer.ps1 las junta en docs/qa/primeros_5_min.jpg.
+#  QA de jugador nuevo con la interfaz real: godot -- --qa-newplayer-shots [--np-seconds 3600]
+#  BotPolicy (el mismo bot del simulador) juega a velocidad x20 tocando la empanada y los billetes de verdad.
+#  Capturas: cada 30 s hasta el minuto 10 y cada 2,5 min hasta el 60 (user://qa/newplayer/t_SSSS.png);
+#  tools/qa_newplayer.ps1 arma las hojas de contacto docs/qa/v2_0_a_10_min.jpg y docs/qa/v2_10_a_60_min.jpg.
+#  Falla si aparece un texto sin traducir, si la pantalla se sale de la ventana, si la primera reforma no llega entre
+#  los minutos 4 y 6 o si pasan más de 20 s seguidos sin nada comprable.
 # =====================================================================
-const NP_SECONDS: float = 900.0      # 15 minutos de juego (a velocidad x10 son unos 90 s reales)
-const NP_SHOT_EVERY: float = 15.0
-const NP_SPEED: float = 10.0
+const NP_SPEED: float = 20.0
 
 
 func _qa_newplayer_shots() -> void:
@@ -425,9 +423,13 @@ func _qa_newplayer_shots() -> void:
 	Settings.path = "user://qa_np_settings.cfg"
 	get_window().borderless = true
 	get_window().size = Vector2i(1280, 720)      # ventana sin bordes: si no, Windows puede dejar de dibujarla y las capturas salen viejas
-	get_window().always_on_top = true             # y siempre arriba: una ventana tapada por otras se queda sin dibujar y el QA se frena
+	get_window().always_on_top = true
+	var secs: float = 3600.0
+	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	if ua.has("--np-seconds") and ua.find("--np-seconds") + 1 < ua.size():
+		secs = float(ua[ua.find("--np-seconds") + 1])
 	var failures: Array = []
-	await _qa_newplayer(failures)
+	await _qa_newplayer(failures, secs, true)
 	var out: FileAccess = FileAccess.open("user://qa/newplayer/result.txt", FileAccess.WRITE)
 	out.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
 	out.close()
@@ -438,187 +440,91 @@ func _qa_newplayer_shots() -> void:
 	get_tree().quit(1 if not failures.is_empty() else 0)
 
 
-## Un solo cartel, nota o flecha de acción a la vez; y ninguna orden del tutorial queda más de 30 s con el mismo texto.
-## `tr_state` guarda el texto visible de la nota del tutorial y desde cuándo (segundos de juego).
-func _qa_attention_check(gt: float, tr_state: Dictionary, failures: Array) -> void:
-	var seen: Array = []
-	for n in get_tree().get_nodes_in_group("attention"):
-		var ci: CanvasItem = n as CanvasItem
-		if ci == null or not ci.is_visible_in_tree():
-			continue
-		var a: float = 1.0
-		var p: Node = n
-		while p != null:
-			if p is CanvasItem:
-				a *= (p as CanvasItem).modulate.a
-			p = p.get_parent()
-		if a < 0.3:
-			continue
-		seen.append(n)
-	if seen.size() > 1:
-		var names: Array = []
-		var rects: Array = []
-		for n in seen:
-			names.append("%s (%s)" % [n.get_class(), n.get_path()])
-		var msg: String = "[%s] DOS CARTELES/NOTAS/FLECHAS A LA VEZ: %s" % [_fmt_t(gt), " + ".join(names)]
-		if not tr_state.get("reported_multi", {}).has(msg.substr(10)):
-			failures.append(msg)
-			tr_state["reported_multi"][msg.substr(10)] = true
-	# nota del tutorial: mismo texto > 30 s
-	var text: String = ""
-	if _game != null and _game._guide != null and is_instance_valid(_game._guide) and _game._guide._note.visible:
-		text = _game._guide.shown_text
-	if text != "" and text == str(tr_state.get("text", "")):
-		if gt - float(tr_state["since"]) > 30.0 and not tr_state.get("reported_text", {}).has(text):
-			failures.append("[%s] LA MISMA ORDEN DEL TUTORIAL DURANTE MÁS DE 30 s: «%s»" % [_fmt_t(gt), text])
-			tr_state["reported_text"][text] = true
-	else:
-		tr_state["text"] = text
-		tr_state["since"] = gt
-
-
 func _fmt_t(gt: float) -> String:
 	return "%d:%02d" % [int(gt) / 60, int(gt) % 60]
 
 
-func _qa_newplayer(failures: Array) -> void:
+func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://qa/newplayer"))
 	var save_before: String = SaveSystem.save_path
 	var settings_before: String = Settings.path
 	SaveSystem.save_path = "user://qa_np_save.json"
 	Settings.path = "user://qa_np_settings.cfg"
 	Settings.language = "es"
-	Settings.tutorial_done = false
 	Settings.apply()
 	start_game(false)
 	await _qa_wait(0.5)
-	Engine.time_scale = NP_SPEED       # se acelera TODO (también los cartelitos y los tweens): la hoja de contacto muestra tiempos reales
-	var gt: float = 0.0
+	var bot: BotPolicy = BotPolicy.new(3)
+	bot.on_click = func() -> void: Economy.click()
+	bot.on_bill = func(id: int) -> void:
+		if _game._bills.has(id) and is_instance_valid(_game._bills[id]):
+			(_game._bills[id] as FlyingBill).caught.emit(id)
+			(_game._bills[id] as FlyingBill).vanish(true)
+		else:
+			Economy.click_bill(id)
+	bot.on_reform = func() -> Dictionary:
+		_game._close_overlay()
+		return Economy.reform()
+	Engine.time_scale = NP_SPEED
+	var log: Array = ["t_seg,vuelta,reformas,plata,ingreso_s,credibilidad,nodos,inflacion_mensual,comprable"]
 	var next_shot: float = 0.0
-	var next_act: float = 0.0
 	var next_check: float = 0.0
-	var seen: Array = [0]
+	var last_afford: float = 0.0
+	var max_gap: float = 0.0
+	var first_reform: float = -1.0
+	var gt: float = 0.0
+	var reported: Dictionary = {}
+	var overlay_until: float = 0.0
 	var last_us: int = Time.get_ticks_usec()
-	var log: Array = ["t_seg,plata,tipo_destacado,id,objetivo,tutorial,pestana,cartel_desbloqueo,notas_visibles,time_played"]
-	var tr_state: Dictionary = {"reported_multi": {}, "reported_text": {}, "text": "", "since": 0.0}
-	var last_sign: Node = null
-	var buys_2min: int = 0
-	var bought_prev: int = 0
-	var first_cart: float = -1.0
-	var first_kiosk: float = -1.0
-	var obj_id: String = ""
-	var obj_since: float = 0.0
-	var rec_key: String = ""
-	var rec_since: float = 0.0
-	var red_since: float = -1.0
-	var red_episodes: Array = []
-	var sign_shot_at: float = -1.0
-	var np_seconds: float = NP_SECONDS
-	var ua: PackedStringArray = OS.get_cmdline_user_args()
-	if ua.has("--np-seconds") and ua.find("--np-seconds") + 1 < ua.size():
-		np_seconds = float(ua[ua.find("--np-seconds") + 1])
-	while gt <= np_seconds + 0.01:
-		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:      # algo del sistema minimiza la ventana y Godot deja de dibujar
+	while gt <= seconds + 0.01:
+		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 			DisplayServer.window_move_to_foreground()
 		await get_tree().process_frame
 		var now_us: int = Time.get_ticks_usec()
-		gt += minf(float(now_us - last_us) / 1e6, 0.2) * NP_SPEED
+		var dt: float = minf(float(now_us - last_us) / 1e6, 0.1) * NP_SPEED
 		last_us = now_us
+		gt += dt
 		var m: GameModel = GameState.m
-		# captura extra cuando aparece un cartel de desbloqueo (para verlo en la hoja de contacto)
-		var sign_now: Node = _game._unlock_sign if (_game._unlock_sign != null and is_instance_valid(_game._unlock_sign)) else null
-		if sign_now != null and sign_now != last_sign:
-			last_sign = sign_now
-			sign_shot_at = gt + 1.0
-		if sign_shot_at > 0.0 and gt >= sign_shot_at:
-			sign_shot_at = -1.0
-			await get_tree().process_frame
-			RenderingServer.force_draw()
-			get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%03d_cartel.png" % int(round(gt))))
-		# métricas del ritmo: compras (negocios + mejoras), primer carrito y kiosco, duración de cada objetivo
-		var bought_now: int = m.total_businesses() + m.upgrades.size()
-		if bought_now > bought_prev:
-			if gt < 120.0:
-				buys_2min += bought_now - bought_prev
-			bought_prev = bought_now
-		if first_cart < 0.0 and m.owned_count("empanadas") >= 1:
-			first_cart = gt
-		if first_kiosk < 0.0 and m.owned_count("kiosco") >= 1:
-			first_kiosk = gt
-		var oid: String = str(ObjectiveLogic.current(m)["id"])
-		if oid != obj_id:
-			obj_id = oid
-			obj_since = gt
-		elif gt - obj_since > 90.0 and gt < 900.0 and not tr_state.has("obj_" + oid):
-			tr_state["obj_" + oid] = true
-			failures.append("[%s] EL OBJETIVO «%s» LLEVA MÁS DE 90 s EN LOS PRIMEROS 15 MINUTOS" % [_fmt_t(gt), oid])
-		# semáforo en rojo: tramos de 3 s o más (los "momentos de tensión" entre los minutos 5 y 15)
-		var is_red: bool = Unlocks.has(m, "inflation") and not bool(EconomyLogic.race(m)["winning"])
-		if is_red and red_since < 0.0:
-			red_since = gt
-		elif not is_red and red_since >= 0.0:
-			if gt - red_since >= 2.5:
-				red_episodes.append(red_since)
-			red_since = -1.0
+		# cerrar capas que tapan el juego (resumen de la reforma, sobres): un jugador las cierra enseguida
+		if _game._busy_overlay != null and is_instance_valid(_game._busy_overlay) and _game._busy_overlay.get_child_count() > 3:
+			_game._busy_overlay.queue_free()
+			_game._busy_overlay = null
+		if _game._overlay != null and gt >= overlay_until:
+			_game._close_overlay()
+		var s: Dictionary = bot.step(m, dt)
+		Economy.flush()
+		if not s.is_empty():
+			if first_reform < 0.0:
+				first_reform = gt
+			# después de cada reforma se mira el árbol unos segundos (como haría un jugador)
+			_game._open_tree()
+			overlay_until = gt + 6.0
+		if gt <= 3600.0 and EconomyLogic.anything_affordable(m):
+			max_gap = maxf(max_gap, gt - last_afford)
+			last_afford = gt
 		if gt >= next_check:
-			next_check = gt + 0.5
-			_qa_attention_check(gt, tr_state, failures)
-			_qa_structure_check(gt, tr_state, failures)
-		if gt >= next_act:
-			next_act = gt + 0.4
-			var rec: Dictionary = Advisor.recommend(m, seen)
-			var rk: String = "%s:%s" % [rec["kind"], rec["id"]]
-			if rk != rec_key:
-				rec_key = rk
-				rec_since = gt
-			match str(rec["kind"]) if gt - rec_since >= 3.0 else "":      # un jugador tarda ~3 s en leer la flecha y tocar
-				"buy":
-					_game._select_tab(0)
-					Economy.buy_business(str(rec["id"]), 1)
-				"upgrade":
-					_game._select_tab(1)
-					Economy.buy_upgrade(str(rec["id"]))
-				"remark":
-					Economy.remark()
-				"tab":
-					seen.append(int(rec["id"]))
-					_game._select_tab(int(rec["id"]))
-				"decision":
-					Economy.choose_event(0)
-				"objective":
-					Economy.click()           # juntando plata para el objetivo: de a un clic cada tanto
-				_:
-					for i in range(1):
-						Economy.click()           # sin nada destacado, un jugador nuevo toca la empanada
+			next_check = gt + 1.0
+			for b in QaCheck.scan(self):
+				if not reported.has(b):
+					reported[b] = true
+					failures.append("[%s] TEXTO SIN TRADUCIR: %s" % [_fmt_t(gt), b])
+			_qa_structure_check(gt, reported, failures)
 		if gt >= next_shot:
-			await get_tree().process_frame
-			RenderingServer.force_draw()      # dibuja un cuadro ya mismo (esperar frame_post_draw se traba hasta 30 s y sin esto la captura sale vieja)
-			var tag: String = "%03d" % int(round(next_shot))
-
-			get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%s.png" % tag))
-			var rec2: Dictionary = Advisor.recommend(m, seen)
-			var visible_notes: int = 0
-			for n in get_tree().get_nodes_in_group("attention"):
-				if (n as CanvasItem).is_visible_in_tree():
-					visible_notes += 1
-			log.append("%s,\"%s\",%s,%s,%s,%d,%d,%s,%d,%d" % [tag, UIKit.money(m.money), str(rec2["kind"]), str(rec2["id"]), str(ObjectiveLogic.current(m)["id"]), EconomyLogic.tutorial_step(m), _game._tab, str(is_instance_valid(_game._unlock_sign)), visible_notes, int(m.time_played)])
-			next_shot += NP_SHOT_EVERY if next_shot < 300.0 else 2.0 * NP_SHOT_EVERY      # cada 15 s los primeros 5 minutos y cada 30 s después
+			var tag: String = "%04d" % int(round(next_shot))
+			if shots:
+				await get_tree().process_frame
+				RenderingServer.force_draw()
+				get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path("user://qa/newplayer/t_%s.png" % tag))
+			log.append("%s,%d,%d,\"%s\",\"%s\",%d,%d,%.1f,%s" % [tag, m.run_index, m.reforms, UIKit.money(m.money), EconomyLogic.income_per_sec(m).format(),
+				m.credibility, TreeLogic.count(m), EconomyLogic.monthly_pct(m), str(EconomyLogic.anything_affordable(m))])
+			next_shot += 30.0 if next_shot < 600.0 else 150.0
 	Engine.time_scale = 1.0
-	var tension_n: int = 0
-	for e in red_episodes:
-		if float(e) >= 300.0:
-			tension_n += 1
-	if tension_n < 2:
-		failures.append("SOLO %d MOMENTOS DE TENSIÓN (semáforo en rojo) ENTRE LOS MINUTOS 5 Y 15 (mínimo 2)" % tension_n)
-	print("QA tensión: %d momentos con el semáforo en rojo entre los minutos 5 y 15" % tension_n)
-	if buys_2min < 6:
-		failures.append("SOLO %d COMPRAS EN LOS PRIMEROS 2 MINUTOS (mínimo 6)" % buys_2min)
-	if first_cart < 0.0 or first_cart > 15.0:
-		failures.append("EL PRIMER CARRITO LLEGÓ A LOS %.0f s (tiene que ser alrededor de los 5-10 s)" % first_cart)
-	if first_kiosk < 0.0 or first_kiosk > 90.0:
-		failures.append("EL KIOSCO LLEGÓ A LOS %.0f s (tiene que ser antes de los 90 s)" % first_kiosk)
-	print("QA ritmo: %d compras en 2 min, primer carrito %.0f s, primer kiosco %.0f s" % [buys_2min, first_cart, first_kiosk])
+	if first_reform < 240.0 or first_reform > 360.0:
+		failures.append("LA PRIMERA REFORMA LLEGÓ A LOS %s (tiene que ser entre los minutos 4 y 6)" % _fmt_t(first_reform))
+	if max_gap > 20.0:
+		failures.append("PASARON %.0f s SIN NADA COMPRABLE (máximo 20 s en la primera hora)" % max_gap)
+	print("QA jugador nuevo: primera reforma %s, máxima espera sin nada comprable %.1f s, %d reformas en %s" % [_fmt_t(first_reform), max_gap, GameState.m.reforms, _fmt_t(gt)])
 	var f: FileAccess = FileAccess.open("user://qa/newplayer/log.csv", FileAccess.WRITE)
 	f.store_string("\n".join(log) + "\n")
 	f.close()
@@ -627,13 +533,12 @@ func _qa_newplayer(failures: Array) -> void:
 	Settings.path = settings_before
 
 
-## La pantalla de juego tiene que entrar entera en la ventana (la cinta de titulares y la columna izquierda no se pueden
-## salir por abajo aunque el contenido crezca). Se avisa una sola vez por problema.
+## La pantalla de juego tiene que entrar entera en la ventana. Se avisa una sola vez por problema.
 func _qa_structure_check(gt: float, state: Dictionary, failures: Array) -> void:
 	if _game == null or not is_instance_valid(_game):
 		return
 	var vr: Rect2 = get_viewport().get_visible_rect()
-	var parts: Dictionary = {"cinta de titulares": _game.ticker_clip, "columna izquierda": _game.left_col, "cuerpo": _game.body}
+	var parts: Dictionary = {"columna izquierda": _game.left_col, "cuerpo": _game.body, "titulares": _game.ticker_clip}
 	for k in parts:
 		var c: Control = parts[k]
 		if c == null or not c.is_visible_in_tree():

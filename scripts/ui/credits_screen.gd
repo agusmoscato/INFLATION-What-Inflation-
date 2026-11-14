@@ -21,7 +21,7 @@ func _ready() -> void:
 		var t: Label = UIKit.label(tr("ui.credits.win"), 44, UIKit.C_GREEN, HORIZONTAL_ALIGNMENT_CENTER)
 		v.add_child(t)
 		var m: GameModel = GameState.m
-		var stats: Label = UIKit.label(tr("ui.credits.stats") % [UIKit.duration(m.time_played), m.reforms, m.plans_done, m.zeros_cut], 18, UIKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+		var stats: Label = UIKit.label(tr("ui.credits.stats") % [UIKit.duration(m.time_played), m.reforms, TreeLogic.count(m), m.zeros_cut], 18, UIKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 		v.add_child(stats)
 	var title: Label = UIKit.label("INFLATION?", 64, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	v.add_child(title)

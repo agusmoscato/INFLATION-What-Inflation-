@@ -1,6 +1,6 @@
 class_name AlbumPage
 extends ScrollContainer
-## Pestaña Álbum: 6 páginas de 10 figuritas, sobres, repetidas (chupi) y estadísticas de timba.
+## Álbum (se desbloquea en el árbol): 6 páginas de 10 figuritas, sobres (comprados y de regalo) y repetidas (chupi).
 
 signal pack_bought(results: Array)
 signal message(text: String)
@@ -9,6 +9,7 @@ var _vbox: VBoxContainer
 var _stats: Label
 var _buy_btn: Button
 var _chupi_btn: Button
+var _free_btn: Button
 var _hint: Label
 var _page_btns: Array = []
 var _bonus: Label
@@ -41,6 +42,11 @@ func _init() -> void:
 	UIKit.style_button(_chupi_btn, UIKit.C_BLUE, 17)
 	_chupi_btn.pressed.connect(_on_chupi)
 	row.add_child(_chupi_btn)
+	_free_btn = Button.new()
+	_free_btn.custom_minimum_size = Vector2(220, 48)
+	UIKit.style_button(_free_btn, UIKit.C_GOLD, 17)
+	_free_btn.pressed.connect(_on_free)
+	row.add_child(_free_btn)
 	_hint = UIKit.label("", 15, Chalk.PINK)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_vbox.add_child(_hint)
@@ -77,10 +83,19 @@ func _on_buy() -> void:
 	pack_bought.emit(res)
 
 
+func _on_free() -> void:
+	var res: Array = Economy.open_free_pack()
+	if res.is_empty():
+		return
+	_sig = ""
+	pack_bought.emit(res)
+
+
 func _on_chupi() -> void:
 	var m: GameModel = GameState.m
-	if not _chupi_mode and StickerLogic.repes(m) < StickerLogic.TRADE_COST:
-		message.emit(tr("ui.chupi.need") % [StickerLogic.TRADE_COST, StickerLogic.repes(m)])
+	var tc: int = StickerLogic.trade_cost(m, "biz_empanadas")
+	if not _chupi_mode and StickerLogic.repes(m) < tc:
+		message.emit(tr("ui.chupi.need") % [tc, StickerLogic.repes(m)])
 		return
 	_chupi_mode = not _chupi_mode
 	_sig = ""
@@ -92,7 +107,7 @@ func _on_sticker_input(event: InputEvent, id: String) -> void:
 	var m: GameModel = GameState.m
 	if not _chupi_mode or StickerLogic.owned(m, id) > 0:
 		return
-	var cost: int = StickerLogic.trade_cost(id)
+	var cost: int = StickerLogic.trade_cost(m, id)
 	if StickerLogic.repes(m) < cost:
 		message.emit(tr("ui.chupi.need") % [cost, StickerLogic.repes(m)])
 		return
@@ -110,9 +125,12 @@ func refresh(m: GameModel) -> void:
 	_buy_btn.text = tr("ui.pack.buy") % UIKit.money(cost)
 	_buy_btn.disabled = cost.gt(m.money)
 	_buy_btn.tooltip_text = tr("ui.pack.tip") % UIKit.money(cost)
-	_chupi_btn.disabled = rp < StickerLogic.TRADE_COST and not _chupi_mode
+	var tc: int = StickerLogic.trade_cost(m, "biz_empanadas")
+	_chupi_btn.disabled = rp < tc and not _chupi_mode
 	_chupi_btn.tooltip_text = tr("ui.chupi.btn")
-	_hint.text = (tr("ui.chupi.on") % StickerLogic.TRADE_COST) if _chupi_mode else ""
+	_free_btn.text = tr("ui.pack.free") % m.free_packs_pending
+	_free_btn.visible = m.free_packs_pending > 0
+	_hint.text = (tr("ui.chupi.on") % tc) if _chupi_mode else ""
 	for p in range(_page_btns.size()):
 		var b: Button = _page_btns[p]
 		var n: int = StickerLogic.page_count(m, p)
@@ -128,8 +146,7 @@ func refresh(m: GameModel) -> void:
 	if sig != _sig:
 		_sig = sig
 		_rebuild_grid(m)
-	_gamble.text = tr("ui.stats.title") + ": " + tr("ui.stats.body") % [
-		UIKit.money(m.gamble_won.mul(m.price_level)), UIKit.money(m.gamble_lost.mul(m.price_level)), UIKit.money(m.gamble_best.mul(m.price_level))]
+	_gamble.text = tr("ui.album.howto")
 
 
 func _rebuild_grid(m: GameModel) -> void:

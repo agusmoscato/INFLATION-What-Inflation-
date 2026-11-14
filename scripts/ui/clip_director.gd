@@ -2,7 +2,7 @@ class_name ClipDirector
 extends Node
 ## Guiones de los clips de marketing (10-20 s, gancho en el primer segundo). Se graban con el Movie Maker de Godot:
 ##   godot --rendering-driver opengl3 --write-movie out.avi --fixed-fps 30 --resolution 1920x1080 -- --record-clip precio_empanada
-## (vertical: --resolution 1080x1920). Clips: precio_empanada, trillon_cafe, tijera, hiperinflacion, sobre_dorada, raspadita_pozo, quiniela.
+## (vertical: --resolution 1080x1920). Clips: precio_empanada, trillon_cafe, tijera, hiperinflacion, sobre_dorada, raspadita, billete, arbol.
 
 var main: Node
 var clip: String = ""
@@ -39,20 +39,20 @@ func _ready() -> void:
 	layer.layer = 40
 	main.add_child(layer)
 	layer.add_child(_captions)
+	_m().tutorial_done = true
+	_m().reforms = 3
 	match clip:
 		"precio_empanada": _clip_precio()
 		"trillon_cafe": _clip_trillon()
 		"tijera": _clip_tijera()
 		"hiperinflacion": _clip_hiper()
 		"sobre_dorada": _clip_sobre()
-		"raspadita_pozo": _clip_raspadita()
-		"quiniela": _clip_quiniela()
+		"raspadita": _clip_raspadita()
+		"billete": _clip_billete()
+		"arbol": _clip_arbol()
 		_:
 			push_error("Clip desconocido: " + clip)
 			get_tree().quit(1)
-	Unlocks.unlock_all(_m())
-	_m().obj_index = maxi(_m().obj_index, 18)      # un objetivo creíble en pantalla (no "tocá la empanada 10 veces" con billones en la caja)
-	_m().intro_grace = false
 	_m().notifications.clear()
 
 
@@ -95,77 +95,73 @@ func _flush() -> void:
 	Economy.flush()
 
 
-func _hike() -> void:
-	EconomyLogic.month_end(_m())
+## Adelanta la inflación de la vuelta (para que en un clip corto se vea lo que pasa en minutos).
+func _rush(seconds: float) -> void:
+	var m: GameModel = _m()
+	m.run_time += seconds
+	m.ln_p += EconomyLogic.rate_per_sec(m) * seconds
 	_flush()
-	_hikes += 1
 
 
-# ---- a) el precio de una empanada en 60 segundos ----
+# ---- a) el precio de un carrito en un minuto ----
 func _clip_precio() -> void:
 	_duration = 16.0
-	GameData.eras[0]["inflation"] = 1.0           # solo para el clip: 100 % de aumento por mes
 	var m: GameModel = _m()
-	m.money = BigNumber.from_float(50000.0)
+	m.money = BigNumber.from_float(5000.0)
 	m.owned["empanadas"] = 3
 	m.dirty = true
-	at(0.05, func() -> void: caption("¡UNA EMPANADA: $1!", Chalk.YELLOW, 1.6))
-	for i in range(8):
-		at(2.0 + 1.55 * float(i), func() -> void: _hike())
-	at(6.0, func() -> void:
-		_m().remark_window = 10.0
-		Economy.remark())
-	at(11.0, func() -> void:
-		_m().remark_window = 10.0
-		Economy.remark())
-	at(13.2, func() -> void: caption("60 segundos: $15 → $%s" % EconomyLogic.business_cost(_m(), GameData.businesses[0], 1).format(), Chalk.RED, 2.0))
+	at(0.05, func() -> void: caption("¡UN CARRITO: $%s!" % EconomyLogic.business_cost(_m(), GameData.businesses[0], 1).format(), Chalk.YELLOW, 1.6))
+	for i in range(9):
+		at(2.0 + 1.2 * float(i), func() -> void: _rush(40.0))
+	at(13.0, func() -> void: caption("UN MINUTO DESPUÉS: $%s" % EconomyLogic.business_cost(_m(), GameData.businesses[0], 1).format(), Chalk.RED, 2.5))
 
 
-# ---- b) de $1 a un trillón y no me alcanza para un café ----
+# ---- b) de $1 a un trillón y no me alcanza ----
 func _clip_trillon() -> void:
 	_duration = 14.0
 	var m: GameModel = _m()
-	m.era = 4
-	m.price_level = BigNumber.from_string("1e14")
-	m.my_prices = m.price_level
+	m.run_time = 330.0
+	m.ln_p = 30.0
 	m.money = BigNumber.from_string("1e12")
+	m.owned["empanadas"] = 40
+	m.owned["kiosco"] = 25
 	m.dirty = true
 	at(0.05, func() -> void: caption("PASÉ DE $1 A...", Chalk.WHITE, 1.6))
 	at(2.0, func() -> void:
 		caption("¡$1 TRILLÓN!", Chalk.YELLOW, 2.0)
 		_g()._shake(14.0, 0.5))
-	at(5.5, func() -> void: caption("...Y NO ME ALCANZA", Chalk.PINK, 2.0))
-	at(8.5, func() -> void: caption("PARA UN CAFÉ ☕", Chalk.RED, 3.0))
+	at(5.5, func() -> void: caption("...Y UN CARRITO SALE", Chalk.PINK, 2.0))
+	at(8.5, func() -> void: caption("$%s" % EconomyLogic.business_cost(_m(), GameData.businesses[0], 1).format(), Chalk.RED, 3.0))
 	at(8.6, func() -> void: _g()._shake(10.0, 0.4))
 
 
 # ---- c) la tijera de la reforma ----
 func _clip_tijera() -> void:
-	_duration = 12.0
+	_duration = 13.0
 	var m: GameModel = _m()
-	m.era = 3
-	m.price_level = BigNumber.from_string("1e9")
-	m.my_prices = m.price_level
+	m.run_time = 300.0
+	m.ln_p = 21.0
+	m.collapse_shown = true
 	m.money = BigNumber.from_string("3e11")
-	m.run_real = BigNumber.from_float(1e15)
+	m.run_earned = BigNumber.from_string("8e11")
 	m.dirty = true
 	at(0.05, func() -> void: caption("¿DEMASIADOS CEROS?", Chalk.YELLOW, 1.6))
 	at(2.2, func() -> void: Economy.reform())
-	at(8.8, func() -> void: caption("¡LE CORTÉ 9 CEROS!", Chalk.GREEN, 2.0))
+	at(9.5, func() -> void: caption("¡LE CORTÉ 9 CEROS!", Chalk.GREEN, 2.0))
 
 
 # ---- d) hiperinflación con la empanada en pánico ----
 func _clip_hiper() -> void:
 	_duration = 14.0
 	var m: GameModel = _m()
-	m.era = 5
 	m.money = BigNumber.from_float(80000.0)
 	m.owned["empanadas"] = 12
 	m.owned["kiosco"] = 7
+	m.run_time = 240.0
 	m.dirty = true
 	at(0.05, func() -> void: caption("HIPERINFLACIÓN", Chalk.RED, 2.0))
 	for i in range(10):
-		at(1.2 + 1.15 * float(i), func() -> void: _hike())
+		at(1.2 + 1.15 * float(i), func() -> void: _rush(25.0))
 	at(8.0, func() -> void: caption("¡LOS NÚMEROS NO ENTRAN!", Chalk.YELLOW, 2.5, 0.2))
 
 
@@ -173,8 +169,7 @@ func _clip_hiper() -> void:
 func _clip_sobre() -> void:
 	_duration = 14.0
 	var m: GameModel = _m()
-	m.era = 2
-	m.unlocked["album"] = true
+	m.tree["fig_1"] = true
 	m.owned["kiosco"] = 3
 	m.dirty = true
 	for id in ["biz_empanadas", "biz_kiosco", "pj_gato"]:
@@ -188,33 +183,64 @@ func _clip_sobre() -> void:
 	at(9.0, func() -> void: caption("¡¡UNA DORADA!!", Chalk.YELLOW, 2.5, 0.05))
 
 
-# ---- f) la raspadita que da el pozo ----
+# ---- f) la raspadita que paga x10 ----
 func _clip_raspadita() -> void:
-	_duration = 15.0
+	_duration = 14.0
 	var m: GameModel = _m()
-	m.era = 3
+	m.tree["sue_1"] = true
+	m.tree["sue_2"] = true
 	m.money = BigNumber.from_string("8e12")
-	m.base_income = BigNumber.from_float(5e10)
-	m.owned["empanadas"] = 1
-	m.pool_real = BigNumber.from_float(2.5e11)
-	m.dirty = false
-	at(0.05, func() -> void: caption("¿SERÁ EL POZO?", Chalk.YELLOW, 2.0))
+	m.owned["empanadas"] = 10
+	m.dirty = true
+	at(0.05, func() -> void: caption("¿Y SI RASPO?", Chalk.YELLOW, 2.0))
 	at(1.3, func() -> void:
-		var ov: ScratchOverlay = _g()._open_scratch(0.1, "pozo")
+		var ov: ScratchOverlay = _g()._open_scratch("x10")
 		if ov != null:
 			ov.auto_scratch(3.4))
-	at(9.6, func() -> void: caption("¡¡EL POZO!!", Chalk.YELLOW, 2.5, 0.03))
+	at(9.0, func() -> void: caption("¡¡x10!!", Chalk.YELLOW, 2.5, 0.03))
 
 
-# ---- g) gané la quiniela ----
-func _clip_quiniela() -> void:
-	_duration = 16.0
+# ---- g) el billete volador y el frenesí ----
+func _clip_billete() -> void:
+	_duration = 14.0
 	var m: GameModel = _m()
-	m.era = 3
-	m.money = BigNumber.from_string("8e12")
-	m.base_income = BigNumber.from_float(5e10)
-	m.dirty = false
-	at(0.05, func() -> void: caption("JUGUÉ AL 37...", Chalk.WHITE, 2.0))
-	at(1.6, func() -> void:
-		_g()._on_quiniela_drawn({"number": 37, "winning": 37, "stake": BigNumber.from_float(1e10), "payout": BigNumber.from_float(4.9e11), "kind": "exact"}))
-	at(11.8, func() -> void: caption("¡¡GANÉ LA QUINIELA!!", Chalk.YELLOW, 2.0, 0.04))
+	m.money = BigNumber.from_string("2e6")
+	m.owned["empanadas"] = 25
+	m.owned["kiosco"] = 12
+	m.owned["choripan"] = 5
+	m.dirty = true
+	at(0.05, func() -> void: caption("¡UN BILLETE VOLANDO!", Chalk.GREEN, 2.0))
+	at(0.6, func() -> void:
+		_m().bill_timer = 0.0)
+	at(5.0, func() -> void:
+		for b in _m().bills_active.duplicate():
+			var id: int = int(b["id"])
+			if _g()._bills.has(id):
+				(_g()._bills[id] as FlyingBill).vanish(true)
+			EconomyLogic.click_bill(_m(), id, "frenzy")
+			_flush())
+	at(9.0, func() -> void: caption("FRENESÍ x7", Chalk.ORANGE, 3.0))
+
+
+# ---- h) el árbol de la Credibilidad ----
+func _clip_arbol() -> void:
+	_duration = 14.0
+	var m: GameModel = _m()
+	for n in GameData.tree:
+		if int(n["ring"]) <= 2:
+			m.tree[n["id"]] = true
+	m.credibility = 400
+	m.dirty = true
+	at(0.05, func() -> void: caption("UN ÁRBOL DE 115 NODOS", Chalk.BLUE, 2.2))
+	at(0.6, func() -> void: _g()._open_tree())
+	for i in range(6):
+		at(2.5 + 1.2 * float(i), func() -> void:
+			var tv: SkillTreeView = _g()._tree_view
+			if tv == null:
+				return
+			for n in GameData.tree:
+				if TreeLogic.can_buy(_m(), n["id"]):
+					tv.selected = n["id"]
+					Economy.buy_node(n["id"])
+					break)
+	at(10.0, func() -> void: caption("...Y CADA VUELTA ES MÁS RÁPIDA", Chalk.YELLOW, 3.0))

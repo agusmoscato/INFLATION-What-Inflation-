@@ -1,99 +1,97 @@
 class_name GameModel
 extends RefCounted
 ## Estado completo de una partida (datos puros, sin nodos). Serializable a diccionario/JSON.
+## Diseño v2: una "vuelta" (run) se reinicia con cada reforma; el árbol, el álbum y los logros quedan.
 
-const SAVE_VERSION: int = 1
+const SAVE_VERSION: int = 2
 
+# ---- la vuelta actual (se reinicia con la reforma) ----
 var money: BigNumber = BigNumber.zero()
-var price_level: BigNumber = BigNumber.one()   # P: nivel de precios de la economía
-var my_prices: BigNumber = BigNumber.one()     # M: tus precios (se actualizan al remarcar)
-var owned: Dictionary = {}                     # id -> int
-var upgrades: Dictionary = {}                  # id -> true
-var refuge_units: Dictionary = {}              # id -> BigNumber (unidades, en pesos reales a precio 1)
-var refuge_price: Dictionary = {}              # id -> float (precio actual relativo)
+var run_earned: BigNumber = BigNumber.zero()       ## todo lo ganado en la vuelta (define la Credibilidad)
+var run_time: float = 0.0
+var ln_p: float = 0.0                              ## ln del nivel de precios de la vuelta (P = e^ln_p)
+var owned: Dictionary = {}                         # id -> int
+var upgrades: Dictionary = {}                      # id -> true
+var run_clicks: int = 0                            ## clics de la vuelta (manuales + automáticos)
+var run_manual_clicks: int = 0
+var run_index: int = 1                             ## número de vuelta (1 = la primera)
+var freeze_left: float = 0.0                       ## precios congelados: el reloj de inflación no avanza
+var remark_cd: float = 0.0
+var frenzy_left: float = 0.0
+var clickfrenzy_left: float = 0.0
+var combo: int = 0
+var combo_idle: float = 99.0                       ## segundos desde el último clic
+var bill_timer: float = 40.0
+var bills_active: Array = []                       ## [{id:int, left:float, total:float}]
+var bill_seq: int = 0
+var event_timer: float = 120.0
+var active_events: Array = []                      ## [{id, remaining, fx}]
+var pending_choice: Dictionary = {}                ## {id, remaining, total}
+var auto_click_acc: float = 0.0
+var manager_timer: float = 0.0
+var auto_scratch_timer: float = 0.0
+var collapse_shown: bool = false
+var max_rate_run: float = 0.0
 
-var lifetime_real: BigNumber = BigNumber.zero()  # ganancia real histórica (define la era)
-var cycle_real: BigNumber = BigNumber.zero()     # ganancia real desde el último plan (define Credibilidad)
-var run_real: BigNumber = BigNumber.zero()       # ganancia real desde la última reforma
-
-var era: int = 1
-var credibility: int = 0
-var legacy_cred: float = 0.0
+# ---- permanente ----
+var credibility: int = 0                           ## sin gastar
+var cred_total: int = 0                            ## ganada en total
+var lifetime_earned: BigNumber = BigNumber.zero()  ## todo lo ganado en las vueltas terminadas
+var tree: Dictionary = {}                          ## id -> true
 var reforms: int = 0
-var plans_done: int = 0
-var plan_id: String = ""
-var plans_used: Array = []
-var album: Array = []
+var runs: Array = []                               ## historial: [{n, earned, time, cred}]
+var best_run: BigNumber = BigNumber.zero()
+var fastest_run: float = 9999.0
+var lazy_run: int = 0
+var early_remark: int = 0
+var album: Array = []                              ## billetes conseguidos (uno por reforma)
 var zeros_cut: int = 0
-var measures: int = 0
 var won: bool = false
 var won_notified: bool = false
-var demo_finished: bool = false                 # la demo llegó a su límite (primera reforma hecha)
-var demo_mode: bool = false                     # no se guarda: lo decide el build
+var demo_finished: bool = false
+var demo_mode: bool = false                        ## no se guarda: lo decide el build
 
 var clicks: int = 0
+var crits: int = 0
+var max_combo: int = 0
 var remarks: int = 0
+var bills: int = 0
+var bills_missed: int = 0
+var frenzies: int = 0
 var events_seen: int = 0
+var max_buildings: int = 0
+var max_carts: int = 0
+var max_tier: int = 0
+var max_upgrades: int = 0
+var max_rate_pct: float = 0.0
 var time_played: float = 0.0
-var run_time: float = 0.0
-var month_progress: float = 0.0
-var month_count: int = 0
-var tension_seen: int = 0              ## cuántos tramos de inflación alta (3 % -> 5 % -> 8 %) ya se anunciaron
-var intro_grace: bool = false          ## partida nueva: sin inflación hasta que aparece el cartel "¡La inflación!"
-var offline_months_left: int = -1        ## solo durante la simulación offline: cuántos aumentos más pueden pasar (-1 = sin límite)
-var remark_window: float = 0.0
-var remark_cd: float = 0.0
-var auto_timer: float = 0.0
-var auto_buy_timer: float = 0.0
-var event_timer: float = 120.0
-var active_events: Array = []                  # [{id, remaining, fx}]
-var pending_choice: Dictionary = {}            # decisión abierta: {id, remaining} (no se guarda)
 var achievements: Dictionary = {}
 var saved_unix: float = 0.0
+var unlocked: Dictionary = {}                      ## avisos ya mostrados (mecánicas, tutorial): id -> segundo de juego
+var tutorial_done: bool = false
+var free_packs_pending: int = 0                    ## sobres de regalo que la UI todavía no abrió
 
-# ---- objetivos, desbloqueos y coleccionables ----
-var obj_index: int = 0                          # objetivo actual de la cadena (solo avanza)
-var unlocked: Dictionary = {}                   # mecánicas ya anunciadas: id -> true
-var real_ref: BigNumber = BigNumber.zero()      # ingreso real/s al cierre del mes anterior (para "¿le ganás a la inflación?")
-var stickers: Dictionary = {}                   # id de figurita -> cantidad (más de 1 = repetidas)
+var stickers: Dictionary = {}                      # id de figurita -> cantidad
 var packs_opened: int = 0
 var trades: int = 0
-var gift_given: bool = false                    # sobre de regalo de la demo
-var secret_seen: bool = false                   # final secreto del álbum completo
+var secret_seen: bool = false
 
-# ---- timba (siempre con plata del juego) ----
-var pool_real: BigNumber = BigNumber.zero()     # "pozo" de la raspadita, en pesos reales (se ajusta con la inflación)
-var gamble_won: BigNumber = BigNumber.zero()    # ganado/perdido/mejor premio, en pesos reales
-var gamble_lost: BigNumber = BigNumber.zero()
-var gamble_best: BigNumber = BigNumber.zero()
 var scratches: int = 0
+var scratch_big: int = 0
 var loss_streak: int = 0
 var loss_streak_max: int = 0
-var quiniela_wins: int = 0
-var dollar_wins: int = 0
-var pozo_wins: int = 0
-var gold_scratches: int = 0
-var quiniela: Dictionary = {}                   # boleta: {number:int, stake:String}
-var dollar_bet: Dictionary = {}                 # apuesta: {dir:"up"/"down", threshold:float, stake:String}
+var gamble_won: BigNumber = BigNumber.zero()
+var gamble_lost: BigNumber = BigNumber.zero()
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-# ---- derivados (no se guardan; se recalculan con EconomyLogic.recalc) ----
+# ---- derivados (no se guardan; los recalcula EconomyLogic.recalc) ----
 var dirty: bool = true
-var base_income: BigNumber = BigNumber.zero()   # ingreso real/s sin M ni eventos
-var global_mult: float = 1.0
-var biz_up_mult: Dictionary = {}
+var mods: Dictionary = {}                          ## modificadores del árbol + álbum (TreeLogic.mods)
+var base_income: BigNumber = BigNumber.zero()      ## producción/s sin frenesí, eventos ni inflación
+var biz_income: Dictionary = {}                    ## id -> BigNumber (producción/s de todos los de ese tipo)
 var click_mult: float = 1.0
 var click_pct: float = 0.0
-var auto_remark_interval: float = 0.0
-var auto_buy_interval: float = 0.0
-var infl_up_mult: float = 1.0
-var fee_mult: float = 1.0
-var remark_bonus_mult: float = 1.0
-var refuge_mult: float = 1.0                    # bono de cartera diversificada
-var sticker_infl_mult: float = 1.0              # bonus permanente de páginas del álbum
-var sticker_remark_mult: float = 1.0
-var sticker_choice_bonus: float = 0.0
 
 ## Cola de notificaciones para la UI: [{sig: String, args: Array}]
 var notifications: Array = []
@@ -105,9 +103,7 @@ func _init(seed_value: int = 0) -> void:
 		rng.seed = seed_value
 	else:
 		rng.randomize()
-	for r in GameData.refuges:
-		refuge_units[r["id"]] = BigNumber.zero()
-		refuge_price[r["id"]] = 1.0
+	bill_timer = GameData.B("bill_first")
 
 
 func push(sig: String, args: Array = []) -> void:
@@ -125,120 +121,131 @@ func total_businesses() -> int:
 	return n
 
 
+func has_node(id: String) -> bool:
+	return tree.has(id)
+
+
+static func _bn(d: Dictionary, k: String) -> BigNumber:
+	return BigNumber.from_string(str(d.get(k, "0")))
+
+
 func to_dict() -> Dictionary:
-	var units: Dictionary = {}
-	for k in refuge_units:
-		units[k] = refuge_units[k].to_save()
 	return {
 		"version": SAVE_VERSION,
-		"money": money.to_save(), "price_level": price_level.to_save(), "my_prices": my_prices.to_save(),
-		"owned": owned.duplicate(), "upgrades": upgrades.duplicate(),
-		"refuge_units": units, "refuge_price": refuge_price.duplicate(),
-		"lifetime_real": lifetime_real.to_save(), "cycle_real": cycle_real.to_save(), "run_real": run_real.to_save(),
-		"era": era, "credibility": credibility, "legacy_cred": legacy_cred,
-		"reforms": reforms, "plans_done": plans_done, "plan_id": plan_id, "plans_used": plans_used.duplicate(),
-		"album": album.duplicate(), "zeros_cut": zeros_cut, "measures": measures,
-		"won": won, "won_notified": won_notified, "demo_finished": demo_finished,
-		"clicks": clicks, "remarks": remarks, "events_seen": events_seen,
-		"time_played": time_played, "run_time": run_time,
-		"month_progress": month_progress, "month_count": month_count, "intro_grace": intro_grace, "tension_seen": tension_seen,
-		"remark_window": remark_window, "auto_timer": auto_timer, "auto_buy_timer": auto_buy_timer,
-		"event_timer": event_timer, "active_events": active_events.duplicate(true),
-		"obj_index": obj_index, "unlocked": unlocked.duplicate(), "real_ref": real_ref.to_save(),
-		"stickers": stickers.duplicate(), "packs_opened": packs_opened, "trades": trades,
-		"gift_given": gift_given, "secret_seen": secret_seen,
-		"pool_real": pool_real.to_save(), "gamble_won": gamble_won.to_save(), "gamble_lost": gamble_lost.to_save(),
-		"gamble_best": gamble_best.to_save(), "scratches": scratches, "loss_streak": loss_streak,
-		"loss_streak_max": loss_streak_max, "quiniela_wins": quiniela_wins, "dollar_wins": dollar_wins,
-		"pozo_wins": pozo_wins, "gold_scratches": gold_scratches, "quiniela": quiniela.duplicate(), "dollar_bet": dollar_bet.duplicate(),
-		"achievements": achievements.duplicate(), "saved_unix": Time.get_unix_time_from_system(),
+		"money": money.to_save(), "run_earned": run_earned.to_save(), "run_time": run_time, "ln_p": ln_p,
+		"owned": owned.duplicate(), "upgrades": upgrades.duplicate(), "run_clicks": run_clicks,
+		"run_manual_clicks": run_manual_clicks, "run_index": run_index, "freeze_left": freeze_left, "remark_cd": remark_cd,
+		"frenzy_left": frenzy_left, "clickfrenzy_left": clickfrenzy_left, "bill_timer": bill_timer,
+		"event_timer": event_timer, "active_events": active_events.duplicate(true), "manager_timer": manager_timer,
+		"auto_scratch_timer": auto_scratch_timer, "collapse_shown": collapse_shown, "max_rate_run": max_rate_run,
+		"credibility": credibility, "cred_total": cred_total, "lifetime_earned": lifetime_earned.to_save(), "tree": tree.duplicate(), "reforms": reforms,
+		"runs": runs.duplicate(true), "best_run": best_run.to_save(), "fastest_run": fastest_run, "lazy_run": lazy_run,
+		"early_remark": early_remark, "album": album.duplicate(), "zeros_cut": zeros_cut, "won": won,
+		"won_notified": won_notified, "demo_finished": demo_finished,
+		"clicks": clicks, "crits": crits, "max_combo": max_combo, "remarks": remarks, "bills": bills,
+		"bills_missed": bills_missed, "frenzies": frenzies, "events_seen": events_seen, "max_buildings": max_buildings,
+		"max_carts": max_carts, "max_tier": max_tier, "max_upgrades": max_upgrades, "max_rate_pct": max_rate_pct,
+		"time_played": time_played, "achievements": achievements.duplicate(), "unlocked": unlocked.duplicate(),
+		"tutorial_done": tutorial_done, "free_packs_pending": free_packs_pending,
+		"stickers": stickers.duplicate(), "packs_opened": packs_opened, "trades": trades, "secret_seen": secret_seen,
+		"scratches": scratches, "scratch_big": scratch_big, "loss_streak": loss_streak, "loss_streak_max": loss_streak_max,
+		"gamble_won": gamble_won.to_save(), "gamble_lost": gamble_lost.to_save(),
+		"saved_unix": Time.get_unix_time_from_system(),
 	}
 
 
-func from_dict(d: Dictionary) -> void:
-	money = BigNumber.from_string(str(d.get("money", "0")))
-	price_level = BigNumber.from_string(str(d.get("price_level", "1")))
-	my_prices = BigNumber.from_string(str(d.get("my_prices", "1")))
+## Carga un diccionario guardado. Devuelve false si es de una versión vieja (no se convierte: se empieza de cero).
+func from_dict(d: Dictionary) -> bool:
+	if int(d.get("version", 1)) < SAVE_VERSION:
+		return false
+	money = _bn(d, "money")
+	run_earned = _bn(d, "run_earned")
+	run_time = float(d.get("run_time", 0.0))
+	ln_p = float(d.get("ln_p", 0.0))
 	owned = {}
 	for k in d.get("owned", {}):
-		owned[k] = int(d["owned"][k])
+		if GameData.business_idx.has(k):
+			owned[k] = int(d["owned"][k])
 	upgrades = {}
 	for k in d.get("upgrades", {}):
 		if GameData.upgrade_idx.has(k):
 			upgrades[k] = true
-	var units: Dictionary = d.get("refuge_units", {})
-	var prices: Dictionary = d.get("refuge_price", {})
-	for r in GameData.refuges:
-		var rid: String = r["id"]
-		refuge_units[rid] = BigNumber.from_string(str(units.get(rid, "0")))
-		refuge_price[rid] = float(prices.get(rid, 1.0))
-	lifetime_real = BigNumber.from_string(str(d.get("lifetime_real", "0")))
-	cycle_real = BigNumber.from_string(str(d.get("cycle_real", "0")))
-	run_real = BigNumber.from_string(str(d.get("run_real", "0")))
-	era = int(d.get("era", 1))
+	run_clicks = int(d.get("run_clicks", 0))
+	run_manual_clicks = int(d.get("run_manual_clicks", 0))
+	run_index = int(d.get("run_index", 1))
+	freeze_left = float(d.get("freeze_left", 0.0))
+	remark_cd = float(d.get("remark_cd", 0.0))
+	frenzy_left = float(d.get("frenzy_left", 0.0))
+	clickfrenzy_left = float(d.get("clickfrenzy_left", 0.0))
+	bill_timer = float(d.get("bill_timer", 40.0))
+	event_timer = float(d.get("event_timer", 120.0))
+	active_events = []
+	for ev in d.get("active_events", []):
+		if GameData.event_idx.has(str(ev.get("id", ""))):
+			active_events.append({"id": ev["id"], "remaining": float(ev.get("remaining", 0.0)), "fx": ev.get("fx", {})})
+	manager_timer = float(d.get("manager_timer", 0.0))
+	auto_scratch_timer = float(d.get("auto_scratch_timer", 0.0))
+	collapse_shown = bool(d.get("collapse_shown", false))
+	max_rate_run = float(d.get("max_rate_run", 0.0))
 	credibility = int(d.get("credibility", 0))
-	legacy_cred = float(d.get("legacy_cred", 0.0))
+	cred_total = int(d.get("cred_total", 0))
+	lifetime_earned = _bn(d, "lifetime_earned")
+	tree = {}
+	for k in d.get("tree", {}):
+		if GameData.tree_idx.has(k):
+			tree[k] = true
 	reforms = int(d.get("reforms", 0))
-	plans_done = int(d.get("plans_done", 0))
-	plan_id = str(d.get("plan_id", ""))
-	plans_used = []
-	for p in d.get("plans_used", []):
-		plans_used.append(str(p))
+	runs = []
+	for r in d.get("runs", []):
+		runs.append(r)
+	best_run = _bn(d, "best_run")
+	fastest_run = float(d.get("fastest_run", 9999.0))
+	lazy_run = int(d.get("lazy_run", 0))
+	early_remark = int(d.get("early_remark", 0))
 	album = []
 	for n in d.get("album", []):
 		album.append(int(n))
 	zeros_cut = int(d.get("zeros_cut", 0))
-	measures = int(d.get("measures", 0))
 	won = bool(d.get("won", false))
 	won_notified = bool(d.get("won_notified", false))
 	demo_finished = bool(d.get("demo_finished", false))
 	clicks = int(d.get("clicks", 0))
+	crits = int(d.get("crits", 0))
+	max_combo = int(d.get("max_combo", 0))
 	remarks = int(d.get("remarks", 0))
+	bills = int(d.get("bills", 0))
+	bills_missed = int(d.get("bills_missed", 0))
+	frenzies = int(d.get("frenzies", 0))
 	events_seen = int(d.get("events_seen", 0))
+	max_buildings = int(d.get("max_buildings", 0))
+	max_carts = int(d.get("max_carts", 0))
+	max_tier = int(d.get("max_tier", 0))
+	max_upgrades = int(d.get("max_upgrades", 0))
+	max_rate_pct = float(d.get("max_rate_pct", 0.0))
 	time_played = float(d.get("time_played", 0.0))
-	run_time = float(d.get("run_time", 0.0))
-	month_progress = float(d.get("month_progress", 0.0))
-	month_count = int(d.get("month_count", 0))
-	intro_grace = bool(d.get("intro_grace", false))
-	tension_seen = int(d.get("tension_seen", 0))
-	remark_window = float(d.get("remark_window", 0.0))
-	auto_timer = float(d.get("auto_timer", 0.0))
-	auto_buy_timer = float(d.get("auto_buy_timer", 0.0))
-	event_timer = float(d.get("event_timer", 120.0))
-	active_events = []
-	for ev in d.get("active_events", []):
-		if GameData.event_idx.has(ev.get("id", "")):
-			var entry: Dictionary = {"id": ev["id"], "remaining": float(ev.get("remaining", 0.0))}
-			if ev.has("fx"):
-				entry["fx"] = ev["fx"]
-			active_events.append(entry)
 	achievements = {}
 	for k in d.get("achievements", {}):
 		achievements[k] = true
-	saved_unix = float(d.get("saved_unix", 0.0))
-	obj_index = int(d.get("obj_index", 0))
 	unlocked = {}
 	for k in d.get("unlocked", {}):
-		unlocked[k] = d["unlocked"][k]      # true, o el segundo de juego en que se desbloqueó
-	real_ref = BigNumber.from_string(str(d.get("real_ref", "0")))
+		unlocked[k] = d["unlocked"][k]
+	tutorial_done = bool(d.get("tutorial_done", false))
+	free_packs_pending = int(d.get("free_packs_pending", 0))
 	stickers = {}
 	for k in d.get("stickers", {}):
-		stickers[k] = int(d["stickers"][k])
+		if GameData.sticker_idx.has(k):
+			stickers[k] = int(d["stickers"][k])
 	packs_opened = int(d.get("packs_opened", 0))
 	trades = int(d.get("trades", 0))
-	gift_given = bool(d.get("gift_given", false))
 	secret_seen = bool(d.get("secret_seen", false))
-	pool_real = BigNumber.from_string(str(d.get("pool_real", "0")))
-	gamble_won = BigNumber.from_string(str(d.get("gamble_won", "0")))
-	gamble_lost = BigNumber.from_string(str(d.get("gamble_lost", "0")))
-	gamble_best = BigNumber.from_string(str(d.get("gamble_best", "0")))
 	scratches = int(d.get("scratches", 0))
+	scratch_big = int(d.get("scratch_big", 0))
 	loss_streak = int(d.get("loss_streak", 0))
 	loss_streak_max = int(d.get("loss_streak_max", 0))
-	quiniela_wins = int(d.get("quiniela_wins", 0))
-	dollar_wins = int(d.get("dollar_wins", 0))
-	pozo_wins = int(d.get("pozo_wins", 0))
-	gold_scratches = int(d.get("gold_scratches", 0))
-	quiniela = d.get("quiniela", {}).duplicate()
-	dollar_bet = d.get("dollar_bet", {}).duplicate()
+	gamble_won = _bn(d, "gamble_won")
+	gamble_lost = _bn(d, "gamble_lost")
+	saved_unix = float(d.get("saved_unix", 0.0))
+	bills_active = []
+	pending_choice = {}
 	dirty = true
+	return true

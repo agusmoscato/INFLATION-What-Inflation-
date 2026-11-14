@@ -3,7 +3,8 @@ extends RefCounted
 
 func _m() -> GameModel:
 	var m: GameModel = GameModel.new(21)
-	m.era = 2
+	m.tree["fig_1"] = true      # álbum desbloqueado
+	m.dirty = true
 	return m
 
 
@@ -23,13 +24,13 @@ func run(t) -> void:
 	var m: GameModel = _m()
 	t.check(StickerLogic.buy_pack(m).is_empty(), "sin plata no hay sobre")
 	var cost1: BigNumber = StickerLogic.pack_cost(m)
-	m.price_level = BigNumber.from_float(1000.0)
+	m.ln_p = log(1000.0)
 	var cost2: BigNumber = StickerLogic.pack_cost(m)
 	t.check(cost2.gt(cost1.mul_f(500.0)), "el precio del sobre sube con la inflación")
-	m.price_level = BigNumber.one()
+	m.ln_p = 0.0
+	t.check(StickerLogic.buy_pack(GameModel.new(2)).is_empty(), "sin el nodo del álbum no hay sobres")
 	m.money = BigNumber.from_float(1e6)
 	m.owned["kiosco"] = 1
-	m.unlocked["album"] = true
 	var got: Array = StickerLogic.buy_pack(m)
 	t.eq(got.size(), 5, "un sobre trae 5 figuritas")
 	t.eq(m.packs_opened, 1, "sobre contado")
@@ -67,34 +68,37 @@ func run(t) -> void:
 	StickerLogic.give(mr, "biz_empanadas")
 	StickerLogic.give(mr, "biz_empanadas")
 	t.check(StickerLogic.trade(mr, "gold_1"), "con 15 repes sí")
-	# páginas completas dan bonus permanentes
+	# páginas completas dan bonus permanentes (a través de los modificadores del árbol)
 	var mp: GameModel = _m()
-	t.near(StickerLogic.bonuses(mp)["income"], 0.0, "sin páginas no hay bonus")
+	EconomyLogic.ensure_fresh(mp)
+	t.near(float(mp.mods["album_income"]), 0.0, "sin páginas no hay bonus")
 	for id in StickerLogic.page_ids(0):
 		StickerLogic.give(mp, id)
 	t.check(StickerLogic.page_complete(mp, 0), "página Negocios completa")
-	t.near(StickerLogic.bonuses(mp)["income"], 0.10, "Negocios: +10 % ingresos")
-	mp.money = BigNumber.from_float(100.0)
-	EconomyLogic.buy_business(mp, "empanadas", 1)
-	t.near(EconomyLogic.income_per_sec(mp).to_float(), 0.5 * 1.10, "el bonus se aplica a los ingresos")
+	EconomyLogic.ensure_fresh(mp)
+	t.near(float(mp.mods["album_income"]), 0.10, "Negocios: +10 % producción")
+	mp.owned["empanadas"] = 1
+	mp.dirty = true
+	t.near(EconomyLogic.income_per_sec(mp).to_float(), 0.5 * 1.10, "el bonus se aplica a la producción")
 	for id in StickerLogic.page_ids(1):
 		StickerLogic.give(mp, id)
-	t.near(StickerLogic.bonuses(mp)["inflation"], 0.05, "Personajes: -5 % inflación")
-	t.near(EconomyLogic.inflation_rate(mp), 0.08 * 0.95, "la inflación baja 5 %")
+	t.near(EconomyLogic.infl_speed(mp), 0.95, "Personajes: inflación 5 % más lenta")
 	for id in StickerLogic.page_ids(3):
 		StickerLogic.give(mp, id)
-	t.near(StickerLogic.bonuses(mp)["remark"], 0.5, "Titulares: remarcar +50 %")
-	for id in StickerLogic.page_ids(4):
-		StickerLogic.give(mp, id)
-	t.near(StickerLogic.bonuses(mp)["choice_time"], 5.0, "Eventos: +5 s para decidir")
-	EconomyLogic.start_event(mp, "cepo")
-	t.near(float(mp.pending_choice["remaining"]), 15.0, "la decisión dura 15 s con la página de Eventos")
-	for id in StickerLogic.page_ids(5):
-		StickerLogic.give(mp, id)
-	t.near(StickerLogic.bonuses(mp)["income"], 0.25, "Doradas: +15 % más")
+	EconomyLogic.ensure_fresh(mp)
+	t.near(float(mp.mods["album_remark"]), 3.0, "Titulares: remarcar congela 3 s más")
+	mp.tree["fig_4"] = true
+	mp.dirty = true
+	EconomyLogic.ensure_fresh(mp)
+	t.near(float(mp.mods["album_income"]), 0.20, "Álbum lleno de vida duplica los bonus de página")
+	t.eq(StickerLogic.trade_cost(mp, "biz_banco"), 5, "chupi: 5 repes")
+	mp.tree["fig_3a"] = true
+	mp.dirty = true
+	t.eq(StickerLogic.trade_cost(mp, "biz_banco"), 3, "Chupi barato: 3 repes")
 	# los billetes de las reformas se guardan como figuritas y las figuritas se conservan al reformar
 	var mb: GameModel = _m()
-	mb.run_real = BigNumber.from_float(1e12)
+	mb.run_earned = BigNumber.from_float(1e12)
+	mb.collapse_shown = true
 	StickerLogic.give(mb, "biz_kiosco")
 	EconomyLogic.do_reform(mb)
 	t.eq(StickerLogic.owned(mb, "note_0"), 1, "la reforma da el billete 0")
@@ -113,8 +117,10 @@ func run(t) -> void:
 	var m2: GameModel = GameModel.new(1)
 	m2.from_dict(JSON.parse_string(JSON.stringify(mall.to_dict())))
 	t.eq(m2.stickers.size(), 60, "el álbum se guarda")
-	# los eventos pueden dejar una figurita de premio
+	# los billetes voladores pueden dar figuritas
 	var me: GameModel = _m()
-	for i in range(200):
-		EconomyLogic.start_event(me, "aguinaldo", 0)
-	t.check(me.stickers.size() >= 10, "los eventos dejan figuritas de premio (%d)" % me.stickers.size())
+	for i in range(40):
+		me.bill_timer = 0.0
+		EconomyLogic.tick(me, 0.1)
+		EconomyLogic.click_bill(me, int(me.bills_active[0]["id"]), "sticker")
+	t.check(me.stickers.size() >= 10, "los billetes voladores dejan figuritas (%d)" % me.stickers.size())

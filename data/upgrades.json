@@ -1,28 +1,132 @@
 {
   "per_business": [
-    {"suffix": "a", "cost_mult": "10",  "mult": 2.0, "owned": 5},
-    {"suffix": "b", "cost_mult": "500", "mult": 3.0, "owned": 25},
-    {"suffix": "c", "cost_mult": "5e4", "mult": 5.0, "owned": 100}
+    {
+      "suffix": "1",
+      "owned": 1,
+      "cost_mult": "10",
+      "mult": 2.0
+    },
+    {
+      "suffix": "2",
+      "owned": 5,
+      "cost_mult": "60",
+      "mult": 2.0
+    },
+    {
+      "suffix": "3",
+      "owned": 15,
+      "cost_mult": "600",
+      "mult": 2.0
+    },
+    {
+      "suffix": "4",
+      "owned": 40,
+      "cost_mult": "2e4",
+      "mult": 2.0
+    }
   ],
-  "special": [
-    {"id": "click1",       "era": 1, "cost": "60",    "effect": {"type": "click_mult", "value": 2.0}},
-    {"id": "click2",       "era": 1, "cost": "1.5e3", "effect": {"type": "click_mult", "value": 3.0}},
-    {"id": "clickpct",     "era": 1, "cost": "8e3",   "effect": {"type": "click_pct", "value": 0.02}},
-    {"id": "remarkbonus",  "era": 1, "cost": "3e3",   "effect": {"type": "remark_bonus", "value": 2.0}},
-    {"id": "auto_remark1", "era": 1, "cost": "2.5e3", "effect": {"type": "auto_remark", "value": 20.0}},
-    {"id": "auto_remark2", "era": 2, "cost": "2e7",   "effect": {"type": "auto_remark", "value": 8.0}},
-    {"id": "auto_remark3", "era": 3, "cost": "5e10",  "effect": {"type": "auto_remark", "value": 2.0}},
-    {"id": "all1",         "era": 1, "cost": "2e5",   "effect": {"type": "all_mult", "value": 2.0}},
-    {"id": "all2",         "era": 2, "cost": "5e9",   "effect": {"type": "all_mult", "value": 2.0}},
-    {"id": "all3",         "era": 3, "cost": "2e13",  "effect": {"type": "all_mult", "value": 3.0}},
-    {"id": "all4",         "era": 4, "cost": "5e17",  "effect": {"type": "all_mult", "value": 3.0}},
-    {"id": "all5",         "era": 5, "cost": "1e22",  "effect": {"type": "all_mult", "value": 5.0}},
-    {"id": "auto_buy1",    "era": 3, "cost": "5e9",   "effect": {"type": "auto_buy", "value": 20.0}},
-    {"id": "auto_buy2",    "era": 3, "cost": "2e12",  "effect": {"type": "auto_buy", "value": 8.0}},
-    {"id": "auto_buy3",    "era": 4, "cost": "5e15",  "effect": {"type": "auto_buy", "value": 3.0}},
-    {"id": "precios1",     "era": 2, "cost": "1e7",   "effect": {"type": "inflation_mult", "value": 0.9}},
-    {"id": "precios2",     "era": 3, "cost": "1e11",  "effect": {"type": "inflation_mult", "value": 0.9}},
-    {"id": "precios3",     "era": 4, "cost": "1e16",  "effect": {"type": "inflation_mult", "value": 0.9}},
-    {"id": "contador",     "era": 2, "cost": "6e6",   "effect": {"type": "fee_mult", "value": 0.5}}
+  "click": [
+    {
+      "id": "click_1",
+      "clicks": 15,
+      "cost": "50",
+      "type": "click_mult",
+      "value": 2.0
+    },
+    {
+      "id": "click_2",
+      "clicks": 80,
+      "cost": "1e3",
+      "type": "click_mult",
+      "value": 2.0
+    },
+    {
+      "id": "click_3",
+      "clicks": 250,
+      "cost": "3e4",
+      "type": "click_pct",
+      "value": 0.01
+    },
+    {
+      "id": "click_4",
+      "clicks": 600,
+      "cost": "1e6",
+      "type": "click_mult",
+      "value": 3.0
+    },
+    {
+      "id": "click_5",
+      "clicks": 1200,
+      "cost": "5e7",
+      "type": "click_pct",
+      "value": 0.01
+    },
+    {
+      "id": "click_6",
+      "clicks": 2500,
+      "cost": "5e9",
+      "type": "click_mult",
+      "value": 3.0
+    }
+  ],
+  "synergy": [
+    {
+      "id": "syn_1",
+      "a": "empanadas",
+      "b": "kiosco",
+      "pct": 0.02
+    },
+    {
+      "id": "syn_2",
+      "a": "kiosco",
+      "b": "choripan",
+      "pct": 0.02
+    },
+    {
+      "id": "syn_3",
+      "a": "lavadero",
+      "b": "panaderia",
+      "pct": 0.02
+    },
+    {
+      "id": "syn_4",
+      "a": "panaderia",
+      "b": "almacen",
+      "pct": 0.02
+    },
+    {
+      "id": "syn_5",
+      "a": "remiseria",
+      "b": "fabrica",
+      "pct": 0.02
+    }
+  ],
+  "synergy_req": 10,
+  "synergy_cost_mult": "50",
+  "global": [
+    {
+      "id": "glob_1",
+      "buildings": 20,
+      "cost": "5e3",
+      "value": 1.5
+    },
+    {
+      "id": "glob_2",
+      "buildings": 60,
+      "cost": "5e5",
+      "value": 1.5
+    },
+    {
+      "id": "glob_3",
+      "buildings": 120,
+      "cost": "5e7",
+      "value": 2.0
+    },
+    {
+      "id": "glob_4",
+      "buildings": 200,
+      "cost": "5e9",
+      "value": 2.0
+    }
   ]
 }

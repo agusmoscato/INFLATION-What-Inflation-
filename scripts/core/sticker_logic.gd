@@ -1,7 +1,8 @@
 class_name StickerLogic
 extends RefCounted
-## Álbum de figuritas del barrio: 60 figuritas en 6 páginas, sobres, repetidas, chupi (cambio) y bonus permanentes.
-## Los billetes (página 3) se consiguen con las reformas; el resto, con sobres, eventos y timba.
+## Álbum de figuritas del barrio (se desbloquea en el árbol): 60 figuritas en 6 páginas, sobres, repetidas, chupi (cambio)
+## y bonus por página (TreeLogic.compute_mods). Los billetes (página 3) salen de las reformas; el resto, de sobres,
+## billetes voladores, noticias y raspaditas.
 
 const PACK_SIZE: int = 5
 const P_GOLDEN: float = 0.03
@@ -91,9 +92,12 @@ static func random_id(m: GameModel, rarity: String) -> String:
 	return str(p[m.rng.randi() % p.size()])
 
 
-## Precio del sobre (nominal): sube con la inflación (45 s de tus ingresos, con un piso que sigue a los precios).
+## Precio del sobre (nominal): 60 s de producción, con un piso que sigue a los precios; más barato con el árbol.
 static func pack_cost(m: GameModel) -> BigNumber:
-	return BigNumber.max_of(EconomyLogic.income_per_sec(m).mul_f(45.0), m.price_level.mul_f(60.0))
+	EconomyLogic.ensure_fresh(m)
+	var c: BigNumber = BigNumber.max_of(EconomyLogic.income_per_sec(m).mul_f(GameData.B("pack_seconds")),
+		EconomyLogic.cost_factor(m).mul_f(GameData.B("pack_floor")))
+	return c.mul_f(float(m.mods["pack_discount"]))
 
 
 ## Entrega una figurita. Devuelve {id, repe, new, rarity}.
@@ -116,9 +120,11 @@ static func give(m: GameModel, id: String) -> Dictionary:
 
 ## Abre un sobre ya pagado: 5 figuritas. `forced` fuerza rarezas (para clips y tests).
 static func open_pack(m: GameModel, forced: Array = []) -> Array:
+	EconomyLogic.ensure_fresh(m)
 	var out: Array = []
-	for i in range(PACK_SIZE):
-		var rar: String = str(forced[i]) if i < forced.size() else roll_rarity(m)
+	var gp: float = P_GOLDEN * float(m.mods.get("golden_mult", 1.0))
+	for i in range(int(m.mods.get("pack_size", PACK_SIZE))):
+		var rar: String = str(forced[i]) if i < forced.size() else roll_rarity(m, gp)
 		out.append(give(m, random_id(m, rar)))
 	m.packs_opened += 1
 	m.push("pack_opened")
@@ -129,7 +135,7 @@ static func open_pack(m: GameModel, forced: Array = []) -> Array:
 
 ## Compra y abre un sobre. Devuelve [] si no alcanza la plata.
 static func buy_pack(m: GameModel, forced: Array = []) -> Array:
-	if not Unlocks.has(m, "album"):
+	if not TreeLogic.has(m, "album"):
 		return []
 	var cost: BigNumber = pack_cost(m)
 	if cost.gt(m.money):
@@ -143,15 +149,17 @@ static func gift_pack(m: GameModel, forced: Array = []) -> Array:
 	return open_pack(m, forced)
 
 
-static func trade_cost(id: String) -> int:
-	return TRADE_COST_GOLDEN if def(id)["rarity"] == "golden" else TRADE_COST
+static func trade_cost(m: GameModel, id: String) -> int:
+	EconomyLogic.ensure_fresh(m)
+	var base: int = maxi(1, int(m.mods.get("trade_cost", TRADE_COST)))
+	return base * 3 if def(id)["rarity"] == "golden" else base
 
 
 ## Chupi: cambia repetidas por una figurita faltante a elección.
 static func trade(m: GameModel, target_id: String) -> bool:
 	if not GameData.sticker_idx.has(target_id) or owned(m, target_id) > 0:
 		return false
-	var cost: int = trade_cost(target_id)
+	var cost: int = trade_cost(m, target_id)
 	if repes(m) < cost:
 		return false
 	# se gastan primero las repetidas más abundantes
@@ -174,20 +182,8 @@ static func trade(m: GameModel, target_id: String) -> bool:
 
 ## Figurita de premio (eventos y timba): rareza sorteada o forzada.
 static func award(m: GameModel, rarity: String = "") -> Dictionary:
-	var rar: String = rarity if rarity != "" else roll_rarity(m, 0.02, 0.2)
+	EconomyLogic.ensure_fresh(m)
+	var rar: String = rarity if rarity != "" else roll_rarity(m, 0.02 * float(m.mods.get("golden_mult", 1.0)), 0.2)
 	var res: Dictionary = give(m, random_id(m, rar))
 	m.push("sticker_won", [res["id"]])
 	return res
-
-
-## Bonus permanentes por páginas completas: {income, inflation, remark, choice_time}.
-static func bonuses(m: GameModel) -> Dictionary:
-	var b: Dictionary = {"income": 0.0, "inflation": 0.0, "remark": 0.0, "choice_time": 0.0}
-	for p in range(GameData.sticker_pages.size()):
-		if not page_complete(m, p):
-			continue
-		var bon: Dictionary = GameData.sticker_pages[p]["bonus"]
-		for k in b:
-			if bon.has(k):
-				b[k] += float(bon[k])
-	return b

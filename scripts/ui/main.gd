@@ -489,6 +489,12 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 		last_us = now_us
 		gt += dt
 		var m: GameModel = GameState.m
+		if _game == null or not is_instance_valid(_game):
+			# ganó: aparecen los créditos; un jugador toca "seguir jugando"
+			await _qa_wait(0.3)
+			if _game == null:
+				start_game(true, true)
+			continue
 		# cerrar capas que tapan el juego (resumen de la reforma, sobres): un jugador las cierra enseguida
 		if _game._busy_overlay != null and is_instance_valid(_game._busy_overlay) and _game._busy_overlay.get_child_count() > 3:
 			_game._busy_overlay.queue_free()

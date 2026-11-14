@@ -5,7 +5,8 @@ extends RefCounted
 ##  - Toca el 85 % de los billetes voladores, 1,5 s después de que aparecen.
 ##  - Remarca apenas puede cuando la inflación mensual pasa el 4 %.
 ##  - Compra lo de mejor repago (negocios y mejoras) una vez por segundo.
-##  - Reforma cuando la Credibilidad que suma por minuto (últimos 30 s) cae debajo del promedio de la vuelta.
+##  - Reforma cuando la Credibilidad que suma por minuto (últimos 30 s) cae debajo del promedio de la vuelta, o cuando
+##    pasan 12 s sin nada para comprar (contra la pared, un jugador casual no espera más).
 ##  - Nodos: sellos y final primero; después el más barato, con preferencia NEGOCIOS > EMPANADA > RENACER > INFLACIÓN >
 ##    FIGURITAS > SUERTE. Abre los sobres de regalo, compra sobres baratos, hace chupi y juega raspaditas para el álbum.
 
@@ -26,6 +27,7 @@ var album_t: float = 0.0
 var scratch_t: float = 0.0
 var last_gain: int = 0
 var lazy: bool = false
+var stuck_t: float = 0.0                ## segundos seguidos sin nada comprable
 ## Callables opcionales para que el QA del juego real pase por la interfaz (señales, efectos): click(), bill(id), reform()
 var on_click: Callable
 var on_bill: Callable
@@ -101,19 +103,22 @@ func _reform_policy(m: GameModel, dt: float) -> Dictionary:
 		hist.append(gf)
 		if hist.size() > 7:
 			hist.pop_front()
+	stuck_t = 0.0 if EconomyLogic.anything_affordable(m) else stuck_t + dt
 	if EconomyLogic.reform_gain(m) < 1 or m.run_time < 45.0 or hist.size() < 7:
 		return {}
 	var avg: float = gf / (m.run_time / 60.0)
 	var marginal: float = (gf - float(hist[0])) / 0.5
 	# completista: después del final, si falta el logro de hiperinflación, deja correr una vuelta hasta el 1000 %
 	var hyper_wait: bool = m.won and not m.achievements.has("hyper_1000") and EconomyLogic.monthly_pct(m) < 1000.0
-	if marginal >= avg * REFORM_DROP or not EconomyLogic.can_reform(m) or hyper_wait:
+	var stuck: bool = stuck_t >= 12.0
+	if (marginal >= avg * REFORM_DROP and not stuck) or not EconomyLogic.can_reform(m) or hyper_wait:
 		return {}
 	var cred_before: int = m.credibility
 	var s: Dictionary = on_reform.call() if on_reform.is_valid() else EconomyLogic.do_reform(m)
 	if s.is_empty():
 		return {}
 	last_gain = m.credibility - cred_before
+	stuck_t = 0.0
 	hist.clear()
 	bill_plan.clear()
 	buy_nodes(m)

@@ -1224,13 +1224,15 @@ func _play_reform_animation(cut: int, summary: Dictionary) -> void:
 	sc.open = 0.5
 	ov.add_child(sc)
 	var cut_x: float = note.position.x + note.size.x * 0.62
-	var tw: Tween = create_tween()
+	var tw: Tween = ov.create_tween()      # si la capa se cierra antes, la animación se corta con ella
 	tw.tween_property(sc, "position:x", cut_x, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	for i in range(3):
 		tw.tween_callback(func() -> void: _play("snip"))
 		tw.tween_property(sc, "open", 0.0, 0.07)
 		tw.tween_property(sc, "open", 0.5, 0.07)
 	tw.tween_callback(func() -> void:
+		if not is_instance_valid(ov):
+			return
 		note.cut_zeros = cut
 		note.queue_redraw()
 		_shake(14.0, 0.35)
@@ -1246,7 +1248,9 @@ func _play_reform_animation(cut: int, summary: Dictionary) -> void:
 	tw.tween_property(sc, "position:x", vs.x + 100.0, 0.5).set_delay(0.4)
 	tw.tween_property(note, "modulate:a", 0.0, 0.3)
 	tw.parallel().tween_property(title, "modulate:a", 0.0, 0.3)
-	tw.tween_callback(func() -> void: _show_run_summary(ov, summary))
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(ov):
+			_show_run_summary(ov, summary))
 
 
 func _show_run_summary(ov: Control, s: Dictionary) -> void:

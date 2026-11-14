@@ -616,7 +616,7 @@ static func cred_of(earned: BigNumber) -> float:
 
 
 ## Cuánto cuenta la vuelta: completa si iguala o supera tu mejor vuelta; nada si quedó más de `cred_window` ceros abajo
-## (así no conviene reformar a los 20 segundos una y otra vez).
+## (así no conviene reformar a los 20 segundos una y otra vez). Con la economía colapsada cuenta al menos un 15 %.
 static func best_factor(m: GameModel) -> float:
 	if m.best_run.is_zero():
 		return 1.0
@@ -625,7 +625,10 @@ static func best_factor(m: GameModel) -> float:
 	if is_inf(l):
 		return 0.0
 	var w: float = B("cred_window")
-	return clampf((l - (best - w)) / w, 0.0, 1.0)
+	var f: float = clampf((l - (best - w)) / w, 0.0, 1.0)
+	if m.collapse_shown:
+		f = maxf(f, B("cred_collapse_floor"))      # contra la pared nadie queda trabado sin poder reformar
+	return f
 
 
 ## Credibilidad que daría reformar ahora, sin redondear.

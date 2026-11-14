@@ -1,24 +1,30 @@
-# QA de la primera partida de un jugador nuevo: juega 5 minutos (x10) siguiendo la accion destacada, saca una captura cada 15 s
-# de juego y arma la hoja de contacto docs/qa/primeros_5_min.jpg (todas las capturas juntas, con el tiempo de cada una).
-# Uso: powershell -File tools/qa_newplayer.ps1
-param([string]$Godot = "")
+# QA del jugador nuevo (diseno v2): el bot del simulador (BotPolicy) juega 60 minutos con la interfaz real a velocidad x20
+# (unos 3-4 minutos reales), saca capturas y arma dos hojas de contacto:
+#   docs/qa/v2_0_a_10_min.jpg   una captura cada 30 s de juego (minutos 0 a 10)
+#   docs/qa/v2_10_a_60_min.jpg  una captura cada 2,5 min de juego (minutos 10 a 60)
+# Falla si hay textos sin traducir, si la pantalla se sale de la ventana, si la primera reforma no llega entre los
+# minutos 4 y 6 o si pasan mas de 20 s sin nada comprable en la primera hora.
+# Uso: powershell -File tools/qa_newplayer.ps1 [-Seconds 3600]
+param([string]$Godot = "", [int]$Seconds = 3600)
 $ErrorActionPreference = "Continue"
-Set-Location (Split-Path $PSScriptRoot -Parent)
-if ($Godot -eq "") {
-  $found = Get-Command godot -ErrorAction SilentlyContinue
-  if ($found) { $Godot = $found.Source } else { $Godot = (Get-ChildItem "tools\godot_bin\Godot_v*_console.exe" | Select-Object -First 1).FullName }
-}
+. (Join-Path $PSScriptRoot "_env.ps1")
+Set-Location $RepoRoot
+if ($Godot -eq "") { $Godot = Find-Godot }
+if (-not $Godot) { Write-Error "No encontre Godot $GodotVersion (correr tools\setup.ps1)"; exit 2 }
 $src = Join-Path $env:APPDATA "Godot\app_userdata\INFLATION- What Inflation-\qa\newplayer"
 Remove-Item "$src\*" -Force -ErrorAction SilentlyContinue
-& $Godot --rendering-driver opengl3 -- --qa-newplayer-shots 2>&1 | Select-String "QA newplayer|ERROR|SCRIPT"
+& $Godot --rendering-driver opengl3 -- --qa-newplayer-shots --np-seconds $Seconds 2>&1 | Select-String "QA |ERROR|SCRIPT"
+$code = $LASTEXITCODE
 $all = Get-ChildItem "$src\t_*.png" | Sort-Object Name
 if ($all.Count -eq 0) { Write-Error "No se sacaron capturas"; exit 1 }
 New-Item -ItemType Directory -Force "docs\qa" | Out-Null
-Copy-Item "$src\log.csv" "docs\qa\primeros_15_min.csv" -Force
+Copy-Item "$src\log.csv" "docs\qa\v2_jugador_nuevo.csv" -Force
 Add-Type -AssemblyName System.Drawing
 $enc = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq "image/jpeg" }
 $p = New-Object System.Drawing.Imaging.EncoderParameters(1)
-$p.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, 88L)
+$p.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality, 85L)
+
+function Sec-Of($f) { return [int]($f.BaseName.Substring(2, 4)) }
 
 # Hoja de contacto: todas las capturas juntas en una imagen, con el tiempo de juego de cada una.
 function Make-Sheet($shots, $outFile) {
@@ -33,10 +39,9 @@ function Make-Sheet($shots, $outFile) {
     $img = [System.Drawing.Image]::FromFile($s.FullName)
     $x = ($i % $cols) * $cw; $y = [math]::Floor($i / $cols) * $ch
     $g.DrawImage($img, $x, $y, $cw, $ch)
-    $sec = [int]($s.BaseName.Substring(2, 3))
+    $sec = Sec-Of $s
     $label = "{0}:{1:00}" -f [math]::Floor($sec / 60), ($sec % 60)
-    if ($s.BaseName -like "*_cartel") { $label += " cartel" }
-    $g.FillRectangle([System.Drawing.Brushes]::Black, $x, $y + $ch - 28, 150, 28)
+    $g.FillRectangle([System.Drawing.Brushes]::Black, $x, $y + $ch - 28, 110, 28)
     $g.DrawString($label, $font, [System.Drawing.Brushes]::Yellow, $x + 3, $y + $ch - 27)
     $img.Dispose(); $i++
   }
@@ -44,14 +49,15 @@ function Make-Sheet($shots, $outFile) {
   $g.Dispose(); $sheet.Dispose()
   Write-Host "Hoja de contacto: $outFile ($($shots.Count) capturas)"
 }
-$first = @($all | Where-Object { [int]$_.BaseName.Substring(2, 3) -le 300 })
-$second = @($all | Where-Object { [int]$_.BaseName.Substring(2, 3) -gt 300 })
-Make-Sheet $first "docs\qa\primeros_5_min.jpg"
-if ($second.Count -gt 0) { Make-Sheet $second "docs\qa\minutos_5_a_15.jpg" }
+$first = @($all | Where-Object { (Sec-Of $_) -le 600 })
+$second = @($all | Where-Object { (Sec-Of $_) -ge 600 })
+Make-Sheet $first "docs\qa\v2_0_a_10_min.jpg"
+if ($second.Count -gt 0) { Make-Sheet $second "docs\qa\v2_10_a_60_min.jpg" }
 $res = Join-Path $src "result.txt"
 if (Test-Path $res) {
   $lines = Get-Content $res
-  Write-Host ("QA jugador nuevo (ritmo, carteles y notas): " + $lines[0])
+  Write-Host ("QA jugador nuevo: " + $lines[0])
   $lines | Select-Object -Skip 1 | Where-Object { $_ } | ForEach-Object { Write-Host "  $_" }
   if ($lines[0] -ne "PASS") { exit 1 }
 }
+exit $code

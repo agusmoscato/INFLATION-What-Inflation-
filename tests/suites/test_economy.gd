@@ -156,6 +156,11 @@ func run(t) -> void:
 	t.near(EconomyLogic.reform_gain_f(mc), 0.0, "una vuelta muy por debajo de la mejor no da Credibilidad")
 	mc.run_earned = BigNumber.from_float(1e5)
 	t.near(EconomyLogic.best_factor(mc), 0.5, "a 1 cero de la mejor vuelta cuenta la mitad")
+	mc.run_earned = BigNumber.from_float(1e3)
+	mc.collapse_shown = true
+	t.near(EconomyLogic.best_factor(mc), 0.15, "con la economía colapsada la vuelta cuenta al menos 15 %")
+	mc.collapse_shown = false
+	mc.run_earned = BigNumber.from_float(1e5)
 	mc.run_earned = BigNumber.from_float(1e8)
 	t.near(EconomyLogic.reform_gain_f(mc), 16.0, "superar la mejor vuelta cuenta completo")
 	t.check(EconomyLogic.can_reform(mc), "desde la segunda reforma no hace falta el colapso")

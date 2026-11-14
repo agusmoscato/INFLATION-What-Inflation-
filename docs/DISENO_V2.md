@@ -94,7 +94,7 @@ Total: 55 mejoras. Como cada vuelta tiene muchas, casi siempre hay un ícono cer
 - Un nodo se ve cuando su padre está comprado; los vecinos del borde se ven como niebla con "?"; el resto no se dibuja.
 - Se compran con Credibilidad, en cualquier momento (también a mitad de vuelta).
 - **Costos por anillo**: 3, 10, 30, 80, 250, 1.500, 8.000, 22.000 (×1,15 si es lateral; puentes 2.700). Final:
-  **2.600** y requiere los 6 **sellos** (el nodo del anillo 4 de cada rama). En la primera hora cada reforma alcanza
+  **3.000** y requiere los 6 **sellos** (el nodo del anillo 4 de cada rama). En la primera hora cada reforma alcanza
   para 2–5 nodos; los anillos 6 a 8 son el "después del final" (del minuto ~60 al 100 %).
 
 | Rama | Identidad | Capstone (anillo 7) |

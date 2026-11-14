@@ -76,7 +76,7 @@ tests/, tools/                tests, prueba de humo, simulador y QA
 
 - Inflación como pared: la tasa crece sola en cada vuelta (r = 0,2 %/s · e^(t/78 s), se duplica cada ~54 s); todo cuesta × P y la producción no sube con P. Remarcar congela P unos segundos.
 - Credibilidad por vuelta = (log10(plata máxima ganada) − 4)², con multiplicadores del árbol; para cobrarla entera hay que acercarse a la mejor vuelta (a 2 ceros o menos), así no conviene reformar cada 20 s. La primera reforma se habilita cuando la economía colapsa.
-- El árbol (115 nodos) es lo que acelera cada vuelta; los costos por anillo (3, 10, 30, 80, 250, 1.500, 8.000, 22.000; final 2.600) están calibrados con el simulador.
+- El árbol (115 nodos) es lo que acelera cada vuelta; los costos por anillo (3, 10, 30, 80, 250, 1.500, 8.000, 22.000; final 3.000) están calibrados con el simulador.
 - Se eliminaron el plan económico, los refugios, la quiniela, la timba del dólar, el panel de objetivos y las órdenes de compra. Las partidas de la versión 1 no se convierten (se empieza de cero con un aviso).
 - Nada de políticos, partidos ni billetes reales: billetes, empresas y titulares son ficticios.
 

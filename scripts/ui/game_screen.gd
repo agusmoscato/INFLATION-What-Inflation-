@@ -238,7 +238,7 @@ func _build_header() -> Control:
 	right.custom_minimum_size = Vector2(170, 0)
 	h.add_child(right)
 	right.add_child(UIKit.label(tr("ui.cred"), 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_RIGHT))
-	cred_label = UIKit.label("0 ★", 30, Chalk.BLUE, HORIZONTAL_ALIGNMENT_RIGHT, true)
+	cred_label = UIKit.label("0", 30, Chalk.BLUE, HORIZONTAL_ALIGNMENT_RIGHT, true)
 	right.add_child(cred_label)
 	return p
 
@@ -499,7 +499,7 @@ func _refresh_header(m: GameModel) -> void:
 	remark_btn.disabled = cd > 0.0
 	remark_btn.text = tr("ui.remark") if cd <= 0.0 else tr("ui.remark_cd") % int(ceil(cd))
 	remark_bar.value = 1.0 - cd / total
-	cred_label.text = "%d ★" % m.credibility
+	cred_label.text = "%d" % m.credibility
 
 
 func _pct(v: float) -> String:
@@ -608,7 +608,7 @@ func _refresh_upgrades(m: GameModel) -> void:
 
 
 func _refresh_nav(m: GameModel) -> void:
-	nav_tree.text = tr("ui.nav.tree") + ("  ★%d" % m.credibility if m.credibility > 0 else "")
+	nav_tree.text = tr("ui.nav.tree") + (" (%d)" % m.credibility if m.credibility > 0 else "")
 	var affordable: bool = TreeLogic.any_affordable(m)
 	if affordable:
 		nav_tree.modulate = Color(1, 1, 1).lerp(Chalk.YELLOW, 0.5 + 0.5 * sin(_clock * 5.0))
@@ -1022,7 +1022,7 @@ func _refresh_tree_info() -> void:
 	if _tree_info.is_empty() or _tree_view == null:
 		return
 	var m: GameModel = gm()
-	(_tree_info["cred"] as Label).text = "%d ★" % m.credibility
+	(_tree_info["cred"] as Label).text = tr("ui.tree.cred") % m.credibility
 	var id: String = _tree_view.selected
 	if id == "" or not GameData.tree_idx.has(id):
 		return
@@ -1129,7 +1129,7 @@ func _open_achievements() -> void:
 		av.add_theme_constant_override("separation", 0)
 		p.add_child(av)
 		var hidden: bool = bool(a["secret"]) and not have
-		av.add_child(UIKit.label(("✓ " if have else "") + (tr("ui.ach.secret") if hidden else tr(a["name_key"])), 18, Chalk.YELLOW if have else UIKit.C_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+		av.add_child(UIKit.label(((tr("ui.ach.done") + " ") if have else "") + (tr("ui.ach.secret") if hidden else tr(a["name_key"])), 18, Chalk.YELLOW if have else UIKit.C_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 		var d: Label = UIKit.label(tr("ui.ach.secret_d") if hidden else tr(a["desc_key"]), 15, Chalk.WHITE if have else UIKit.C_DIM)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		d.custom_minimum_size = Vector2(420, 0)
@@ -1273,7 +1273,7 @@ func _show_run_summary(ov: Control, s: Dictionary) -> void:
 		var pe: BigNumber = BigNumber.from_string(str(s["prev_earned"]))
 		var better: bool = earned.gt(pe)
 		var faster: bool = float(s["time"]) < float(s["prev_time"])
-		var cmp: Label = UIKit.label(tr("ui.summary.cmp") % [("▲ " if better else "▼ ") + UIKit.money(pe), ("▲ " if faster else "▼ ") + _mmss(float(s["prev_time"])), int(s["prev_cred"])], 18, Chalk.GREEN if better else Chalk.PINK, HORIZONTAL_ALIGNMENT_CENTER)
+		var cmp: Label = UIKit.label(tr("ui.summary.cmp") % [("+ " if better else "- ") + UIKit.money(pe), ("+ " if faster else "- ") + _mmss(float(s["prev_time"])), int(s["prev_cred"])], 18, Chalk.GREEN if better else Chalk.PINK, HORIZONTAL_ALIGNMENT_CENTER)
 		cmp.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cmp.custom_minimum_size = Vector2(620, 0)
 		v.add_child(cmp)

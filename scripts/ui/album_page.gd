@@ -135,7 +135,7 @@ func refresh(m: GameModel) -> void:
 		var b: Button = _page_btns[p]
 		var n: int = StickerLogic.page_count(m, p)
 		var done: bool = StickerLogic.page_complete(m, p)
-		b.text = "%s %d/10%s" % [tr("page." + str(GameData.sticker_pages[p]["id"])), n, (" ✓" if done else "")]
+		b.text = "%s %d/10%s" % [tr("page." + str(GameData.sticker_pages[p]["id"])), n, (" OK" if done else "")]
 		UIKit.style_button(b, UIKit.C_BLUE if p == _page else (UIKit.C_GOLD if done else UIKit.C_PANEL2), 14)
 	var pid: String = str(GameData.sticker_pages[_page]["id"])
 	_bonus.text = tr("pageb." + pid)

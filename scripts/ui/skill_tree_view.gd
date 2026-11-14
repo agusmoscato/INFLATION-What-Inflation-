@@ -201,7 +201,7 @@ func _draw() -> void:
 			var name: String = tr(n["name_key"])
 			draw_string(body, c + Vector2(-90.0, r + 17.0), name, HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(15.0 * zoom, 11.0, 20.0)), Color(Chalk.WHITE, 0.85 * alpha))
 			if not owned:
-				draw_string(body, c + Vector2(-90.0, r + 34.0 * clampf(zoom, 0.8, 1.2)), "%d ★" % TreeLogic.cost(id), HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(14.0 * zoom, 11.0, 18.0)), Color(Chalk.YELLOW if can else Chalk.WHITE, 0.8 * alpha))
+				draw_string(body, c + Vector2(-90.0, r + 34.0 * clampf(zoom, 0.8, 1.2)), tr("ui.tree.cost") % TreeLogic.cost(id), HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(14.0 * zoom, 11.0, 18.0)), Color(Chalk.YELLOW if can else Chalk.WHITE, 0.8 * alpha))
 	# chispazos de compra
 	for s in _sparks:
 		var k: float = float(s["t"]) / 0.8

@@ -39,12 +39,14 @@ static func save_model(m: GameModel, path: String) -> bool:
 	return write(path, m.to_dict())
 
 
-## Carga la partida en `m`. Devuelve {} si no hay save, o un reporte offline (posiblemente con seconds = 0).
+## Carga la partida en `m`. Devuelve {} si no hay save, {"old": true} si es de la versión 1 (no se convierte),
+## o un reporte offline (posiblemente con seconds = 0).
 static func load_into(m: GameModel, path: String, now_unix: float) -> Dictionary:
 	var d: Dictionary = read(path)
 	if d.is_empty():
 		return {}
-	m.from_dict(d)
+	if not m.from_dict(d):
+		return {"old": true}
 	var away: float = now_unix - m.saved_unix
 	if m.saved_unix <= 0.0 or away < 0.0:
 		away = 0.0

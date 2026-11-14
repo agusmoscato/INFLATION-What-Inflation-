@@ -10,14 +10,10 @@ var current_suite: String = ""
 const SUITES: Array = [
 	"res://tests/suites/test_big_number.gd",
 	"res://tests/suites/test_economy.gd",
-	"res://tests/suites/test_inflation.gd",
+	"res://tests/suites/test_tree.gd",
 	"res://tests/suites/test_save.gd",
-	"res://tests/suites/test_prestige.gd",
-	"res://tests/suites/test_content.gd",
-	"res://tests/suites/test_objectives.gd",
 	"res://tests/suites/test_stickers.gd",
-	"res://tests/suites/test_gamble.gd",
-	"res://tests/suites/test_clarity.gd",
+	"res://tests/suites/test_content.gd",
 ]
 
 

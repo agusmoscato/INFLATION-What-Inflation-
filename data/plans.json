@@ -1,5 +1,0 @@
-[
-  {"id": "stabilization",  "income_mult": 0.7, "inflation_mult": 0.5,  "shock_months": 0,  "shock_mult": 1.0},
-  {"id": "convertibility", "income_mult": 0.9, "inflation_mult": 0.25, "shock_months": 16, "shock_mult": 3.0},
-  {"id": "emission",       "income_mult": 2.5, "inflation_mult": 1.8,  "shock_months": 0,  "shock_mult": 1.0}
-]

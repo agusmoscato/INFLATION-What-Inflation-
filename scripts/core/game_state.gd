@@ -3,18 +3,17 @@ extends Node
 
 var m: GameModel = GameModel.new()
 var achievements: Achievements
+var old_save_discarded: bool = false     ## se encontró una partida de la versión 1 (tycoon) y se empezó de cero
 
 
 func _init() -> void:
 	m.demo_mode = DemoMode.is_demo()
-	m.intro_grace = true
 	achievements = LocalAchievements.new(m.achievements)
 
 
 func new_game() -> void:
 	m = GameModel.new()
 	m.demo_mode = DemoMode.is_demo()
-	m.intro_grace = true      # sin inflación hasta el cartel "¡La inflación!"
 	achievements = LocalAchievements.new(m.achievements)
 
 

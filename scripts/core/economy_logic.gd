@@ -1,222 +1,207 @@
 class_name EconomyLogic
 extends RefCounted
-## Toda la lógica económica del juego, sin nodos ni autoloads (testeable y simulable headless).
-## Modelo: ingresos = base_real * M (tus precios) ; costos = base_real * P (nivel de precios).
-## P sube cada "mes" según la tasa; M solo se pone al día al remarcar.
-
+## Toda la lógica económica del clicker (diseño v2), sin nodos ni autoloads: testeable y simulable headless.
+## Una vuelta: clic + negocios + mejoras contra la inflación, que sube sola (reloj τ) y hace que todo cueste × P.
+## La reforma reinicia la vuelta y da Credibilidad para el árbol.
 
 
 static func B(key: String) -> float:
-	return float(GameData.balance[key])
+	return GameData.B(key)
 
 
 # =====================================================================
 #  Derivados
 # =====================================================================
-static func milestone_mult(n: int) -> float:
-	var count: int = 0
-	for t in GameData.balance["milestones"]:
-		if n >= int(t):
-			count += 1
-	return pow(B("milestone_mult"), count)
-
-
-static func album_bonus(m: GameModel) -> float:
-	var b: float = m.album.size() * B("album_note_bonus")
-	if m.album.size() >= GameData.banknotes.size():
-		b += B("album_complete_bonus")
-	return b
-
-
-static func plan_def(m: GameModel) -> Dictionary:
-	if m.plan_id != "" and GameData.plan_idx.has(m.plan_id):
-		return GameData.plans[GameData.plan_idx[m.plan_id]]
-	return {}
-
-
-static func recalc(m: GameModel) -> void:
-	m.dirty = false
-	var gm: float = 1.0 + B("cred_bonus") * (float(m.credibility) + m.legacy_cred)
-	gm *= 1.0 + album_bonus(m)
-	gm *= pow(B("plan_perm_mult"), m.plans_done)
-	var pd: Dictionary = plan_def(m)
-	if not pd.is_empty():
-		gm *= float(pd["income_mult"])
-	m.biz_up_mult = {}
-	m.click_mult = 1.0
-	m.click_pct = 0.0
-	m.auto_remark_interval = 0.0
-	m.auto_buy_interval = 0.0
-	m.infl_up_mult = 1.0
-	m.fee_mult = 1.0
-	m.remark_bonus_mult = 1.0
-	for uid in m.upgrades:
-		var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[uid]]
-		var ef: Dictionary = u["effect"]
-		var v: float = float(ef["value"])
-		match str(ef["type"]):
-			"business_mult":
-				m.biz_up_mult[ef["biz"]] = float(m.biz_up_mult.get(ef["biz"], 1.0)) * v
-			"all_mult":
-				gm *= v
-			"click_mult":
-				m.click_mult *= v
-			"click_pct":
-				m.click_pct += v
-			"auto_remark":
-				m.auto_remark_interval = v if m.auto_remark_interval == 0.0 else minf(m.auto_remark_interval, v)
-			"auto_buy":
-				m.auto_buy_interval = v if m.auto_buy_interval == 0.0 else minf(m.auto_buy_interval, v)
-			"inflation_mult":
-				m.infl_up_mult *= v
-			"fee_mult":
-				m.fee_mult *= v
-			"remark_bonus":
-				m.remark_bonus_mult *= v
-	var sb: Dictionary = StickerLogic.bonuses(m)
-	gm *= 1.0 + float(sb["income"])
-	m.sticker_infl_mult = maxf(0.5, 1.0 - float(sb["inflation"]))
-	m.sticker_remark_mult = 1.0 + float(sb["remark"])
-	m.sticker_choice_bonus = float(sb["choice_time"])
-	m.global_mult = gm
-	var base: BigNumber = BigNumber.zero()
-	for def in GameData.businesses:
-		var n: int = m.owned_count(def["id"])
-		if n == 0:
-			continue
-		var bm: float = float(m.biz_up_mult.get(def["id"], 1.0)) * milestone_mult(n)
-		base = base.add(def["base_income"].mul_f(float(n) * bm * gm))
-	m.base_income = base
-	m.refuge_mult = 1.0 + B("refuge_bonus") * float(refuge_diversified_count(m))
-
-
 static func ensure_fresh(m: GameModel) -> void:
 	if m.dirty:
 		recalc(m)
 
 
-# ---- eventos activos ----
-## Efectos de un evento activo: cada entrada lleva su diccionario "fx" (la opción elegida).
-static func _fx(ev: Dictionary) -> Dictionary:
-	if ev.has("fx"):
-		return ev["fx"]
-	return GameData.events[GameData.event_idx[ev["id"]]]
+static func milestone_count(n: int) -> int:
+	var c: int = 0
+	for t in GameData.balance["milestones"]:
+		if n >= int(t):
+			c += 1
+	return c
 
 
-static func event_income_mult(m: GameModel) -> float:
-	var r: float = 1.0
-	for ev in m.active_events:
-		r *= float(_fx(ev).get("income_mult", 1.0))
-	return r
+static func golden_owned(m: GameModel) -> int:
+	var n: int = 0
+	for id in m.stickers:
+		if StickerLogic.def(id)["rarity"] == "golden":
+			n += 1
+	return n
 
 
-static func event_inflation_mult(m: GameModel) -> float:
-	var r: float = 1.0
-	for ev in m.active_events:
-		r *= float(_fx(ev).get("inflation_mult", 1.0))
-	return r
-
-
-static func event_click_mult(m: GameModel) -> float:
-	var r: float = 1.0
-	for ev in m.active_events:
-		r *= float(_fx(ev).get("click_mult", 1.0))
-	return r
-
-
-static func event_fee_add(m: GameModel) -> float:
-	var r: float = 0.0
-	for ev in m.active_events:
-		r += float(_fx(ev).get("fee_add", 0.0))
-	return r
-
-
-static func refuges_blocked(m: GameModel) -> bool:
-	for ev in m.active_events:
-		if bool(_fx(ev).get("block_refuges", false)):
-			return true
-	return false
-
-
-static func has_event(m: GameModel, id: String) -> bool:
-	for ev in m.active_events:
-		if ev["id"] == id:
-			return true
-	return false
-
-
-## Ingreso nominal por segundo.
-static func income_per_sec(m: GameModel) -> BigNumber:
-	ensure_fresh(m)
-	return m.base_income.mul(m.my_prices).mul_f(event_income_mult(m) * m.refuge_mult)
-
-
-## Poder adquisitivo: cuántas "empanadas del día 1" alcanzan con tu plata.
-static func purchasing_power(m: GameModel) -> BigNumber:
-	return m.money.div(m.price_level)
-
-
-## Tasa mensual de inflación vigente (0.08 = 8 %).
-## Tramos de inflación alta de la primera vuelta (data/balance.json > tension): entre los minutos 5 y 15 la tasa sube por
-## tramos (3 % -> 5 % -> 8 %) y el semáforo se pone rojo si el jugador no remarca ni compra. Devuelve el índice del tramo
-## actual o -1. Solo en partidas nuevas (intro_grace), en la Era 1 y antes de la primera reforma.
-static func tension_index(m: GameModel) -> int:
-	if not m.intro_grace or m.era != 1 or m.reforms > 0:
-		return -1
-	var list: Array = GameData.balance["tension"]
-	for i in range(list.size()):
-		var e: Dictionary = list[i]
-		if m.time_played >= float(e["from"]) and m.time_played < float(e["to"]):
-			return i
-	return -1
-
-
-static func tension_rate(m: GameModel) -> float:
-	var i: int = tension_index(m)
-	return float(GameData.balance["tension"][i]["rate"]) if i >= 0 else 0.0
-
-
-static func inflation_rate(m: GameModel) -> float:
-	ensure_fresh(m)
-	if m.intro_grace and not Unlocks.has(m, "inflation"):
-		return 0.0      # los primeros minutos no hay inflación: aparece con el cartel "¡La inflación!"
-	var r: float = maxf(float(GameData.era_def(m.era)["inflation"]), tension_rate(m))
-	if m.era >= 5:
-		r *= maxf(0.0, 1.0 - B("measure_reduction") * float(m.measures))
-	r *= maxf(0.5, 1.0 / (1.0 + B("cred_inflation_reduction") * (float(m.credibility) + m.legacy_cred)))
-	var pd: Dictionary = plan_def(m)
-	if not pd.is_empty():
-		r *= float(pd["inflation_mult"])
-	r *= m.infl_up_mult * m.sticker_infl_mult
-	r *= event_inflation_mult(m)
-	return r
+static func recalc(m: GameModel) -> void:
+	m.dirty = false
+	m.mods = TreeLogic.compute_mods(m)
+	var md: Dictionary = m.mods
+	var biz_up: Dictionary = {}
+	var syn: Dictionary = {}
+	var all_mult: float = 1.0
+	var cm: float = float(md["click_mult"])
+	var cp: float = float(md["click_pct"])
+	for uid in m.upgrades:
+		var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[uid]]
+		var fx: Dictionary = u["fx"]
+		match str(fx["type"]):
+			"biz_mult":
+				biz_up[fx["biz"]] = float(biz_up.get(fx["biz"], 1.0)) * float(fx["value"])
+			"click_mult":
+				cm *= float(fx["value"])
+			"click_pct":
+				cp += float(fx["value"])
+			"synergy":
+				syn[fx["biz"]] = float(syn.get(fx["biz"], 0.0)) + float(fx["value"]) * float(md["synergy_mult"]) * float(m.owned_count(fx["other"]))
+			"all_mult":
+				all_mult *= float(fx["value"])
+	var buildings: int = m.total_businesses()
+	var pages: int = StickerLogic.pages_done(m)
+	var gm: float = float(md["prod_mult"]) * all_mult
+	gm *= 1.0 + float(md["album_income"])
+	gm *= 1.0 + float(md["collection"]) * float(m.stickers.size())
+	gm *= 1.0 + float(md["gold_bonus"]) * float(golden_owned(m))
+	gm *= pow(float(md["page_prod"]), float(pages))
+	gm *= 1.0 + float(md["per_building"]) * float(buildings)
+	var base: BigNumber = BigNumber.zero()
+	m.biz_income = {}
+	for def in GameData.businesses:
+		var n: int = m.owned_count(def["id"])
+		if n == 0:
+			continue
+		var bm: float = float(biz_up.get(def["id"], 1.0)) * pow(float(md["milestone_mult"]), float(milestone_count(n)))
+		bm *= 1.0 + float(syn.get(def["id"], 0.0))
+		var inc: BigNumber = def["base_income"].mul_f(float(n) * bm * gm)
+		m.biz_income[def["id"]] = inc
+		base = base.add(inc)
+	m.base_income = base
+	m.click_mult = cm * (1.0 + float(md["click_per_building"]) * float(buildings))
+	m.click_pct = cp
 
 
 # =====================================================================
-#  Ingresos y clic
+#  Inflación
+# =====================================================================
+## ln P acumulado en la vuelta (sube con la tasa salvo con precios congelados).
+static func ln_price(m: GameModel) -> float:
+	return m.ln_p
+
+
+static func exp_big(x: float) -> BigNumber:
+	var l10: float = x / BigNumber.LN10
+	var e: int = floori(l10)
+	return BigNumber.new(pow(10.0, l10 - float(e)), e)
+
+
+static func price_level(m: GameModel) -> BigNumber:
+	return exp_big(ln_price(m))
+
+
+## Lo que multiplica a todos los precios de la vuelta (P, o P^k con la Tablita).
+static func cost_factor(m: GameModel) -> BigNumber:
+	ensure_fresh(m)
+	return exp_big(ln_price(m) * float(m.mods["cost_p_exp"]))
+
+
+static func event_mult(m: GameModel, key: String) -> float:
+	var r: float = 1.0
+	for ev in m.active_events:
+		r *= float(ev["fx"].get(key, 1.0))
+	return r
+
+
+static func infl_speed(m: GameModel) -> float:
+	ensure_fresh(m)
+	return float(m.mods["infl_speed"]) * maxf(0.3, 1.0 - float(m.mods["album_inflation"])) * event_mult(m, "infl_mult")
+
+
+## Tasa instantánea (por segundo) sin contar el congelamiento: r = A · velocidad · e^(t/T), con t = tiempo de la vuelta.
+## Sube sola durante la vuelta (se duplica cada ~54 s): esa es la pared. El árbol baja la velocidad.
+static func rate_per_sec(m: GameModel) -> float:
+	return B("infl_base") * exp(m.run_time / B("infl_T")) * infl_speed(m)
+
+
+## Inflación "mensual" que se muestra (1 mes = 10 s), en %.
+static func monthly_pct(m: GameModel) -> float:
+	return (exp(rate_per_sec(m) * B("month_seconds")) - 1.0) * 100.0
+
+
+static func frozen(m: GameModel) -> bool:
+	return m.freeze_left > 0.0
+
+
+## Capa visual (los nombres de las viejas eras): por lo ganado en la vuelta; Hiperinflación si la mensual pasa el 100 %.
+static func era_of(m: GameModel) -> int:
+	if monthly_pct(m) >= B("hyper_month_pct"):
+		return 5
+	var e: int = 1
+	for i in range(1, GameData.era_thresholds.size()):
+		if m.run_earned.ge(GameData.era_thresholds[i]):
+			e = i + 1
+	return e
+
+
+# =====================================================================
+#  Producción y clic
 # =====================================================================
 static func earn(m: GameModel, nominal: BigNumber) -> void:
 	m.money = m.money.add(nominal)
-	var real: BigNumber = nominal.div(m.price_level)
-	m.lifetime_real = m.lifetime_real.add(real)
-	m.cycle_real = m.cycle_real.add(real)
-	m.run_real = m.run_real.add(real)
+	m.run_earned = m.run_earned.add(nominal)
+
+
+## Producción por segundo (con frenesí, eventos, arranque rápido, indexación y "la inflación te paga").
+static func income_per_sec(m: GameModel) -> BigNumber:
+	ensure_fresh(m)
+	var md: Dictionary = m.mods
+	var k: float = event_mult(m, "prod_mult")
+	if m.frenzy_left > 0.0:
+		k *= float(md["frenzy_mult"])
+	if m.run_time < float(md["early_boost_s"]):
+		k *= B("early_boost_mult")
+	if float(md["indexation"]) > 0.0 and monthly_pct(m) >= 50.0:
+		k *= 1.0 + float(md["indexation"])
+	if float(md["infl_pays"]) > 0.0:
+		k *= 1.0 + float(md["infl_pays"]) * ln_price(m) / BigNumber.LN10      # "la inflación te paga": +50 % por cada cero de P
+	return m.base_income.mul_f(k)
+
+
+static func combo_mult(m: GameModel) -> float:
+	return 1.0 + float(m.mods.get("combo_step", B("combo_step"))) * float(m.combo)
 
 
 static func click_value(m: GameModel) -> BigNumber:
 	ensure_fresh(m)
-	var real: float = B("click_base") * m.click_mult * event_click_mult(m)
-	var v: BigNumber = m.my_prices.mul_f(real)
+	var k: float = (B("click_base") + float(m.mods["click_add"])) * m.click_mult * combo_mult(m) * event_mult(m, "click_mult")
+	if m.clickfrenzy_left > 0.0:
+		k *= B("clickfrenzy_mult")
+	var v: BigNumber = BigNumber.from_float(k)
 	if m.click_pct > 0.0:
-		v = v.add(income_per_sec(m).mul_f(m.click_pct))
+		v = v.add(income_per_sec(m).mul_f(m.click_pct * combo_mult(m)))
 	return v
 
 
-static func do_click(m: GameModel) -> BigNumber:
+## Un clic en la empanada. `manual` = del jugador (arma combo); los del autoclicker no.
+## Devuelve {value: BigNumber, crit: bool, combo: int}.
+static func do_click(m: GameModel, manual: bool = true) -> Dictionary:
+	ensure_fresh(m)
+	if manual:
+		if m.combo_idle <= float(m.mods["combo_window"]):
+			m.combo = mini(m.combo + 1, int(m.mods["combo_cap"]))
+		else:
+			m.combo = 1
+		m.combo_idle = 0.0
+		m.max_combo = maxi(m.max_combo, m.combo)
+		m.run_manual_clicks += 1
 	var v: BigNumber = click_value(m)
+	var crit: bool = float(m.mods["crit_chance"]) > 0.0 and m.rng.randf() < float(m.mods["crit_chance"])
+	if crit:
+		v = v.mul_f(float(m.mods["crit_mult"]))
+		m.crits += 1
 	earn(m, v)
 	m.clicks += 1
-	return v
+	m.run_clicks += 1
+	return {"value": v, "crit": crit, "combo": m.combo}
 
 
 # =====================================================================
@@ -226,8 +211,17 @@ static func growth_pow(k: float) -> BigNumber:
 	return BigNumber.from_float(B("cost_growth")).pow_f(k)
 
 
+static func business_available(m: GameModel, def: Dictionary) -> bool:
+	var u: String = str(def["unlock"])
+	if u == "":
+		return true
+	ensure_fresh(m)
+	return bool(m.mods.get(u, false))
+
+
 static func business_cost(m: GameModel, def: Dictionary, qty: int = 1) -> BigNumber:
-	var first: BigNumber = def["base_cost"].mul(growth_pow(float(m.owned_count(def["id"])))).mul(m.price_level)
+	ensure_fresh(m)
+	var first: BigNumber = def["base_cost"].mul(growth_pow(float(m.owned_count(def["id"])))).mul(cost_factor(m)).mul_f(float(m.mods["cost_mult"]))
 	if qty <= 1:
 		return first
 	return first.mul(growth_pow(float(qty)).sub(BigNumber.one())).div_f(B("cost_growth") - 1.0)
@@ -245,16 +239,12 @@ static func max_affordable(m: GameModel, def: Dictionary) -> int:
 	return n
 
 
-static func is_unlocked(m: GameModel, def: Dictionary) -> bool:
-	return int(def["era"]) <= m.era
-
-
 ## qty < 0 => máximo posible. Devuelve cuántos compró.
 static func buy_business(m: GameModel, id: String, qty: int = 1) -> int:
 	if not GameData.business_idx.has(id):
 		return 0
 	var def: Dictionary = GameData.businesses[GameData.business_idx[id]]
-	if not is_unlocked(m, def):
+	if not business_available(m, def):
 		return 0
 	var n: int = max_affordable(m, def) if qty < 0 else qty
 	if n <= 0:
@@ -262,30 +252,55 @@ static func buy_business(m: GameModel, id: String, qty: int = 1) -> int:
 	var cost: BigNumber = business_cost(m, def, n)
 	if cost.gt(m.money):
 		return 0
+	var before: int = m.owned_count(id)
 	m.money = m.money.sub(cost)
-	m.owned[id] = m.owned_count(id) + n
+	m.owned[id] = before + n
 	m.dirty = true
+	_track_buildings(m)
 	m.push("business_bought", [id, n])
+	if milestone_count(before + n) > milestone_count(before):
+		m.push("milestone", [id, before + n])
 	return n
 
 
+static func _track_buildings(m: GameModel) -> void:
+	m.max_buildings = maxi(m.max_buildings, m.total_businesses())
+	m.max_carts = maxi(m.max_carts, m.owned_count("empanadas"))
+	for def in GameData.businesses:
+		if m.owned_count(def["id"]) > 0:
+			m.max_tier = maxi(m.max_tier, int(def["tier"]))
+
+
 # =====================================================================
-#  Mejoras
+#  Mejoras (fila de íconos)
 # =====================================================================
 static func upgrade_visible(m: GameModel, u: Dictionary) -> bool:
-	if not Unlocks.has(m, "upgrades"):
-		return false      # las mejoras recién aparecen en el minuto 6 (ver Unlocks)
-	if m.upgrades.has(u["id"]) or int(u["era"]) > m.era:
+	if m.upgrades.has(u["id"]):
 		return false
-	if str(u["effect"]["type"]) == "auto_remark" and m.reforms < 1:
-		return false      # el remarcado automático llega recién después de la primera reforma: toda la primera vuelta se remarca a mano
-	if int(u["req_owned"]) > 0 and m.owned_count(u["biz"]) < int(u["req_owned"]):
-		return false
-	return true
+	match str(u["kind"]):
+		"biz":
+			var def: Dictionary = GameData.businesses[GameData.business_idx[u["biz"]]]
+			return business_available(m, def) and m.owned_count(u["biz"]) >= int(u["req"])
+		"click":
+			return m.run_clicks >= int(u["req"])
+		"syn":
+			return m.owned_count(u["biz"]) >= int(u["req"]) and m.owned_count(u["other"]) >= int(u["req"])
+		"global":
+			return m.total_businesses() >= int(u["req"])
+	return false
 
 
 static func upgrade_cost(m: GameModel, u: Dictionary) -> BigNumber:
-	return u["cost"].mul(m.price_level)
+	return u["cost"].mul(cost_factor(m))
+
+
+static func visible_upgrades(m: GameModel) -> Array:
+	var out: Array = []
+	for u in GameData.upgrades:
+		if upgrade_visible(m, u):
+			out.append(u)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["cost"].lt(b["cost"]))
+	return out
 
 
 static func buy_upgrade(m: GameModel, id: String) -> bool:
@@ -299,71 +314,66 @@ static func buy_upgrade(m: GameModel, id: String) -> bool:
 		return false
 	m.money = m.money.sub(cost)
 	m.upgrades[id] = true
+	m.max_upgrades = maxi(m.max_upgrades, m.upgrades.size())
 	m.dirty = true
 	m.push("upgrade_bought", [id])
 	return true
 
 
 # =====================================================================
-#  Compra inteligente (usada por el auto-comprador y el simulador)
+#  Compra inteligente (bot, Encargado y simulador)
 # =====================================================================
-static func unit_gain(m: GameModel, def: Dictionary) -> BigNumber:
+static func _biz_gain(m: GameModel, def: Dictionary) -> BigNumber:
 	var n: int = m.owned_count(def["id"])
-	var bm: float = float(m.biz_up_mult.get(def["id"], 1.0))
-	var after: float = float(n + 1) * milestone_mult(n + 1)
-	var before: float = float(n) * milestone_mult(n)
-	return def["base_income"].mul_f(bm * m.global_mult * (after - before))
+	var per_unit: BigNumber = def["base_income"].mul_f(float(m.mods["prod_mult"]))
+	if n > 0 and m.biz_income.has(def["id"]):
+		per_unit = m.biz_income[def["id"]].div_f(float(n))
+	var k: float = 1.0
+	if milestone_count(n + 1) > milestone_count(n):
+		k = float(m.mods["milestone_mult"]) * float(n + 1) / float(maxi(n, 1))
+	return per_unit.mul_f(k)
 
 
-static func candidates(m: GameModel) -> Array:
+## Candidatos con su repago (s). `biz_only` = solo negocios (el Encargado).
+static func candidates(m: GameModel, biz_only: bool = false) -> Array:
 	ensure_fresh(m)
 	var out: Array = []
-	var total: BigNumber = m.base_income
-	var floor_income: BigNumber = BigNumber.max_of(total, BigNumber.one())
+	var total: BigNumber = BigNumber.max_of(m.base_income, BigNumber.from_float(0.5))
 	for def in GameData.businesses:
-		if not is_unlocked(m, def):
+		if not business_available(m, def):
 			continue
-		var cost_real: BigNumber = def["base_cost"].mul(growth_pow(float(m.owned_count(def["id"]))))
-		var gain: BigNumber = unit_gain(m, def)
-		out.append({"kind": "biz", "id": def["id"], "cost": cost_real.mul(m.price_level),
-			"payback": cost_real.div(gain).to_float()})
+		var cost: BigNumber = business_cost(m, def, 1)
+		var gain: BigNumber = _biz_gain(m, def)
+		out.append({"kind": "biz", "id": def["id"], "cost": cost, "payback": cost.div(gain).to_float()})
+	if biz_only:
+		return out
 	for u in GameData.upgrades:
 		if not upgrade_visible(m, u):
 			continue
-		var ef: Dictionary = u["effect"]
-		var v: float = float(ef["value"])
+		var fx: Dictionary = u["fx"]
+		var v: float = float(fx["value"])
 		var gain2: BigNumber = BigNumber.zero()
-		match str(ef["type"]):
-			"business_mult":
-				var bid: String = str(ef["biz"])
-				var bdef: Dictionary = GameData.businesses[GameData.business_idx[bid]]
-				var n: int = m.owned_count(bid)
-				var contrib: BigNumber = bdef["base_income"].mul_f(float(n) * float(m.biz_up_mult.get(bid, 1.0)) * milestone_mult(n) * m.global_mult)
-				gain2 = contrib.mul_f(v - 1.0)
+		match str(fx["type"]):
+			"biz_mult":
+				gain2 = m.biz_income.get(fx["biz"], BigNumber.zero()).mul_f(v - 1.0)
 			"all_mult":
 				gain2 = total.mul_f(v - 1.0)
 			"click_mult":
-				gain2 = BigNumber.from_float(B("click_base") * m.click_mult * (v - 1.0))
+				gain2 = click_value(m).mul_f(4.0 * (v - 1.0))
 			"click_pct":
-				gain2 = total.mul_f(v)
-			"auto_remark":
-				gain2 = floor_income.mul_f(0.15)
-			"auto_buy":
-				gain2 = floor_income.mul_f(0.08)
-			"remark_bonus", "inflation_mult":
-				gain2 = floor_income.mul_f(0.05)
-			_:
-				gain2 = floor_income.mul_f(0.01)
+				gain2 = total.mul_f(v * 4.0)
+			"synergy":
+				gain2 = m.biz_income.get(fx["biz"], BigNumber.zero()).mul_f(v * float(m.owned_count(fx["other"])))
 		if gain2.is_zero():
-			continue
-		out.append({"kind": "upg", "id": u["id"], "cost": u["cost"].mul(m.price_level),
-			"payback": u["cost"].div(gain2).to_float()})
+			gain2 = total.mul_f(0.01)
+		var cost2: BigNumber = upgrade_cost(m, u)
+		out.append({"kind": "upg", "id": u["id"], "cost": cost2, "payback": cost2.div(gain2).to_float()})
 	return out
 
 
-## Compra el mejor candidato asequible (o uno casi tan bueno si el mejor no se puede pagar). true si compró algo.
-static func smart_buy(m: GameModel, tolerance: float = 1.8) -> bool:
-	var cands: Array = candidates(m)
+## Compra el mejor candidato asequible (o uno casi tan bueno). true si compró algo.
+static func smart_buy(m: GameModel, tolerance: float = 1.8, biz_only: bool = false) -> bool:
+	var cands: Array = candidates(m, biz_only)
 	if cands.is_empty():
 		return false
 	var best_payback: float = INF
@@ -383,217 +393,188 @@ static func smart_buy(m: GameModel, tolerance: float = 1.8) -> bool:
 	return buy_upgrade(m, pick["id"])
 
 
-# =====================================================================
-#  Remarcar
-# =====================================================================
-static func needs_remark(m: GameModel) -> bool:
-	return m.my_prices.lt(m.price_level)
+## ¿Hay algo comprable ya mismo? (negocio, mejora o nodo del árbol)
+static func anything_affordable(m: GameModel) -> bool:
+	for def in GameData.businesses:
+		if business_available(m, def) and business_cost(m, def, 1).le(m.money):
+			return true
+	for u in GameData.upgrades:
+		if upgrade_visible(m, u) and upgrade_cost(m, u).le(m.money):
+			return true
+	return TreeLogic.any_affordable(m)
 
 
-static func remark(m: GameModel, manual: bool = true) -> BigNumber:
-	if manual and m.remark_cd > 0.0:
-		return BigNumber.zero()
-	if not needs_remark(m):
-		return BigNumber.zero()
-	m.my_prices = m.price_level
-	var bonus: BigNumber = BigNumber.zero()
-	var on_time: bool = manual and m.remark_window > 0.0
-	if manual:
-		m.remarks += 1
-		m.remark_cd = B("remark_cooldown")
-	if on_time:
-		bonus = income_per_sec(m).mul_f(B("remark_bonus_seconds") * m.remark_bonus_mult * m.sticker_remark_mult)
-		earn(m, bonus)
-		m.remark_window = 0.0
-	if manual:
-		m.push("remarked", [bonus, on_time])
-	return bonus
+static func cheapest_business(m: GameModel) -> BigNumber:
+	var best: BigNumber = null
+	for def in GameData.businesses:
+		if not business_available(m, def):
+			continue
+		var c: BigNumber = business_cost(m, def, 1)
+		if best == null or c.lt(best):
+			best = c
+	return best if best != null else BigNumber.zero()
 
 
 # =====================================================================
-#  Refugios
+#  Remarcar: congela la inflación un rato
 # =====================================================================
-static func refuge_def(id: String) -> Dictionary:
-	return GameData.refuges[GameData.refuge_idx[id]]
+static func can_remark(m: GameModel) -> bool:
+	return m.remark_cd <= 0.0
 
 
-static func refuge_fee(m: GameModel, id: String) -> float:
-	return float(refuge_def(id)["fee"]) * m.fee_mult + event_fee_add(m)
-
-
-## Valor nominal actual de lo que tenés en un refugio.
-static func refuge_value(m: GameModel, id: String) -> BigNumber:
-	return m.refuge_units[id].mul_f(float(m.refuge_price[id])).mul(m.price_level)
-
-
-static func refuge_value_total_real(m: GameModel) -> BigNumber:
-	var t: BigNumber = BigNumber.zero()
-	for r in GameData.refuges:
-		t = t.add(m.refuge_units[r["id"]].mul_f(float(m.refuge_price[r["id"]])))
-	return t
-
-
-## Cuántos refugios tienen ahorros >= N segundos de ingresos (cartera diversificada).
-static func refuge_diversified_count(m: GameModel) -> int:
-	var thresh: BigNumber = m.base_income.mul_f(B("refuge_bonus_seconds"))
-	var n: int = 0
-	for r in GameData.refuges:
-		var real: BigNumber = m.refuge_units[r["id"]].mul_f(float(m.refuge_price[r["id"]]))
-		if not real.is_zero() and real.ge(thresh):
-			n += 1
-	return n
-
-
-static func refuges_unlocked(m: GameModel) -> bool:
-	return m.era >= 2 or m.reforms > 0
-
-
-static func refuge_buy(m: GameModel, id: String, nominal: BigNumber) -> bool:
-	if not refuges_unlocked(m) or refuges_blocked(m) or nominal.is_zero() or nominal.gt(m.money):
+static func remark(m: GameModel, manual: bool = true) -> bool:
+	ensure_fresh(m)
+	if not can_remark(m):
 		return false
-	var real: BigNumber = nominal.div(m.price_level).mul_f(1.0 - refuge_fee(m, id))
-	m.money = m.money.sub(nominal)
-	m.refuge_units[id] = m.refuge_units[id].add(real.div_f(float(m.refuge_price[id])))
-	m.dirty = true
-	m.push("refuge_changed")
+	var secs: float = float(m.mods["remark_freeze"]) + float(m.mods["album_remark"])
+	m.freeze_left = maxf(m.freeze_left, secs)
+	m.remark_cd = maxf(5.0, float(m.mods["remark_cd"]))
+	m.remarks += 1
+	if manual and m.run_time < 10.0:
+		m.early_remark = 1
+	m.push("remarked", [secs, manual])
 	return true
 
 
-static func refuge_sell(m: GameModel, id: String, fraction: float = 1.0) -> bool:
-	if refuges_blocked(m) or m.refuge_units[id].is_zero():
-		return false
-	var f: float = clampf(fraction, 0.0, 1.0)
-	var value: BigNumber = refuge_value(m, id).mul_f(f)
-	m.refuge_units[id] = m.refuge_units[id].mul_f(1.0 - f)
-	m.money = m.money.add(value.mul_f(1.0 - refuge_fee(m, id)))
-	m.dirty = true
-	m.push("refuge_changed")
-	return true
+# =====================================================================
+#  Billete volador
+# =====================================================================
+static func _next_bill_interval(m: GameModel) -> float:
+	ensure_fresh(m)
+	return m.rng.randf_range(B("bill_min"), B("bill_max")) * float(m.mods["bill_interval"])
 
 
-static func refuge_monthly_update(m: GameModel, rate: float) -> void:
-	for r in GameData.refuges:
-		var id: String = r["id"]
-		var pr: float = float(m.refuge_price[id])
-		var vol: float = float(r["vol"])
-		var drift: float = float(r["drift"]) + float(r["drift_infl"]) * rate
-		var noise: float = m.rng.randfn(0.0, 1.0) * vol
-		pr *= exp(drift + noise - 0.5 * vol * vol)
-		pr += (1.0 - pr) * float(r["reversion"])
-		m.refuge_price[id] = clampf(pr, float(r["min"]), float(r["max"]))
-	m.dirty = true
+static func _spawn_bill(m: GameModel) -> void:
+	m.bill_seq += 1
+	var t: float = B("bill_flight") * float(m.mods["bill_slow"])
+	m.bills_active.append({"id": m.bill_seq, "left": t, "total": t})
+	m.push("bill_spawn", [m.bill_seq])
+
+
+static func update_bills(m: GameModel, dt: float) -> void:
+	var i: int = m.bills_active.size() - 1
+	while i >= 0:
+		var b: Dictionary = m.bills_active[i]
+		b["left"] = float(b["left"]) - dt
+		if float(b["left"]) <= 0.0:
+			m.bills_active.remove_at(i)
+			m.bills_missed += 1
+			m.push("bill_missed", [b["id"]])
+		i -= 1
+	m.bill_timer -= dt
+	if m.bill_timer <= 0.0:
+		m.bill_timer = _next_bill_interval(m)
+		_spawn_bill(m)
+		if m.rng.randf() < float(m.mods["bill_double"]):
+			_spawn_bill(m)
+
+
+static func bill_prize_kind(m: GameModel) -> String:
+	var w: Dictionary = GameData.balance["bill_weights"].duplicate()
+	if not bool(m.mods["album"]):
+		w["sticker"] = 0
+	else:
+		w["sticker"] = float(w["sticker"]) * float(m.mods["sticker_bill"]) / B("sticker_bill_base")
+	if bool(m.mods["clickfrenzy"]):
+		w["clickfrenzy"] = 15
+	var total: float = 0.0
+	for k in w:
+		total += float(w[k])
+	var roll: float = m.rng.randf() * total
+	for k in w:
+		roll -= float(w[k])
+		if roll <= 0.0 and float(w[k]) > 0.0:
+			return str(k)
+	return "money"
+
+
+## El jugador tocó un billete. Devuelve {kind, amount: BigNumber, seconds: float, sticker: String} ({} si no existe).
+static func click_bill(m: GameModel, bill_id: int, force: String = "") -> Dictionary:
+	ensure_fresh(m)
+	var idx: int = -1
+	for i in range(m.bills_active.size()):
+		if int(m.bills_active[i]["id"]) == bill_id:
+			idx = i
+	if idx < 0:
+		return {}
+	m.bills_active.remove_at(idx)
+	m.bills += 1
+	var kind: String = force if force != "" else bill_prize_kind(m)
+	var res: Dictionary = {"kind": kind, "amount": BigNumber.zero(), "seconds": 0.0, "sticker": ""}
+	match kind:
+		"frenzy":
+			m.frenzy_left = float(m.mods["frenzy_dur"])
+			m.frenzies += 1
+			res["seconds"] = m.frenzy_left
+			if bool(m.mods["frenzy_freeze"]):
+				m.freeze_left = maxf(m.freeze_left, m.frenzy_left)
+		"freeze":
+			m.freeze_left = maxf(m.freeze_left, B("freeze_seconds") + float(m.mods["freeze_bonus"]))
+			res["seconds"] = m.freeze_left
+		"clickfrenzy":
+			m.clickfrenzy_left = B("clickfrenzy_seconds")
+			res["seconds"] = m.clickfrenzy_left
+		"sticker":
+			var s: Dictionary = StickerLogic.award(m)
+			res["sticker"] = s["id"]
+		_:
+			res["kind"] = "money"
+			var a: BigNumber = BigNumber.max_of(income_per_sec(m).mul_f(B("bill_money_s")), click_value(m).mul_f(B("bill_money_clicks")))
+			a = a.mul_f(float(m.mods["bill_money"]))
+			earn(m, a)
+			res["amount"] = a
+	m.push("bill_prize", [res])
+	return res
 
 
 # =====================================================================
-#  Eventos (cada uno plantea una elección con costo y beneficio)
+#  Noticias (eventos con dos opciones)
 # =====================================================================
-const CHOICE_SECONDS: float = 10.0
-
-
 static func event_def(id: String) -> Dictionary:
 	return GameData.events[GameData.event_idx[id]]
 
 
-static func default_choice(id: String) -> int:
-	var d: Dictionary = event_def(id)
-	var want: String = str(d.get("default", ""))
-	var i: int = 0
-	for c in d["choices"]:
-		if c["id"] == want:
-			return i
-		i += 1
-	return 0
-
-
-## Abre la decisión de un evento (10 s para elegir). Si `choice` >= 0 se resuelve en el acto.
-static func start_event(m: GameModel, id: String, choice: int = -1) -> void:
+static func start_event(m: GameModel, id: String) -> void:
 	ensure_fresh(m)
 	m.events_seen += 1
-	m.push("event_started", [id])
-	if choice >= 0:
-		apply_choice(m, id, choice)
-		return
-	m.pending_choice = {"id": id, "remaining": CHOICE_SECONDS + m.sticker_choice_bonus, "total": CHOICE_SECONDS + m.sticker_choice_bonus}
+	var secs: float = B("event_choice_seconds")
+	m.pending_choice = {"id": id, "remaining": secs, "total": secs}
 	m.push("event_choice", [id])
 
 
-## El jugador (o el timer) elige la opción `idx` de la decisión pendiente.
 static func choose(m: GameModel, idx: int) -> bool:
 	if m.pending_choice.is_empty():
 		return false
+	ensure_fresh(m)
 	var id: String = str(m.pending_choice["id"])
 	m.pending_choice = {}
-	apply_choice(m, id, idx)
+	var choices: Array = event_def(id)["choices"]
+	var fx: Dictionary = choices[clampi(idx, 0, choices.size() - 1)]["fx"]
+	var em: float = float(m.mods["event_mult"]) * (1.0 + float(m.mods["album_events"]))
+	if fx.has("bonus_seconds"):
+		earn(m, income_per_sec(m).mul_f(float(fx["bonus_seconds"]) * em))
+	if fx.has("pay_seconds"):
+		var cost: BigNumber = income_per_sec(m).mul_f(float(fx["pay_seconds"]))
+		m.money = m.money.sub(BigNumber.min_of(cost, m.money))
+	if fx.has("freeze"):
+		m.freeze_left = maxf(m.freeze_left, float(fx["freeze"]))
+	if fx.has("sticker"):
+		if bool(m.mods["album"]):
+			StickerLogic.award(m)
+		else:
+			earn(m, income_per_sec(m).mul_f(30.0))
+	if float(fx.get("duration", 0.0)) > 0.0:
+		var keep: Dictionary = {}
+		for k in ["prod_mult", "click_mult", "infl_mult"]:
+			if fx.has(k):
+				var v: float = float(fx[k])
+				keep[k] = 1.0 + (v - 1.0) * em if v > 1.0 and k != "infl_mult" else v
+		m.active_events.append({"id": id, "remaining": float(fx["duration"]), "fx": keep})
 	m.push("event_choice_done", [id, idx])
 	return true
 
 
-static func apply_choice(m: GameModel, id: String, idx: int) -> void:
-	var d: Dictionary = event_def(id)
-	var choices: Array = d["choices"]
-	var ch: Dictionary = choices[clampi(idx, 0, choices.size() - 1)]
-	for fx in ch["fx"]:
-		_apply_fx(m, id, fx)
-	# a veces el evento deja una figurita de premio
-	if m.rng.randf() < 0.3:
-		StickerLogic.award(m)
-
-
-static func _apply_fx(m: GameModel, id: String, fx: Dictionary) -> void:
-	# efectos instantáneos
-	if fx.has("bonus_seconds"):
-		earn(m, income_per_sec(m).mul_f(float(fx["bonus_seconds"])))
-	if fx.has("pay_seconds"):
-		var cost: BigNumber = income_per_sec(m).mul_f(float(fx["pay_seconds"]))
-		m.money = m.money.sub(BigNumber.min_of(cost, m.money))
-	if fx.has("sell_refuges_bonus"):
-		var total: BigNumber = BigNumber.zero()
-		for r in GameData.refuges:
-			total = total.add(refuge_value(m, r["id"]))
-			m.refuge_units[r["id"]] = BigNumber.zero()
-		m.money = m.money.add(total.mul_f(1.0 + float(fx["sell_refuges_bonus"])))
-		m.dirty = true
-		m.push("refuge_changed")
-		m.push("toast", ["toast.sold_refuges"])
-	if fx.has("gamble"):
-		var g: Dictionary = fx["gamble"]
-		var up: bool = m.rng.randf() < float(g["p"])
-		var k: float = float(g["up"]) if up else float(g["down"])
-		for r in GameData.refuges:
-			var rid: String = r["id"]
-			m.refuge_price[rid] = clampf(float(m.refuge_price[rid]) * k, float(r["min"]), float(r["max"]))
-		m.dirty = true
-		m.push("refuge_changed")
-		m.push("toast", ["toast.gamble_up" if up else "toast.gamble_down"])
-	# efectos con duración: quedan activos
-	var dur: float = float(fx.get("duration", 0.0))
-	if dur > 0.0:
-		var keep: Dictionary = {}
-		for k2 in ["income_mult", "inflation_mult", "click_mult", "block_refuges", "fee_add"]:
-			if fx.has(k2):
-				keep[k2] = fx[k2]
-		if not keep.is_empty():
-			m.active_events.append({"id": id, "remaining": dur, "fx": keep})
-
-
-static func pick_event(m: GameModel) -> String:
-	var total: float = 0.0
-	var pool: Array = []
-	for d in GameData.events:
-		if int(d["min_era"]) <= m.era and not has_event(m, d["id"]):
-			pool.append(d)
-			total += float(d["weight"])
-	if pool.is_empty():
-		return ""
-	var roll: float = m.rng.randf() * total
-	for d in pool:
-		roll -= float(d["weight"])
-		if roll <= 0.0:
-			return d["id"]
-	return pool[pool.size() - 1]["id"]
-
-
-static func update_events(m: GameModel, dt: float, allow_spawn: bool) -> void:
+static func update_events(m: GameModel, dt: float) -> void:
 	var i: int = m.active_events.size() - 1
 	while i >= 0:
 		var ev: Dictionary = m.active_events[i]
@@ -602,319 +583,278 @@ static func update_events(m: GameModel, dt: float, allow_spawn: bool) -> void:
 			m.active_events.remove_at(i)
 			m.push("event_ended", [ev["id"]])
 		i -= 1
-	# decisión pendiente: si se acaba el tiempo se aplica la opción por defecto
 	if not m.pending_choice.is_empty():
 		m.pending_choice["remaining"] = float(m.pending_choice["remaining"]) - dt
 		if float(m.pending_choice["remaining"]) <= 0.0:
-			choose(m, default_choice(str(m.pending_choice["id"])))
+			choose(m, 0)
 		return
-	if allow_spawn and m.era >= int(B("events_min_era")):
-		m.event_timer -= dt
-		if m.event_timer <= 0.0:
-			m.event_timer = m.rng.randf_range(B("event_interval_min"), B("event_interval_max"))
-			var id: String = pick_event(m)
-			if id != "":
-				start_event(m, id)
+	if not bool(m.mods["events"]):
+		return
+	m.event_timer -= dt
+	if m.event_timer <= 0.0:
+		m.event_timer = m.rng.randf_range(B("event_min"), B("event_max"))
+		var total: float = 0.0
+		for d in GameData.events:
+			total += float(d["weight"])
+		var roll: float = m.rng.randf() * total
+		for d in GameData.events:
+			roll -= float(d["weight"])
+			if roll <= 0.0:
+				start_event(m, str(d["id"]))
+				return
 
 
 # =====================================================================
-#  Cruzada antiinflacionaria (final de la Era 5)
+#  Reforma monetaria (renacer)
 # =====================================================================
-static func measure_count_total() -> int:
-	return GameData.measure_costs.size()
+## Credibilidad base de una vuelta según lo máximo que se ganó en ella: k · (log10(ganado) − c)^p (logarítmica, no explota).
+static func cred_of(earned: BigNumber) -> float:
+	var l: float = earned.log10()
+	if is_inf(l) or l <= B("cred_c"):
+		return 0.0
+	return B("cred_k") * pow(l - B("cred_c"), B("cred_p"))
 
 
-static func measure_cost(m: GameModel) -> BigNumber:
-	if m.measures >= measure_count_total():
-		return BigNumber.zero()
-	return GameData.measure_costs[m.measures].mul(m.price_level)
+## Cuánto cuenta la vuelta: completa si iguala o supera tu mejor vuelta; nada si quedó más de `cred_window` ceros abajo
+## (así no conviene reformar a los 20 segundos una y otra vez). Con la economía colapsada cuenta al menos un 15 %.
+static func best_factor(m: GameModel) -> float:
+	if m.best_run.is_zero():
+		return 1.0
+	var l: float = m.run_earned.log10()
+	var best: float = m.best_run.log10()
+	if is_inf(l):
+		return 0.0
+	var w: float = B("cred_window")
+	var f: float = clampf((l - (best - w)) / w, 0.0, 1.0)
+	if m.collapse_shown:
+		f = maxf(f, B("cred_collapse_floor"))      # contra la pared nadie queda trabado sin poder reformar
+	return f
 
 
-static func buy_measure(m: GameModel) -> bool:
-	if m.era < 5 or m.measures >= measure_count_total():
-		return false
-	var cost: BigNumber = measure_cost(m)
-	if cost.gt(m.money):
-		return false
-	m.money = m.money.sub(cost)
-	m.measures += 1
-	m.dirty = true
-	m.push("toast", ["toast.measure"])
-	return true
-
-
-# =====================================================================
-#  Reforma monetaria (prestige 1) y Plan económico (prestige 2)
-# =====================================================================
-## Credibilidad que daría reformar ahora: depende de lo ganado (en términos reales) en ESTA vuelta.
-static func credibility_possible(m: GameModel) -> int:
-	if m.run_real.lt(GameData.cred_base):
-		return 0
-	return m.run_real.div(GameData.cred_base).pow_f(B("cred_exp")).floor_to_int()
+## Credibilidad que daría reformar ahora, sin redondear.
+static func reform_gain_f(m: GameModel) -> float:
+	ensure_fresh(m)
+	var md: Dictionary = m.mods
+	var k: float = float(md["cred_mult"]) * (1.0 + float(md["album_cred"])) * (1.0 + float(md["cred_per_page"]) * float(StickerLogic.pages_done(m)))
+	var g: float = cred_of(m.run_earned) * best_factor(m) * k
+	return g + float(md["cred_flat"]) if g >= 1.0 else g
 
 
 static func reform_gain(m: GameModel) -> int:
-	return credibility_possible(m)
+	return int(floor(reform_gain_f(m)))
 
 
-static func can_reform(m: GameModel) -> bool:
-	return m.era >= int(B("reform_min_era")) and reform_gain(m) >= 1
-
-
-static func _reset_run(m: GameModel) -> void:
-	m.money = BigNumber.zero()
-	m.price_level = BigNumber.one()
-	m.my_prices = BigNumber.one()
-	m.owned = {}
-	m.upgrades = {}
-	m.active_events = []
-	m.run_real = BigNumber.zero()
-	m.run_time = 0.0
-	m.remark_window = 0.0
-	m.auto_timer = 0.0
-	m.auto_buy_timer = 0.0
-	m.event_timer = 120.0
-	m.dirty = true
-
-
-static func do_reform(m: GameModel) -> bool:
-	if not can_reform(m):
+## Alcanza la Credibilidad mínima (y la demo no llegó a su tope).
+static func reform_ready(m: GameModel) -> bool:
+	if m.demo_mode and m.reforms >= int(B("demo_max_reforms")):
 		return false
-	m.credibility += reform_gain(m)
-	var cut: int = maxi(0, floori(m.price_level.log10()))
+	return reform_gain(m) >= int(B("reform_min_gain"))
+
+
+## La primera reforma recién se habilita cuando la economía colapsa (el cartel la sugiere); después, cuando se quiera.
+static func can_reform(m: GameModel) -> bool:
+	if m.reforms == 0 and not m.collapse_shown:
+		return false
+	return reform_ready(m)
+
+
+static func collapsed(m: GameModel) -> bool:
+	if price_level(m).lt(BigNumber.from_float(B("collapse_min_price"))):
+		return false
+	var inc: BigNumber = income_per_sec(m)
+	return cheapest_business(m).gt(inc.mul_f(B("collapse_payback_s")))
+
+
+static func do_reform(m: GameModel) -> Dictionary:
+	if not can_reform(m):
+		return {}
+	var gain: int = reform_gain(m)
+	var prev: Dictionary = m.runs[m.runs.size() - 1] if not m.runs.is_empty() else {}
+	var summary: Dictionary = {"n": m.run_index, "earned": m.run_earned.to_save(), "time": m.run_time, "cred": gain,
+		"prev_earned": str(prev.get("earned", "")), "prev_time": float(prev.get("time", 0.0)), "prev_cred": int(prev.get("cred", 0))}
+	m.credibility += gain
+	m.cred_total += gain
+	m.reforms += 1
+	var cut: int = maxi(1, floori(ln_price(m) / BigNumber.LN10))      # la tijera corta al menos un cero
 	m.zeros_cut += cut
+	summary["cut"] = cut
+	if m.run_earned.gt(m.best_run):
+		m.best_run = m.run_earned
+	m.fastest_run = minf(m.fastest_run, m.run_time) if gain >= 10 else m.fastest_run
+	if m.run_manual_clicks <= 10 and gain >= 1:
+		m.lazy_run = 1
+	m.runs.append({"n": m.run_index, "earned": m.run_earned.to_save(), "time": m.run_time, "cred": gain})
+	m.lifetime_earned = m.lifetime_earned.add(m.run_earned)
 	var note: int = -1
 	if m.album.size() < GameData.banknotes.size():
 		note = m.album.size()
 		m.album.append(note)
-	for r in GameData.refuges:
-		m.refuge_units[r["id"]] = m.refuge_units[r["id"]].mul_f(B("refuge_carry"))
-	m.reforms += 1
-	_reset_run(m)
-	if note >= 0:
 		StickerLogic.give(m, "note_%d" % note)
-	m.push("reform_done", [note, cut])
-	if m.demo_mode:
+	summary["note"] = note
+	ensure_fresh(m)
+	if bool(m.mods["album"]):
+		m.free_packs_pending += int(m.mods["free_packs"])
+	var last_earned: BigNumber = m.run_earned
+	_reset_run(m, last_earned)
+	m.push("reform_done", [summary])
+	if m.demo_mode and m.reforms >= int(B("demo_max_reforms")):
 		m.demo_finished = true
 		m.push("demo_end")
-	return true
+	return summary
 
 
-static func plan_min_cred(m: GameModel) -> int:
-	var lst: Array = GameData.balance["plan_min_cred"]
-	return int(lst[mini(m.plans_done, lst.size() - 1)])
-
-
-static func can_plan(m: GameModel) -> bool:
-	return m.era >= int(B("plan_min_era")) and m.plans_used.size() < GameData.plans.size() and m.credibility >= plan_min_cred(m)
-
-
-static func do_plan(m: GameModel, plan: String) -> bool:
-	if not can_plan(m) or not GameData.plan_idx.has(plan) or m.plans_used.has(plan):
-		return false
-	m.legacy_cred += float(m.credibility) * B("plan_legacy_frac")
-	m.credibility = 0
-	m.cycle_real = BigNumber.zero()
-	m.plans_done += 1
-	m.plan_id = plan
-	m.plans_used.append(plan)
-	for r in GameData.refuges:
-		m.refuge_units[r["id"]] = m.refuge_units[r["id"]].mul_f(B("refuge_carry"))
-	_reset_run(m)
-	m.push("plan_done", [plan])
-	return true
+static func _reset_run(m: GameModel, last_earned: BigNumber) -> void:
+	ensure_fresh(m)
+	var kept: Dictionary = {}
+	if bool(m.mods["keep_click_upg"]):
+		for uid in m.upgrades:
+			if GameData.upgrades[GameData.upgrade_idx[uid]]["kind"] == "click":
+				kept[uid] = true
+	m.money = BigNumber.from_float(float(m.mods["start_money"])).add(last_earned.mul_f(float(m.mods["start_money_frac"])))
+	m.run_earned = BigNumber.zero()
+	m.run_time = 0.0
+	m.ln_p = 0.0
+	m.owned = {}
+	var sb: Dictionary = m.mods["start_biz"]
+	for b in sb:
+		m.owned[b] = int(sb[b])
+	m.upgrades = kept
+	m.run_clicks = 0
+	m.run_manual_clicks = 0
+	m.run_index += 1
+	m.freeze_left = 0.0
+	m.remark_cd = 0.0
+	m.frenzy_left = 0.0
+	m.clickfrenzy_left = 0.0
+	m.combo = 0
+	m.combo_idle = 99.0
+	m.bills_active = []
+	m.bill_timer = minf(20.0, _next_bill_interval(m))
+	m.active_events = []
+	m.pending_choice = {}
+	m.event_timer = m.rng.randf_range(B("event_min"), B("event_max")) * 0.5
+	m.collapse_shown = false
+	m.max_rate_run = 0.0
+	m.dirty = true
+	_track_buildings(m)
 
 
 # =====================================================================
 #  Tick
 # =====================================================================
-static func _update_era(m: GameModel) -> void:
-	while m.era < GameData.eras.size() and m.lifetime_real.ge(GameData.eras[m.era]["threshold"]):
-		if m.demo_mode and m.era >= DemoMode.MAX_ERA:
-			break      # la demo llega hasta la Era 2
-		m.era += 1
-		m.dirty = true
-		m.push("era_changed", [m.era])
-
-
-static func month_end(m: GameModel) -> void:
-	m.real_ref = income_per_sec(m).div(m.price_level)      # ingreso real al cierre del mes, antes del aumento
-	var rate: float = inflation_rate(m)
-	var ti: int = tension_index(m)
-	if ti >= 0 and ti + 1 > m.tension_seen:
-		m.tension_seen = ti + 1
-		m.push("toast", ["toast.tension"])      # empieza un tramo de inflación más alta
-	GambleLogic.settle_dollar(m, rate)         # la timba del dólar se resuelve con la tasa del mes que cierra
-	GambleLogic.draw_quiniela(m)               # y se sortea la quiniela
-	m.month_count += 1
-	m.price_level = m.price_level.mul_f(1.0 + rate)
-	var pd: Dictionary = plan_def(m)
-	if not pd.is_empty() and int(pd["shock_months"]) > 0 and m.month_count % int(pd["shock_months"]) == 0:
-		m.price_level = m.price_level.mul_f(float(pd["shock_mult"]))
-		m.push("toast", ["toast.shock"])
-	if rate > 0.0:
-		m.remark_window = B("remark_window")
-	refuge_monthly_update(m, rate)
-	m.push("month_passed", [rate])
-	if m.era >= 5 and rate <= 0.0 and not m.won:
-		m.won = true
-		m.push("victory")
-
-
 static func tick(m: GameModel, dt: float, offline: bool = false) -> void:
 	ensure_fresh(m)
 	m.time_played += dt
 	m.run_time += dt
-	m.remark_window = maxf(0.0, m.remark_window - dt)
+	m.combo_idle += dt
+	if m.combo_idle > float(m.mods["combo_window"]):
+		m.combo = 0
 	m.remark_cd = maxf(0.0, m.remark_cd - dt)
+	m.frenzy_left = maxf(0.0, m.frenzy_left - dt)
+	m.clickfrenzy_left = maxf(0.0, m.clickfrenzy_left - dt)
+	# inflación: P sube con la tasa salvo con precios congelados
+	var live: float = dt
+	if m.freeze_left > 0.0:
+		var used: float = minf(dt, m.freeze_left)
+		m.freeze_left -= used
+		live = dt - used
+	if live > 0.0:
+		m.ln_p += rate_per_sec(m) * live
 	var inc: BigNumber = income_per_sec(m)
 	if not inc.is_zero():
 		earn(m, inc.mul_f(dt))
-	update_events(m, dt, not offline)
-	if m.auto_remark_interval > 0.0:
-		m.auto_timer += dt
-		if m.auto_timer >= m.auto_remark_interval:
-			m.auto_timer = 0.0
-			remark(m, false)
-	# offline: la inflación corre a la mitad de velocidad y como mucho `offline_max_months` aumentos por ausencia
-	var month_dt: float = dt
 	if offline:
-		month_dt = 0.0 if m.offline_months_left == 0 else dt * B("offline_inflation_speed")
-	m.month_progress += month_dt
-	var ms: float = B("month_seconds")
-	while m.month_progress >= ms:
-		m.month_progress -= ms
-		month_end(m)
-		if offline and m.offline_months_left > 0:
-			m.offline_months_left -= 1
-			if m.offline_months_left == 0:
-				m.month_progress = 0.0
-				break
-	if m.auto_buy_interval > 0.0:
-		m.auto_buy_timer += dt
-		if m.auto_buy_timer >= m.auto_buy_interval:
-			m.auto_buy_timer = 0.0
-			var guard: int = 0
-			while smart_buy(m) and guard < 20:
-				guard += 1
-	_update_era(m)
-	ObjectiveLogic.update(m)
-	Unlocks.update(m)
+		return
+	var md: Dictionary = m.mods
+	if float(md["autoclick"]) > 0.0:
+		m.auto_click_acc += float(md["autoclick"]) * dt
+		var n: int = 0
+		while m.auto_click_acc >= 1.0 and n < 60:
+			m.auto_click_acc -= 1.0
+			do_click(m, false)
+			n += 1
+		m.auto_click_acc = minf(m.auto_click_acc, 1.0)
+	if float(md["manager"]) > 0.0:
+		m.manager_timer += dt
+		if m.manager_timer >= float(md["manager"]):
+			m.manager_timer = 0.0
+			smart_buy(m, 1.8, true)
+	if bool(md["auto_remark"]) and can_remark(m) and m.freeze_left <= 0.0 and m.run_time > 5.0:
+		remark(m, false)
+	if float(md["auto_scratch"]) > 0.0 and bool(md["scratch"]):
+		m.auto_scratch_timer += dt
+		if m.auto_scratch_timer >= float(md["auto_scratch"]):
+			m.auto_scratch_timer = 0.0
+			GambleLogic.play_scratch(m, true)
+	update_bills(m, dt)
+	update_events(m, dt)
+	var pct: float = monthly_pct(m)
+	m.max_rate_pct = maxf(m.max_rate_pct, pct)
+	m.max_rate_run = maxf(m.max_rate_run, pct)
+	if not m.collapse_shown and reform_ready(m) and collapsed(m):
+		m.collapse_shown = true
+		m.push("collapse")
 
 
-## Progreso offline: la inflación corre igual pero más despacio (offline_inflation_speed) y con tope de aumentos por
-## ausencia (offline_max_months); el ingreso sigue entrando todo el tiempo ausente (hasta el tope de horas). Sin clics ni eventos.
+## Progreso offline: la producción sigue a un 10 % (más con el árbol), sin inflación, hasta 8 h.
 static func simulate_offline(m: GameModel, seconds: float) -> Dictionary:
+	ensure_fresh(m)
 	var cap: float = B("offline_cap_hours") * 3600.0
 	var total: float = clampf(seconds, 0.0, cap)
-	var step: float = B("offline_step")
-	var money_before: BigNumber = m.money
-	var power_before: BigNumber = purchasing_power(m)
-	var price_before: BigNumber = m.price_level
-	var months_before: int = m.month_count
-	m.offline_months_left = int(B("offline_max_months"))
-	var t: float = 0.0
-	while t < total:
-		var dt: float = minf(step, total - t)
-		tick(m, dt, true)
-		t += dt
-	m.offline_months_left = -1
-	return {
-		"seconds": total, "capped": seconds > cap, "months": m.month_count - months_before,
-		"money_before": money_before, "money_after": m.money,
-		"power_before": power_before, "power_after": purchasing_power(m),
-		"price_before": price_before, "price_after": m.price_level,
-	}
+	var before: BigNumber = m.money
+	var gain: BigNumber = m.base_income.mul_f(total * float(m.mods["offline_frac"]))
+	earn(m, gain)
+	m.time_played += total
+	return {"seconds": total, "capped": seconds > cap, "money_before": before, "money_after": m.money, "gain": gain}
 
 
 # =====================================================================
-#  Estadísticas (para logros)
+#  Estadísticas (logros y menú)
 # =====================================================================
 static func stats(m: GameModel) -> Dictionary:
-	var refuge_real: BigNumber = refuge_value_total_real(m)
 	var ml: float = m.money.log10()
-	var pl: float = purchasing_power(m).log10()
+	var rl: float = m.run_earned.log10()
+	var bl: float = BigNumber.max_of(m.best_run, m.run_earned).log10()
 	return {
-		"clicks": m.clicks, "remarks": m.remarks, "buildings": m.total_businesses(),
-		"upgrades": m.upgrades.size(), "era": m.era, "events_seen": m.events_seen,
-		"reforms": m.reforms, "plans": m.plans_done, "album": m.album.size(),
-		"minutes": m.time_played / 60.0, "zeros_cut": m.zeros_cut, "measures": m.measures,
-		"won": 1 if m.won else 0, "rate_pct": inflation_rate(m) * 100.0,
-		"stickers": m.stickers.size(), "pages_done": StickerLogic.pages_done(m), "packs": m.packs_opened, "trades": m.trades,
-		"golden_owned": _golden_owned(m), "scratches": m.scratches, "quiniela_wins": m.quiniela_wins, "dollar_wins": m.dollar_wins,
-		"pozo_wins": m.pozo_wins, "gold_scratches": m.gold_scratches, "loss_streak_max": m.loss_streak_max,
-		"refuge_any": 1 if not refuge_real.is_zero() else 0,
-		"money_log10": ml if not is_inf(ml) else -1.0,
-		"power_log10": pl if not is_inf(pl) else -1.0,
+		"clicks": m.clicks, "max_combo": m.max_combo, "crits": m.crits, "buildings": m.total_businesses(),
+		"max_buildings": m.max_buildings, "max_carts": m.max_carts, "max_tier": m.max_tier, "max_upgrades": m.max_upgrades,
+		"remarks": m.remarks, "early_remark": m.early_remark, "max_rate_pct": m.max_rate_pct, "rate_pct": monthly_pct(m),
+		"bills": m.bills, "bills_missed": m.bills_missed, "frenzies": m.frenzies, "reforms": m.reforms,
+		"fastest_run": m.fastest_run, "lazy_run": m.lazy_run, "zeros_cut": m.zeros_cut, "cred_total": m.cred_total,
+		"nodes": TreeLogic.count(m), "nodes_pct": 100.0 * float(TreeLogic.count(m)) / float(TreeLogic.total()),
+		"caps": TreeLogic.caps(m), "won": 1 if m.won else 0, "packs": m.packs_opened, "golden_owned": golden_owned(m),
+		"pages_done": StickerLogic.pages_done(m), "stickers": m.stickers.size(),
+		"stickers_pct": 100.0 * float(m.stickers.size()) / float(StickerLogic.total()), "trades": m.trades,
+		"scratches": m.scratches, "scratch_big": m.scratch_big, "loss_streak_max": m.loss_streak_max,
+		"events_seen": m.events_seen, "minutes": m.time_played / 60.0,
+		"money_log10": ml if not is_inf(ml) else -1.0, "run_log10": rl if not is_inf(rl) else -1.0,
+		"best_run_log10": bl if not is_inf(bl) else -1.0,
 	}
 
 
-# =====================================================================
-#  Tutorial (los pasos se deducen del estado de la partida)
-# =====================================================================
-const TUTORIAL_STEPS: int = 5
-## Cuánto dura en pantalla la nota que presenta la inflación (después se calla hasta que llegue el momento de remarcar).
-const INFLATION_NOTE_SECONDS: float = 30.0
+## % de completado total: (nodos + figuritas + logros) / (total de los tres).
+static func completion(m: GameModel) -> float:
+	var have: int = TreeLogic.count(m) + m.stickers.size() + m.achievements.size()
+	var all: int = TreeLogic.total() + StickerLogic.total() + GameData.achievements.size()
+	return 100.0 * float(have) / float(all)
 
 
-## 0 clic, 1 comprar el carrito, 2 comprar el kiosco, 3 presentar la inflación, 4 remarcar; TUTORIAL_STEPS = completado.
-## Los pasos 3 y 4 esperan a que se desbloquee su mecánica (ver Unlocks): primero el negocio, después la inflación y recién
-## más tarde remarcar.
+# =====================================================================
+#  Tutorial mínimo (solo la primera vuelta)
+# =====================================================================
+const TUTORIAL_STEPS: int = 4
+
+
+## 0 clic, 1 primer carrito, 2 remarcar (cuando la inflación se nota), 3 reforma (al colapsar); 4 = terminado.
 static func tutorial_step(m: GameModel) -> int:
-	if m.era > 1 or m.reforms > 0:
+	if m.tutorial_done or m.reforms > 0:
 		return TUTORIAL_STEPS
-	if m.clicks < 3:
+	if m.clicks < 5:
 		return 0
 	if m.total_businesses() < 1:
 		return 1
-	if m.remarks >= 1:
-		return TUTORIAL_STEPS
-	if Unlocks.has(m, "remark"):
-		return 4
-	if Unlocks.has(m, "inflation") and m.time_played - Unlocks.time_of(m, "inflation") <= INFLATION_NOTE_SECONDS:
+	if m.remarks < 1:
+		return 2 if m.run_time >= 75.0 else -1
+	if can_reform(m) and (m.collapse_shown or m.run_time >= 270.0):
 		return 3
-	if m.owned_count("kiosco") < 1:
-		return 2
-	return 3
-
-
-
-## ¿El paso actual todavía no está "a tiempo" de mostrarse? (entonces no hay nota de tutorial en pantalla)
-static func tutorial_waiting(m: GameModel) -> bool:
-	if tutorial_step(m) != 3:
-		return false
-	if not Unlocks.has(m, "inflation"):
-		return true
-	return m.time_played - Unlocks.time_of(m, "inflation") > INFLATION_NOTE_SECONDS
-
-
-# =====================================================================
-#  ¿Le ganás a la inflación?
-# =====================================================================
-## Compara tu ingreso REAL por segundo (lo que compra) con el del cierre del mes anterior.
-## Si cae, la inflación te está comiendo; se recupera remarcando o comprando negocios.
-static func race(m: GameModel) -> Dictionary:
-	ensure_fresh(m)
-	var real_now: BigNumber = income_per_sec(m).div(m.price_level)
-	var winning: bool = true
-	if not m.real_ref.is_zero():
-		winning = real_now.ge(m.real_ref.mul_f(0.995))
-	var lost: BigNumber = BigNumber.zero()
-	if needs_remark(m):
-		lost = income_per_sec(m).mul(m.price_level.div(m.my_prices).sub(BigNumber.one()))
-	return {"winning": winning, "real_now": real_now, "real_ref": m.real_ref, "lost_ps": lost, "rate": inflation_rate(m)}
-
-
-## Cuánto te come la inflación de un ingreso nominal por segundo (por tener precios desactualizados).
-static func lag_loss(m: GameModel, income_nominal: BigNumber) -> BigNumber:
-	if not needs_remark(m):
-		return BigNumber.zero()
-	return income_nominal.mul(m.price_level.div(m.my_prices).sub(BigNumber.one()))
-
-
-static func _golden_owned(m: GameModel) -> int:
-	var n: int = 0
-	for id in m.stickers:
-		if StickerLogic.def(id)["rarity"] == "golden":
-			n += 1
-	return n
+	return -1

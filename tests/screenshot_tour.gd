@@ -1,8 +1,8 @@
 extends Control
-## Recorrido automático de capturas para revisar el layout a distintas resoluciones.
+## Recorrido automático de capturas para revisar el layout a distintas resoluciones (diseño v2).
 ## Uso (ventana real, no headless):
 ##   SHOT_DIR=docs/screenshots godot --rendering-driver opengl3 --resolution 1920x1080 res://tests/ScreenshotTour.tscn
-## Guarda <ancho>x<alto>_<nombre>.png en SHOT_DIR. Usa rutas de guardado aparte (no toca la partida real).
+## Guarda <ancho>x<alto>_<nombre>.jpg en SHOT_DIR. Usa rutas de guardado aparte (no toca la partida real).
 
 const STEP: int = 18
 
@@ -41,25 +41,22 @@ func _ready() -> void:
 	steps = [
 		["menu", _menu],
 		["00_tutorial", _tut],
-		["01_juego_era1", _early],
-		["02_negocios_era3", _mid],
-		["02b_remarcando", _remark],
-		["02c_decision", _decision],
-		["02d_inflacion_gana", _losing],
-		["03_mejoras", _tab.bind(1)],
-		["04_refugios", _tab.bind(2)],
-		["05_reforma", _tab.bind(3)],
+		["01_juego_vuelta1", _early],
+		["02_juego_avanzado", _mid],
+		["02b_billete_volador", _bill, 30],
+		["02c_noticia", _decision],
+		["03_arbol", _tree],
+		["04_arbol_zoom", _tree_zoom],
+		["05_reforma", _reform_dialog],
 		["06_album", _album],
 		["06b_sobre_rasgando", _pack, 20],
 		["06c_sobre_figuritas", _noop, 150],
-		["06d_sobre_dorada", _noop, 60],
-		["06e_timba", _timba],
 		["06f_raspadita_rascando", _scratch, 45],
-		["06g_raspadita_pozo", _noop, 150],
-		["06h_bolillero", _bolillero, 330],
-		["07_logros", _tab.bind(6)],
+		["06g_raspadita_premio", _noop, 150],
+		["07_logros", _ach],
 		["08_hiperinflacion", _hyper],
-		["09_reforma_tijera", _reform_anim],
+		["09_reforma_tijera", _reform_anim, 40],
+		["09b_resumen_vuelta", _noop, 60],
 		["10_opciones", _options],
 		["11_creditos", _credits],
 		["12_demo_fin", _demo_end],
@@ -81,7 +78,7 @@ var _idx: int = 0
 func _process(_delta: float) -> void:
 	frame += 1
 	if OS.get_environment("SHOT_CLEAN") != "" and _idx > 1:
-		_strip(main)
+		_strip()
 	if frame < _next_at:
 		return
 	if _idx > 0 and _idx - 1 < steps.size():
@@ -120,97 +117,116 @@ func _menu() -> void:
 func _tut() -> void:
 	if OS.get_environment("TOUR_QUALITY") != "":
 		Settings.quality = OS.get_environment("TOUR_QUALITY").to_int()
-		Settings.apply()
-	Settings.tutorial_done = false
+	Settings.language = "es"
+	Settings.apply()
 	main.start_game(false)
 
 
 func _early() -> void:
-	Settings.tutorial_done = false
-	Settings.language = "es"
-	Settings.apply()
-	main.start_game(false)
 	var m: GameModel = GameState.m
-	m.money = BigNumber.from_float(900.0)
-	Economy.buy_business("empanadas", 3)
-	Economy.buy_business("kiosco", 1)
-	m.money = BigNumber.from_float(412.0)
-	for i in range(5):
-		Economy.click()
+	m.clicks = 40
+	m.money = BigNumber.from_float(220.0)
+	m.owned["empanadas"] = 6
+	m.owned["kiosco"] = 1
+	m.run_time = 70.0
+	m.ln_p = 0.25
+	m.tutorial_done = true
+	m.dirty = true
 
 
 func _mid() -> void:
 	var m: GameModel = GameState.m
-	m.era = 3
-	Unlocks.unlock_all(m)
-	m.reforms = 3
-	m.credibility = 40
-	m.album = [0, 1, 2]
-	m.achievements["first_sale"] = true
-	m.achievements["era_2"] = true
-	m.achievements["era_3"] = true
-	m.lifetime_real = BigNumber.from_float(5e11)
-	m.run_real = BigNumber.from_float(1e12)
-	m.money = BigNumber.from_string("3.4e14")
-	m.price_level = BigNumber.from_float(84.0)
-	m.my_prices = BigNumber.from_float(61.0)
+	for n in GameData.tree:
+		if int(n["ring"]) <= 3 and not bool(n["final"]):
+			m.tree[n["id"]] = true
+	m.reforms = 6
+	m.run_index = 7
+	m.credibility = 85
+	m.money = BigNumber.from_string("4.2e9")
+	m.run_earned = BigNumber.from_string("9e9")
+	m.owned = {"empanadas": 45, "kiosco": 32, "choripan": 25, "lavadero": 18, "panaderia": 11, "almacen": 4}
+	m.run_clicks = 900
+	m.run_time = 150.0
+	m.ln_p = 1.2
+	m.combo = 14
+	m.combo_idle = 0.0
 	m.dirty = true
-	for def in GameData.businesses:
-		if def["era"] <= 3:
-			m.owned[def["id"]] = 8 + int(def["idx"]) * 5
-	m.upgrades["auto_remark1"] = true
-	m.upgrades["click1"] = true
-	m.dirty = true
-	Economy.refuge_buy("usd", 0.02)
-	Economy.refuge_buy("gold", 0.02)
-	EconomyLogic.start_event(m, "aguinaldo", 1)
-	Economy.flush()
-	_g()._select_tab(0)
 
 
-## Estado "la inflación te está ganando": precios subieron y los tuyos no, el ingreso real cayó bajo la referencia.
-func _losing() -> void:
-	var m: GameModel = GameState.m
-	m.pending_choice = {}
-	m.active_events = []
-	m.price_level = m.price_level.mul_f(3.0)
-	m.real_ref = EconomyLogic.income_per_sec(m).div(m.price_level).mul_f(2.5)
-	m.dirty = true
-	Economy.flush()
-
-
-func _remark() -> void:
-	Economy.remark()
+func _bill() -> void:
+	GameState.m.bill_timer = 0.0
 
 
 func _decision() -> void:
-	var m: GameModel = GameState.m
-	m.pending_choice = {}
-	EconomyLogic.start_event(m, "corrida")
+	EconomyLogic.start_event(GameState.m, "aguinaldo")
 	Economy.flush()
 
 
-func _tab(i: int) -> void:
-	_g()._select_tab(i)
+func _tree() -> void:
+	GameState.m.pending_choice = {}
+	_g()._open_tree()
+
+
+func _tree_zoom() -> void:
+	_g()._tree_view.zoom = 1.0
+	_g()._tree_view.focus("neg_3")
+
+
+func _reform_dialog() -> void:
+	GameState.m.collapse_shown = true
+	_g()._open_reform_dialog()
+
+
+func _album() -> void:
+	var m: GameModel = GameState.m
+	Unlocks.unlock_all(m)
+	for id in ["biz_empanadas", "biz_kiosco", "biz_choripan", "biz_almacen", "pj_verdulera", "pj_perro", "pj_contador", "hl_1", "hl_3", "ev_corrida", "gold_3"]:
+		StickerLogic.give(m, id)
+	StickerLogic.give(m, "biz_kiosco")
+	StickerLogic.give(m, "biz_kiosco")
+	m.notifications.clear()
+	_g()._open_album()
+
+
+func _pack() -> void:
+	var m: GameModel = GameState.m
+	var res: Array = StickerLogic.gift_pack(m, ["common", "rare", "common", "golden", "common"])
+	var ov: PackOpening = _g()._open_pack_overlay(res)
+	ov.auto_open(0.3)
+
+
+func _scratch() -> void:
+	_g()._close_overlay()
+	GameState.m.money = BigNumber.from_string("2.5e12")
+	var ov: ScratchOverlay = _g()._open_scratch("x10")
+	if ov != null:
+		ov.auto_scratch(1.5)
+
+
+func _ach() -> void:
+	var m: GameModel = GameState.m
+	if _g()._scratch_overlay != null and is_instance_valid(_g()._scratch_overlay):
+		_g()._scratch_overlay.queue_free()
+		_g()._scratch_overlay = null
+	for id in ["first_sale", "clicks_1000", "first_biz", "first_remark", "first_bill", "first_reform", "paranoid", "nodes_10"]:
+		m.achievements[id] = true
+	_g()._open_achievements()
 
 
 func _hyper() -> void:
 	var m: GameModel = GameState.m
-	m.era = 5
-	Unlocks.unlock_all(m)
-	m.measures = 1
-	m.active_events = []
-	EconomyLogic.start_event(m, "cepo", 1)
+	_g()._close_overlay()
+	m.run_time = 330.0
+	m.ln_p = 24.0
+	m.money = BigNumber.from_string("3e12")
 	m.dirty = true
-	_g()._select_tab(0)
-	EconomyLogic.month_end(m)
-	Economy.flush()
 
 
 func _reform_anim() -> void:
 	var m: GameModel = GameState.m
-	m.run_real = BigNumber.from_float(1e14)
-	m.price_level = BigNumber.from_string("1e9")
+	m.collapse_shown = true
+	m.run_earned = BigNumber.from_string("4.2e12")
+	m.ln_p = 22.0
 	Economy.reform()
 
 
@@ -231,57 +247,7 @@ func _noop() -> void:
 	pass
 
 
-func _album() -> void:
-	var m: GameModel = GameState.m
-	m.era = 3
-	Unlocks.unlock_all(m)
-	m.unlocked["album"] = true
-	m.owned["kiosco"] = 5
-	for id in ["biz_empanadas", "biz_kiosco", "biz_choripan", "biz_almacen", "pj_verdulera", "pj_perro", "pj_contador", "hl_1", "hl_3", "ev_corrida", "gold_3"]:
-		StickerLogic.give(m, id)
-	StickerLogic.give(m, "biz_kiosco")
-	StickerLogic.give(m, "biz_kiosco")
-	m.gamble_won = BigNumber.from_float(1200.0)
-	m.gamble_lost = BigNumber.from_float(5400.0)
-	m.gamble_best = BigNumber.from_float(900.0)
-	m.notifications.clear()
-	_g()._select_tab(4)
-
-
-func _pack() -> void:
-	var m: GameModel = GameState.m
-	var res: Array = StickerLogic.gift_pack(m, ["common", "rare", "common", "golden", "common"])
-	var ov: PackOpening = _g()._open_pack_overlay(res)
-	ov.auto_open(0.3)
-
-
-func _timba() -> void:
-	var m: GameModel = GameState.m
-	m.era = 3
-	Unlocks.unlock_all(m)
-	m.money = BigNumber.from_string("2.5e14")
-	m.base_income = BigNumber.from_float(5e9)
-	m.pool_real = BigNumber.from_float(4.2e11)
-	m.dirty = true
-	_g()._select_tab(5)
-
-
-func _scratch() -> void:
-	var ov: ScratchOverlay = _g()._open_scratch(0.05, "pozo")
-	if ov != null:
-		ov.auto_scratch(1.5)
-
-
-func _bolillero() -> void:
-	if _g()._scratch_overlay != null and is_instance_valid(_g()._scratch_overlay):
-		_g()._scratch_overlay.queue_free()
-	_g()._on_quiniela_drawn({"number": 37, "winning": 37, "stake": BigNumber.from_float(1e9), "payout": BigNumber.from_float(4.9e10), "kind": "exact"})
-
-
-## Para las capturas de Steam: saca la guía del tutorial y los carteles de "desbloqueaste" que tapan la pantalla.
-func _strip(n: Node) -> void:
-	for c in n.get_children():
-		if c is TutorialGuide or c is UnlockSign:
-			c.queue_free()
-		else:
-			_strip(c)
+## Para las capturas de Steam: saca la nota del tutorial (tapa la pantalla).
+func _strip() -> void:
+	if main._game != null and is_instance_valid(main._game) and main._game.tutorial_note != null:
+		main._game.tutorial_note.visible = false

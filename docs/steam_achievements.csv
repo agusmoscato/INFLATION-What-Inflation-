@@ -1,38 +1,54 @@
 ﻿api_name,nombre_es,descripcion_es,name_en,description_en,icono,icono_bloqueado,oculto
-"first_sale","Primera venta","Hacé clic en la empanada.","First sale","Click the empanada.","achievements/first_sale.png","achievements/first_sale_locked.png",0
-"clicks_500","Callos en el dedo","Hacé 500 clics.","Finger calluses","Click 500 times.","achievements/clicks_500.png","achievements/clicks_500_locked.png",0
-"first_remark","Cartel recién pintado","Remarcá precios por primera vez.","Fresh paint on the sign","Reprice for the first time.","achievements/first_remark.png","achievements/first_remark_locked.png",0
-"remarks_100","Marcador compulsivo","Remarcá 100 veces.","Compulsive labeler","Reprice 100 times.","achievements/remarks_100.png","achievements/remarks_100_locked.png",0
-"million_nothing","Millón de nada","Tené un millón que no alcanza ni para un café.","A million of nothing","Hold a million that does not even buy a coffee.","achievements/million_nothing.png","achievements/million_nothing_locked.png",0
-"googol","Googol de nada","Llegá a 1e100 en la mano.","Googol of nothing","Reach 1e100 in cash.","achievements/googol.png","achievements/googol_locked.png",0
-"buildings_50","Emprendedor serial","Tené 50 negocios a la vez.","Serial entrepreneur","Own 50 businesses at once.","achievements/buildings_50.png","achievements/buildings_50_locked.png",0
-"buildings_500","Monopolio de barrio","Tené 500 negocios a la vez.","Neighborhood monopoly","Own 500 businesses at once.","achievements/buildings_500.png","achievements/buildings_500_locked.png",0
-"upgrades_30","Mejoras de todo tipo","Comprá 30 mejoras en una misma vuelta.","Upgrades galore","Buy 30 upgrades in a single run.","achievements/upgrades_30.png","achievements/upgrades_30_locked.png",0
-"era_2","Bienvenido al barrio","Llegá a la Era 2.","Welcome to the neighborhood","Reach Era 2.","achievements/era_2.png","achievements/era_2_locked.png",0
-"era_3","Ciudad grande, precios grandes","Llegá a la Era 3.","Big city, big prices","Reach Era 3.","achievements/era_3.png","achievements/era_3_locked.png",0
-"era_4","Traje y corbata","Llegá a la Era 4.","Suit and tie","Reach Era 4.","achievements/era_4.png","achievements/era_4_locked.png",0
-"era_5","Cero a la izquierda","Llegá a la Era 5.","Zeros on the left","Reach Era 5.","achievements/era_5.png","achievements/era_5_locked.png",0
-"first_event","Titular del día","Vivé tu primer evento.","Today's headline","Live through your first event.","achievements/first_event.png","achievements/first_event_locked.png",0
-"events_25","Siempre pasa algo","Vivé 25 eventos.","Something always happens","Live through 25 events.","achievements/events_25.png","achievements/events_25_locked.png",0
-"first_refuge","Del colchón al ladrillo","Guardá plata en un refugio.","From the mattress to the brick","Park some money in a refuge.","achievements/first_refuge.png","achievements/first_refuge_locked.png",0
-"hyper","Hiperinflación (ver para creer)","Vivir una tasa mensual de 100 % o más.","Hyperinflation (seeing is believing)","Live through a monthly rate of 100% or more.","achievements/hyper.png","achievements/hyper_locked.png",0
-"first_reform","Tijeretazo","Hacé tu primera reforma monetaria.","Snip snip","Do your first monetary reform.","achievements/first_reform.png","achievements/first_reform_locked.png",0
-"reforms_5","Cirujano de ceros","Hacé 5 reformas monetarias.","Zero surgeon","Do 5 monetary reforms.","achievements/reforms_5.png","achievements/reforms_5_locked.png",0
-"album_full","Coleccionista","Completá el álbum de billetes.","Collector","Complete the banknote album.","achievements/album_full.png","achievements/album_full_locked.png",0
-"first_plan","Plan platita","Ejecutá tu primer plan económico.","Money plan","Execute your first economic plan.","achievements/first_plan.png","achievements/first_plan_locked.png",0
-"marathon","Maratón de la plata","Jugá 10 horas en total.","Money marathon","Play 10 hours in total.","achievements/marathon.png","achievements/marathon_locked.png",0
-"zero_cut_30","Treinta ceros menos","Cortá 30 ceros en total.","Thirty zeros fewer","Cut 30 zeros in total.","achievements/zero_cut_30.png","achievements/zero_cut_30_locked.png",0
-"first_pack","Primer sobre","Rasgá y abrí un sobre de figuritas.","First pack","Tear open a sticker pack.","achievements/first_pack.png","achievements/first_pack_locked.png",0
-"stickers_30","Mitad del álbum","Juntá 30 figuritas distintas.","Half the album","Collect 30 different stickers.","achievements/stickers_30.png","achievements/stickers_30_locked.png",0
-"page_1","Página completa","Completá una página del álbum.","Page complete","Complete one album page.","achievements/page_1.png","achievements/page_1_locked.png",0
-"golden_first","Brillo de tiza","Conseguí una figurita dorada.","Chalk shine","Get a golden sticker.","achievements/golden_first.png","achievements/golden_first_locked.png",0
-"trade_1","El chupi","Cambiá repetidas por una figurita faltante.","The swap","Swap duplicates for a missing sticker.","achievements/trade_1.png","achievements/trade_1_locked.png",0
-"album_60","El Gran Coleccionista","Completá el álbum de 60 figuritas.","The Grand Collector","Complete the 60-sticker album.","achievements/album_60.png","achievements/album_60_locked.png",1
-"timbero","Timbero","Raspá 10 raspaditas (con plata del juego).","Gambler","Scratch 10 cards (with game money).","achievements/timbero.png","achievements/timbero_locked.png",0
-"scratch_50","Raspador serial","Raspá 50 raspaditas.","Serial scratcher","Scratch 50 cards.","achievements/scratch_50.png","achievements/scratch_50_locked.png",0
-"pozo","¡El pozo!","Ganá el pozo de la raspadita.","The jackpot!","Win the scratch-card jackpot.","achievements/pozo.png","achievements/pozo_locked.png",0
-"quiniela_hit","Me salió la quiniela","Ganá la quiniela con las 2 cifras.","I hit the lottery","Win the lottery with both digits.","achievements/quiniela_hit.png","achievements/quiniela_hit_locked.png",0
-"dollar_3","Dólar sabio","Ganá 3 apuestas de la timba del dólar.","Dollar sage","Win 3 dollar bets.","achievements/dollar_3.png","achievements/dollar_3_locked.png",0
-"lost_all","Lo perdí todo (y está bien)","Perdé 8 apuestas seguidas. Solo era plata del juego.","Lost it all (and that is fine)","Lose 8 bets in a row. It was only game money.","achievements/lost_all.png","achievements/lost_all_locked.png",1
-"gold_scratch","Rasqué una dorada","Ganá una figurita dorada en una raspadita.","Scratched a golden one","Win a golden sticker from a scratch card.","achievements/gold_scratch.png","achievements/gold_scratch_locked.png",0
-"win","¿Inflación? ¿Qué inflación?","Bajá la inflación a cero.","INFLATION? What inflation?","Bring inflation down to zero.","achievements/win.png","achievements/win_locked.png",1
+"first_sale","Primera venta","Tocá la empanada.","First sale","Poke the empanada.","achievements/first_sale.png","achievements/first_sale_locked.png",0
+"clicks_1000","Tendinitis","1.000 clics.","Tendinitis","1,000 clicks.","achievements/clicks_1000.png","achievements/clicks_1000_locked.png",0
+"clicks_10000","Dedo de acero","10.000 clics.","Steel finger","10,000 clicks.","achievements/clicks_10000.png","achievements/clicks_10000_locked.png",0
+"combo_20","Combo de barrio","Llegá a un combo de 20.","Neighborhood combo","Reach a 20 combo.","achievements/combo_20.png","achievements/combo_20_locked.png",0
+"combo_40","Combo eterno","Llegá a un combo de 40.","Eternal combo","Reach a 40 combo.","achievements/combo_40.png","achievements/combo_40_locked.png",0
+"first_crit","¡Crítico!","Hacé un clic crítico.","Critical!","Land a critical click.","achievements/first_crit.png","achievements/first_crit_locked.png",0
+"crits_500","Golpe de suerte serial","500 clics críticos.","Serial lucky strike","500 critical clicks.","achievements/crits_500.png","achievements/crits_500_locked.png",0
+"first_biz","Emprendedor","Comprá tu primer negocio.","Entrepreneur","Buy your first business.","achievements/first_biz.png","achievements/first_biz_locked.png",0
+"biz_50","PyME","50 negocios en una vuelta.","Small business","50 businesses in one run.","achievements/biz_50.png","achievements/biz_50_locked.png",0
+"biz_200","Grupo empresario","200 negocios en una vuelta.","Business group","200 businesses in one run.","achievements/biz_200.png","achievements/biz_200_locked.png",0
+"carts_100","Carritocracia","100 carritos de empanadas a la vez.","Cartocracy","100 empanada carts at once.","achievements/carts_100.png","achievements/carts_100_locked.png",0
+"adv_biz","Remisero de confianza","Abrí una remisería.","Trusted cab driver","Open a cab company.","achievements/adv_biz.png","achievements/adv_biz_locked.png",0
+"excl_biz","Imprimiendo billetes","Abrí la imprenta de billetes.","Printing money","Open the banknote printing press.","achievements/excl_biz.png","achievements/excl_biz_locked.png",0
+"holding","Holding de ceros","Abrí el holding de ceros.","Zeros holding","Open the zeros holding.","achievements/holding.png","achievements/holding_locked.png",0
+"upg_20","Mejora continua","20 mejoras en una vuelta.","Continuous improvement","20 upgrades in one run.","achievements/upg_20.png","achievements/upg_20_locked.png",0
+"upg_40","Todo con mejoras","40 mejoras en una vuelta.","Upgraded everything","40 upgrades in one run.","achievements/upg_40.png","achievements/upg_40_locked.png",0
+"first_remark","Remarcador","Remarcá por primera vez.","Repricer","Reprice for the first time.","achievements/first_remark.png","achievements/first_remark_locked.png",0
+"remarks_100","Etiquetadora humana","Remarcá 100 veces.","Human label gun","Reprice 100 times.","achievements/remarks_100.png","achievements/remarks_100_locked.png",0
+"paranoid","Paranoico","Remarcá antes de los 10 s de una vuelta, por las dudas.","Paranoid","Reprice in the first 10 s of a run, just in case.","achievements/paranoid.png","achievements/paranoid_locked.png",1
+"hyper","Hiperinflación","Ver una inflación de 100 % mensual.","Hyperinflation","See 100% monthly inflation.","achievements/hyper.png","achievements/hyper_locked.png",0
+"hyper_1000","¿Inflación? ¿Qué inflación?","Aguantá una inflación de 1.000 % mensual sin reformar.","Inflation? What inflation?","Hold out at 1,000% monthly inflation without reforming.","achievements/hyper_1000.png","achievements/hyper_1000_locked.png",1
+"million_nothing","Millonario de nada","Tené un millón con la inflación arriba del 100 % mensual.","Millionaire of nothing","Hold a million with inflation above 100% a month.","achievements/million_nothing.png","achievements/million_nothing_locked.png",1
+"first_bill","¡Un billete!","Atrapá un billete volador.","A banknote!","Catch a flying banknote.","achievements/first_bill.png","achievements/first_bill_locked.png",0
+"bills_50","Cazador de billetes","Atrapá 50 billetes voladores.","Banknote hunter","Catch 50 flying banknotes.","achievements/bills_50.png","achievements/bills_50_locked.png",0
+"bill_missed","Se voló","Dejá escapar un billete. Suele pasar.","Gone with the wind","Let a banknote fly away. It happens.","achievements/bill_missed.png","achievements/bill_missed_locked.png",1
+"frenzy_10","Frenético","10 frenesíes.","Frantic","10 frenzies.","achievements/frenzy_10.png","achievements/frenzy_10_locked.png",0
+"first_reform","Primera reforma","Cortale los ceros a la moneda.","First reform","Cut the zeros off the currency.","achievements/first_reform.png","achievements/first_reform_locked.png",0
+"reforms_10","Cortador de ceros","10 reformas.","Zero cutter","10 reforms.","achievements/reforms_10.png","achievements/reforms_10_locked.png",0
+"reforms_25","Reformista serial","25 reformas.","Serial reformer","25 reforms.","achievements/reforms_25.png","achievements/reforms_25_locked.png",0
+"fast_run","Vuelta relámpago","Reformá en menos de 90 s ganando 10 o más de Credibilidad.","Lightning run","Reform in under 90 s earning 10+ Credibility.","achievements/fast_run.png","achievements/fast_run_locked.png",1
+"no_hands","Manos en los bolsillos","Reformá habiendo tocado la empanada 10 veces o menos en la vuelta.","Hands in pockets","Reform after poking the empanada 10 times or fewer in the run.","achievements/no_hands.png","achievements/no_hands_locked.png",1
+"zeros_100","Tijera de oro","Cortá 100 ceros en total.","Golden scissors","Cut 100 zeros in total.","achievements/zeros_100.png","achievements/zeros_100_locked.png",0
+"cred_100","Creíble","Ganá 100 de Credibilidad en total.","Credible","Earn 100 Credibility in total.","achievements/cred_100.png","achievements/cred_100_locked.png",0
+"cred_10000","Palabra santa","Ganá 10.000 de Credibilidad en total.","Word of honor","Earn 10,000 Credibility in total.","achievements/cred_10000.png","achievements/cred_10000_locked.png",0
+"nodes_10","Ramitas","10 nodos del árbol.","Twigs","10 tree nodes.","achievements/nodes_10.png","achievements/nodes_10_locked.png",0
+"nodes_50","Árbol frondoso","50 nodos del árbol.","Leafy tree","50 tree nodes.","achievements/nodes_50.png","achievements/nodes_50_locked.png",0
+"nodes_all","Bosque nativo","El árbol completo.","Native forest","The whole tree.","achievements/nodes_all.png","achievements/nodes_all_locked.png",0
+"first_cap","Cambio de juego","Comprá un capstone.","Game changer","Buy a capstone.","achievements/first_cap.png","achievements/first_cap_locked.png",0
+"all_caps","Seis copas","Los 6 capstones.","Six cups","All 6 capstones.","achievements/all_caps.png","achievements/all_caps_locked.png",0
+"final","Economía estable","Estabilizá la economía. ¿Quién lo hubiera dicho?","Stable economy","Stabilize the economy. Who would have thought?","achievements/final.png","achievements/final_locked.png",0
+"first_pack","Primer sobre","Abrí un sobre de figuritas.","First pack","Open a sticker pack.","achievements/first_pack.png","achievements/first_pack_locked.png",0
+"golden_1","Brilla, brilla","Conseguí una figurita dorada.","Shine bright","Get a golden sticker.","achievements/golden_1.png","achievements/golden_1_locked.png",0
+"page_1","Página completa","Completá una página del álbum.","Page complete","Complete an album page.","achievements/page_1.png","achievements/page_1_locked.png",0
+"album_full","Álbum completo","Las 60 figuritas.","Album complete","All 60 stickers.","achievements/album_full.png","achievements/album_full_locked.png",0
+"first_trade","¿Me la cambiás?","Hacé un chupi.","Swap you?","Make a swap.","achievements/first_trade.png","achievements/first_trade_locked.png",0
+"first_scratch","Raspá y ganá","Jugá una raspadita.","Scratch and win","Play a scratch card.","achievements/first_scratch.png","achievements/first_scratch_locked.png",0
+"scratch_x10","Diez veces","Sacá x10 en la raspadita.","Ten times","Hit x10 on a scratch card.","achievements/scratch_x10.png","achievements/scratch_x10_locked.png",0
+"bad_luck","Mufa","Perdé 3 raspaditas seguidas.","Jinxed","Lose 3 scratch cards in a row.","achievements/bad_luck.png","achievements/bad_luck_locked.png",1
+"first_event","Último momento","Leé tu primera noticia.","Breaking news","Read your first news.","achievements/first_event.png","achievements/first_event_locked.png",0
+"events_20","Lector del diario","20 noticias.","Newspaper reader","20 news.","achievements/events_20.png","achievements/events_20_locked.png",0
+"billion_run","Mil millones","Ganá $1.000 millones en una vuelta.","A billion","Earn $1 billion in one run.","achievements/billion_run.png","achievements/billion_run_locked.png",0
+"trillion_run","Billonario","Ganá $1 billón (un millón de millones) en una vuelta.","Trillionaire","Earn $1 trillion in one run.","achievements/trillion_run.png","achievements/trillion_run_locked.png",0
+"two_hours","Dos horitas nomás","Jugá 2 horas.","Just two hours","Play for 2 hours.","achievements/two_hours.png","achievements/two_hours_locked.png",1

@@ -2,9 +2,9 @@
   "pages": [
     {"id": "negocios",   "bonus": {"income": 0.10}},
     {"id": "personajes", "bonus": {"inflation": 0.05}},
-    {"id": "billetes",   "bonus": {"album": true}},
-    {"id": "titulares",  "bonus": {"remark": 0.5}},
-    {"id": "eventos",    "bonus": {"choice_time": 5.0}},
+    {"id": "billetes",   "bonus": {"cred": 0.10}},
+    {"id": "titulares",  "bonus": {"remark": 3.0}},
+    {"id": "eventos",    "bonus": {"events": 0.25}},
     {"id": "doradas",    "bonus": {"income": 0.15, "inflation": 0.10}}
   ],
   "stickers": [

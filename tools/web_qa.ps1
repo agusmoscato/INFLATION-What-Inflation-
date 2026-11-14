@@ -101,7 +101,7 @@ try {
     [void]$log.Add($line)
     switch -Regex ($line) {
       "^QA_I18N bad=(\d+)"     { $results.i18n = ([int]$Matches[1] -eq 0); if (-not $results.i18n) { Write-Host "  textos sin traducir: $line" } }
-      "^QA_DRAG scratch ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)" { $g = $Matches; Shot "web_raspadita_antes"; Drag-Scratch ([int]$g[1]) ([int]$g[2]) ([int]$g[3]) ([int]$g[4]) }
+      "^QA_DRAG scratch ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)" { $g = $Matches; Shot "web_raspadita_antes"; Drag-Scratch ([int]$g[1]) ([int]$g[2]) ([int]$g[3]) ([int]$g[4]); Drag-Scratch ([int]$g[1] + 8) ([int]$g[2] + 9) ([int]$g[3]) ([int]$g[4]) }
       "^QA_SCRATCH done=(\w+)" { $results.scratch = ($Matches[1] -eq "true"); Shot "web_raspadita_despues" }
       "^QA_DRAG pack ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)" { $g = $Matches; Shot "web_sobre_antes"; Drag-Pack ([int]$g[1]) ([int]$g[2]) ([int]$g[3]) ([int]$g[4]) }
       "^QA_PACK state=(\d+)"   { $results.pack = ([int]$Matches[1] -eq 2); Shot "web_sobre_despues" }

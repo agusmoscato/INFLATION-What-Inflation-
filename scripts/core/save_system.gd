@@ -37,6 +37,9 @@ func load_game() -> bool:
 	var report: Dictionary = SaveIO.load_into(model, save_path, Time.get_unix_time_from_system())
 	if report.is_empty():
 		return false
+	if report.has("old"):
+		GameState.old_save_discarded = true
+		return false
 	GameState.adopt(model)
 	EventBus.game_loaded.emit()
 	if float(report.get("seconds", 0.0)) > 0.0:

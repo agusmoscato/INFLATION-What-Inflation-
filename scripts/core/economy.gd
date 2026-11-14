@@ -14,9 +14,13 @@ func _process(delta: float) -> void:
 	_ach_timer += delta
 	if _ach_timer >= 1.0:
 		_ach_timer = 0.0
-		for id in AchievementTracker.check(m, GameState.achievements):
-			EventBus.achievement_unlocked.emit(id)
+		check_achievements()
 	flush()
+
+
+func check_achievements() -> void:
+	for id in AchievementTracker.check(GameState.m, GameState.achievements):
+		EventBus.achievement_unlocked.emit(id)
 
 
 func flush() -> void:
@@ -26,40 +30,38 @@ func flush() -> void:
 	var queue: Array = m.notifications
 	m.notifications = []
 	for n in queue:
-		var sig: String = n["sig"]
-		match sig:
-			"business_bought": EventBus.business_bought.emit(n["args"][0], n["args"][1])
-			"upgrade_bought": EventBus.upgrade_bought.emit(n["args"][0])
-			"month_passed": EventBus.month_passed.emit(n["args"][0])
-			"remarked": EventBus.remarked.emit(n["args"][0], n["args"][1])
-			"era_changed": EventBus.era_changed.emit(n["args"][0])
-			"event_started":
-				EventBus.event_started.emit(n["args"][0])
-				EventBus.headline.emit(GameData.events[GameData.event_idx[n["args"][0]]]["headline_key"])
-			"event_ended": EventBus.event_ended.emit(n["args"][0])
-			"event_choice": EventBus.event_choice.emit(n["args"][0])
-			"objective_done": EventBus.objective_done.emit(n["args"][0])
-			"unlock": EventBus.unlock.emit(n["args"][0])
-			"page_done": EventBus.page_done.emit(n["args"][0])
+		var a: Array = n["args"]
+		match str(n["sig"]):
+			"business_bought": EventBus.business_bought.emit(a[0], a[1])
+			"milestone": EventBus.milestone.emit(a[0], a[1])
+			"upgrade_bought": EventBus.upgrade_bought.emit(a[0])
+			"node_bought": EventBus.node_bought.emit(a[0])
+			"remarked": EventBus.remarked.emit(a[0], a[1])
+			"bill_spawn": EventBus.bill_spawn.emit(a[0])
+			"bill_missed": EventBus.bill_missed.emit(a[0])
+			"bill_prize": EventBus.bill_prize.emit(a[0])
+			"event_choice": EventBus.event_choice.emit(a[0])
+			"event_choice_done": EventBus.event_choice_done.emit(a[0], a[1])
+			"event_ended": EventBus.event_ended.emit(a[0])
+			"unlock": EventBus.unlock.emit(a[0])
+			"collapse": EventBus.collapse.emit()
+			"page_done": EventBus.page_done.emit(a[0])
 			"pack_opened": EventBus.pack_opened.emit()
-			"sticker_won": EventBus.sticker_won.emit(n["args"][0])
+			"sticker_won": EventBus.sticker_won.emit(a[0])
 			"secret_end": EventBus.secret_end.emit()
-			"quiniela_drawn": EventBus.quiniela_drawn.emit(n["args"][0])
-			"dollar_settled": EventBus.dollar_settled.emit(n["args"][0])
-			"event_choice_done": EventBus.event_choice_done.emit(n["args"][0], n["args"][1])
-			"refuge_changed": EventBus.refuge_changed.emit()
-			"reform_done": EventBus.reform_done.emit(n["args"][0], n["args"][1])
-			"plan_done": EventBus.plan_done.emit(n["args"][0])
+			"scratched": EventBus.scratched.emit(a[0])
+			"reform_done": EventBus.reform_done.emit(a[0])
 			"victory": EventBus.victory.emit()
 			"demo_end": EventBus.demo_end.emit()
-			"toast": EventBus.toast.emit(n["args"][0])
+			"toast": EventBus.toast.emit(a[0])
 
 
 # ---- acciones del jugador (envuelven la lógica y emiten señales) ----
-func click() -> BigNumber:
-	var v: BigNumber = EconomyLogic.do_click(GameState.m)
-	EventBus.clicked.emit(v)
-	return v
+func click() -> Dictionary:
+	var r: Dictionary = EconomyLogic.do_click(GameState.m, true)
+	EventBus.clicked.emit(r)
+	flush()
+	return r
 
 
 func buy_business(id: String, qty: int) -> int:
@@ -74,22 +76,22 @@ func buy_upgrade(id: String) -> bool:
 	return ok
 
 
-func remark() -> void:
-	EconomyLogic.remark(GameState.m, true)
-	flush()
-
-
-func refuge_buy(id: String, fraction_of_money: float) -> bool:
-	var m: GameModel = GameState.m
-	var ok: bool = EconomyLogic.refuge_buy(m, id, m.money.mul_f(fraction_of_money))
+func buy_node(id: String) -> bool:
+	var ok: bool = TreeLogic.buy(GameState.m, id)
 	flush()
 	return ok
 
 
-func refuge_sell(id: String) -> bool:
-	var ok: bool = EconomyLogic.refuge_sell(GameState.m, id, 1.0)
+func remark() -> bool:
+	var ok: bool = EconomyLogic.remark(GameState.m, true)
 	flush()
 	return ok
+
+
+func click_bill(bill_id: int) -> Dictionary:
+	var r: Dictionary = EconomyLogic.click_bill(GameState.m, bill_id)
+	flush()
+	return r
 
 
 func choose_event(idx: int) -> bool:
@@ -98,28 +100,27 @@ func choose_event(idx: int) -> bool:
 	return ok
 
 
-func buy_measure() -> bool:
-	var ok: bool = EconomyLogic.buy_measure(GameState.m)
+func reform() -> Dictionary:
+	var s: Dictionary = EconomyLogic.do_reform(GameState.m)
 	flush()
-	return ok
-
-
-func reform() -> bool:
-	var ok: bool = EconomyLogic.do_reform(GameState.m)
-	flush()
-	return ok
-
-
-func plan(id: String) -> bool:
-	var ok: bool = EconomyLogic.do_plan(GameState.m, id)
-	flush()
-	return ok
+	return s
 
 
 # ---- figuritas ----
-## Compra y abre un sobre. Devuelve las 5 figuritas ([] si no alcanza la plata).
+## Compra y abre un sobre. Devuelve las figuritas ([] si no alcanza la plata).
 func buy_pack() -> Array:
 	var res: Array = StickerLogic.buy_pack(GameState.m)
+	flush()
+	return res
+
+
+## Abre uno de los sobres de regalo pendientes (reformas, desbloqueo del álbum).
+func open_free_pack() -> Array:
+	var m: GameModel = GameState.m
+	if m.free_packs_pending <= 0:
+		return []
+	m.free_packs_pending -= 1
+	var res: Array = StickerLogic.gift_pack(m)
 	flush()
 	return res
 
@@ -130,22 +131,8 @@ func trade_sticker(id: String) -> bool:
 	return ok
 
 
-# ---- timba ----
-func play_scratch(pct: float, force: String = "") -> Dictionary:
-	var res: Dictionary = GambleLogic.play_scratch(GameState.m, pct, force)
+# ---- raspadita ----
+func play_scratch(force: String = "") -> Dictionary:
+	var res: Dictionary = GambleLogic.play_scratch(GameState.m, false, force)
 	flush()
 	return res
-
-
-func place_quiniela(number: int, pct: float) -> bool:
-	var m: GameModel = GameState.m
-	var ok: bool = GambleLogic.place_quiniela(m, number, GambleLogic.stake_for(m, pct, GambleLogic.quiniela_stake_max(m)))
-	flush()
-	return ok
-
-
-func place_dollar(dir: String, pct: float) -> bool:
-	var m: GameModel = GameState.m
-	var ok: bool = GambleLogic.place_dollar(m, dir, GambleLogic.stake_for(m, pct, GambleLogic.dollar_stake_max(m)))
-	flush()
-	return ok

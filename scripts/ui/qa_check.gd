@@ -3,7 +3,7 @@ extends RefCounted
 ## Control de calidad de los exportados: detecta textos visibles que son una clave de traducción sin traducir
 ## (por ejemplo "ui.new_game" o "biz.kiosco") y guarda capturas.
 
-const PREFIXES: Array = ["ui", "biz", "upg", "ev", "ref", "plan", "era", "ach", "note", "hl", "toast", "tut", "demo", "obj", "stk",
+const PREFIXES: Array = ["ui", "node", "bill", "biz", "upg", "ev", "ref", "plan", "era", "ach", "note", "hl", "toast", "tut", "demo", "obj", "stk",
 	"page", "pageb", "unlock", "tip", "howto", "timba", "secret", "rarity", "prefs", "gmb"]
 
 

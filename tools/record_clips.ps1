@@ -6,10 +6,10 @@
 #
 # Uso:
 #   powershell -File tools/record_clips.ps1                       # todos los clips, horizontal y vertical
-#   powershell -File tools/record_clips.ps1 -Clips sobre_dorada,quiniela -Formats v
+#   powershell -File tools/record_clips.ps1 -Clips sobre_dorada,billete -Formats v
 #   powershell -File tools/record_clips.ps1 -ConvertOnly          # solo convierte los AVI que ya existen
 param(
-  [string[]]$Clips = @("precio_empanada", "trillon_cafe", "tijera", "hiperinflacion", "sobre_dorada", "raspadita_pozo", "quiniela"),
+  [string[]]$Clips = @("precio_empanada", "trillon_cafe", "tijera", "hiperinflacion", "sobre_dorada", "raspadita", "billete", "arbol"),
   [string[]]$Formats = @("h", "v"),
   [string]$Godot = "",
   [string]$Ffmpeg = "",

@@ -457,9 +457,11 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 	var bot: BotPolicy = BotPolicy.new(3)
 	bot.on_click = func() -> void: Economy.click()
 	bot.on_bill = func(id: int) -> void:
-		if _game._bills.has(id) and is_instance_valid(_game._bills[id]):
-			(_game._bills[id] as FlyingBill).caught.emit(id)
-			(_game._bills[id] as FlyingBill).vanish(true)
+		var o: Variant = _game._bills.get(id, null)
+		if o != null and is_instance_valid(o):
+			var fb: FlyingBill = o as FlyingBill
+			fb.caught.emit(id)
+			fb.vanish(true)
 		else:
 			Economy.click_bill(id)
 	bot.on_reform = func() -> Dictionary:
@@ -471,6 +473,7 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 	var next_check: float = 0.0
 	var last_afford: float = 0.0
 	var max_gap: float = 0.0
+	var gap_at: float = 0.0
 	var first_reform: float = -1.0
 	var gt: float = 0.0
 	var reported: Dictionary = {}
@@ -501,7 +504,9 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 			_game._open_tree()
 			overlay_until = gt + 6.0
 		if gt <= 3600.0 and EconomyLogic.anything_affordable(m):
-			max_gap = maxf(max_gap, gt - last_afford)
+			if gt - last_afford > max_gap:
+				max_gap = gt - last_afford
+				gap_at = gt
 			last_afford = gt
 		if gt >= next_check:
 			next_check = gt + 1.0
@@ -523,8 +528,8 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 	if first_reform < 240.0 or first_reform > 360.0:
 		failures.append("LA PRIMERA REFORMA LLEGÓ A LOS %s (tiene que ser entre los minutos 4 y 6)" % _fmt_t(first_reform))
 	if max_gap > 20.0:
-		failures.append("PASARON %.0f s SIN NADA COMPRABLE (máximo 20 s en la primera hora)" % max_gap)
-	print("QA jugador nuevo: primera reforma %s, máxima espera sin nada comprable %.1f s, %d reformas en %s" % [_fmt_t(first_reform), max_gap, GameState.m.reforms, _fmt_t(gt)])
+		failures.append("PASARON %.0f s SIN NADA COMPRABLE (hasta el %s; máximo 20 s en la primera hora)" % [max_gap, _fmt_t(gap_at)])
+	print("QA jugador nuevo: primera reforma %s, máxima espera sin nada comprable %.1f s (hasta el %s), %d reformas en %s" % [_fmt_t(first_reform), max_gap, _fmt_t(gap_at), GameState.m.reforms, _fmt_t(gt)])
 	var f: FileAccess = FileAccess.open("user://qa/newplayer/log.csv", FileAccess.WRITE)
 	f.store_string("\n".join(log) + "\n")
 	f.close()

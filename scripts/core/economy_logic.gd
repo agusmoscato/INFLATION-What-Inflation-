@@ -158,7 +158,7 @@ static func income_per_sec(m: GameModel) -> BigNumber:
 	if m.frenzy_left > 0.0:
 		k *= float(md["frenzy_mult"])
 	if m.run_time < float(md["early_boost_s"]):
-		k *= 5.0
+		k *= B("early_boost_mult")
 	if float(md["indexation"]) > 0.0 and monthly_pct(m) >= 50.0:
 		k *= 1.0 + float(md["indexation"])
 	if float(md["infl_pays"]) > 0.0:

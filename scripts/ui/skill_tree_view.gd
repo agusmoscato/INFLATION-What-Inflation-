@@ -183,14 +183,18 @@ func _draw() -> void:
 		if can:
 			var pulse: float = 0.5 + 0.5 * sin(_t * 5.0)
 			Chalk.circle(self, c, r + 6.0 + pulse * 4.0, Color(Chalk.YELLOW, 0.5 + 0.4 * pulse), 2.4, sv + 1)
-		Chalk.circle(self, c, r, Color(col, alpha), (3.4 if owned else 2.4) * clampf(zoom * 1.5, 0.7, 1.5), sv, owned, 6.0 * zoom + 2.0)
+		if owned:
+			draw_circle(c, r, Color(col, 0.32))
+		else:
+			draw_circle(c, r, Color(0.02, 0.05, 0.04, 0.85))
+		Chalk.circle(self, c, r, Color(col, alpha), (3.4 if owned else 2.4) * clampf(zoom * 1.5, 0.7, 1.5), sv)
 		if bool(n["seal"]) or bool(n["cap"]):
 			Chalk.circle(self, c, r + 4.0 * zoom + 2.0, Color(col, alpha * 0.8), 1.6, sv + 2)
 		if id == selected:
 			Chalk.circle(self, c, r + 12.0 * zoom + 4.0, Chalk.WHITE, 2.0, sv + 3)
 		var icon: String = str(BRANCH_ICON.get(str(n["branch"]), "empanadas"))
 		var ir: float = r * 1.15
-		ChalkIcons.draw(self, icon, Rect2(c - Vector2(ir, ir) / 2.0, Vector2(ir, ir)), sv, Color(Chalk.BOARD.darkened(0.3), 0.9) if owned else Color(col, alpha * 0.9))
+		ChalkIcons.draw(self, icon, Rect2(c - Vector2(ir, ir) / 2.0, Vector2(ir, ir)), sv, Chalk.WHITE if owned else Color(col, alpha * 0.75))
 		if TreeLogic.demo_locked(gm, id) and not owned:
 			draw_string(body, c + Vector2(-r * 2.0, r + 16.0), tr("ui.tree.full_game"), HORIZONTAL_ALIGNMENT_CENTER, r * 4.0, 13, Color(Chalk.PINK, 0.8))
 		elif zoom >= 0.55:

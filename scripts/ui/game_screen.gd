@@ -114,15 +114,13 @@ func _ready() -> void:
 	fx_layer.set_meta("qa_ignore", true)
 	fx_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fx_layer)
-	# avisos chicos arriba a la derecha (se van solos en 3 s)
+	# avisos chicos en la esquina de arriba del panel de la empanada (se van solos en 3 s)
 	toast_box = VBoxContainer.new()
 	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast_box.add_theme_constant_override("separation", 4)
-	toast_box.anchor_left = 1.0
-	toast_box.anchor_right = 1.0
-	toast_box.offset_left = -360.0
-	toast_box.offset_right = -20.0
-	toast_box.offset_top = 104.0
+	toast_box.offset_left = 30.0
+	toast_box.offset_right = 370.0
+	toast_box.offset_top = 140.0
 	fx_layer.add_child(toast_box)
 	_build_event_panel()
 	_build_tutorial_note()
@@ -196,7 +194,7 @@ func _build_header() -> Control:
 	# la plata: lo más grande y brillante
 	var left: VBoxContainer = VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", -4)
+	left.add_theme_constant_override("separation", 0)
 	h.add_child(left)
 	money_label = UIKit.label("$0", 54, Color("#FFE45C"), HORIZONTAL_ALIGNMENT_LEFT, true)
 	money_label.add_theme_color_override("font_outline_color", Color("#1c1508"))
@@ -869,7 +867,7 @@ func _toast(text: String, color: Color) -> void:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(l)
 	toast_box.add_child(p)
-	while toast_box.get_child_count() > 4:
+	while toast_box.get_child_count() > 3:
 		var old: Node = toast_box.get_child(0)
 		toast_box.remove_child(old)
 		old.queue_free()
@@ -900,11 +898,12 @@ func _update_ticker(delta: float) -> void:
 func _new_overlay(title: String) -> Array:
 	_close_overlay()
 	var ov: ColorRect = ColorRect.new()
-	ov.color = Color(0.03, 0.06, 0.05, 0.94)
+	ov.color = Color(Chalk.BOARD.darkened(0.45), 0.985)
 	ov.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ov.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(ov)
 	_overlay = ov
+	world.visible = false      # la capa es opaca: el juego de abajo no se dibuja ni se pisa con ella
 	var mc: MarginContainer = MarginContainer.new()
 	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
@@ -931,6 +930,7 @@ func _close_overlay() -> void:
 	if _overlay != null and is_instance_valid(_overlay):
 		_overlay.queue_free()
 	_overlay = null
+	world.visible = true
 	_tree_view = null
 	_album_page = null
 

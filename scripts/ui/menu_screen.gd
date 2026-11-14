@@ -81,6 +81,11 @@ func _ready() -> void:
 	_body.add_child(right)
 	if SaveSystem.has_save():
 		right.add_child(_button(tr("ui.continue"), UIKit.C_GREEN.darkened(0.2), func() -> void: continue_game.emit()))
+		# porcentaje de completado total (árbol + álbum + logros) de la partida guardada
+		var sm: GameModel = GameModel.new(1)
+		if sm.from_dict(SaveIO.read(SaveSystem.save_path)):
+			var pct: float = EconomyLogic.completion(sm)
+			right.add_child(UIKit.label(tr("ui.menu.completion") % ("%d" % int(floor(pct))), 18, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_CENTER, true))
 	_confirm_btn = _button(tr("ui.new_game"), UIKit.C_BLUE, _on_new_pressed)
 	right.add_child(_confirm_btn)
 	right.add_child(_button(tr("ui.howto"), UIKit.C_PANEL2, func() -> void: open_howto.emit()))

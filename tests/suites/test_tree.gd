@@ -76,7 +76,7 @@ func run(t) -> void:
 	TreeLogic.buy(me, "neg_2b")
 	me.collapse_shown = true
 	EconomyLogic.do_reform(me)
-	t.eq(me.owned_count("empanadas"), 10, "Apertura con carrito: la vuelta empieza con 10 carritos")
+	t.eq(me.owned_count("empanadas"), 15, "Apertura con carrito: la vuelta empieza con 15 carritos")
 	# demo: solo anillos 1-3
 	var md: GameModel = GameModel.new(4)
 	md.demo_mode = true

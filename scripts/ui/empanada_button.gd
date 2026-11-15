@@ -7,6 +7,14 @@ signal pressed(global_pos: Vector2)
 
 ## Tasa de inflación mensual actual (la actualiza GameScreen): define el ánimo.
 var rate: float = 0.03
+## La empanada evoluciona con el árbol (la actualiza GameScreen): gorrito de cocinera, anteojos de sol, corona y,
+## con el final, brillo dorado.
+var hat: bool = false
+var glasses: bool = false
+var crown: bool = false
+var gold: bool = false
+## Transpira cuando la vuelta se acerca a la pared (aunque el freno evite la traba).
+var sweat: float = 0.0
 
 var _tween: Tween
 var _t: float = 0.0
@@ -59,6 +67,13 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var c: Vector2 = Vector2(size.x / 2.0, size.y * 0.68)
 	var r: float = minf(size.x * 0.42, size.y * 0.74)
+	if gold:
+		# brillo dorado del final: halo que respira y rayitos
+		var k: float = 0.5 + 0.5 * sin(_t * 2.5)
+		draw_circle(c + Vector2(0, -r * 0.45), r * (1.05 + 0.05 * k), Color(Chalk.YELLOW, 0.10 + 0.06 * k))
+		for i in range(10):
+			var a0: float = PI + PI * (float(i) + 0.5) / 10.0
+			draw_line(c + Vector2(cos(a0), sin(a0)) * r * 1.15, c + Vector2(cos(a0), sin(a0)) * r * (1.3 + 0.06 * k), Color(Chalk.YELLOW, 0.5), 2.0, true)
 	# cuerpo: media luna
 	var body: PackedVector2Array = PackedVector2Array()
 	for i in range(0, 25):
@@ -77,6 +92,40 @@ func _draw() -> void:
 		Chalk.circle(self, Vector2(x, c.y + 3.0), r * 0.07, Chalk.ORANGE, 2.6, 20 + i, true, 3.0)
 	Chalk.line(self, c + Vector2(-r, 0), c + Vector2(r, 0), Chalk.ORANGE, 4.0, 33, 1.5)
 	_draw_face(c, r)
+	_draw_outfit(c, r)
+	if sweat > 0.0 and rate <= 0.15:
+		# gotitas de transpiración cerca de la pared (la cara preocupada ya trae las suyas con inflación alta)
+		for i in range(int(ceil(sweat * 3.0))):
+			var f: float = fmod(_t * (0.8 + 0.25 * float(i)) + float(i) * 0.41, 1.0)
+			var sx: float = c.x + r * (0.55 + 0.12 * float(i)) * (1.0 if i % 2 == 0 else -1.0)
+			_drop(Vector2(sx, c.y - r * 0.85 + f * r * 0.6), r * 0.07, (1.0 - f) * clampf(sweat, 0.3, 1.0))
+
+
+## Accesorios: gorrito de cocinera (o corona), anteojos de sol.
+func _draw_outfit(c: Vector2, r: float) -> void:
+	var top: Vector2 = c + Vector2(0, -r * 0.98)
+	if crown:
+		var w: float = r * 0.62
+		var pts: PackedVector2Array = PackedVector2Array([top + Vector2(-w / 2.0, 0), top + Vector2(-w / 2.0, -r * 0.3), top + Vector2(-w / 4.0, -r * 0.14),
+			top + Vector2(0, -r * 0.36), top + Vector2(w / 4.0, -r * 0.14), top + Vector2(w / 2.0, -r * 0.3), top + Vector2(w / 2.0, 0)])
+		Chalk.polygon(self, pts, Chalk.YELLOW, 3.0, 201, true, Color(Chalk.YELLOW, 0.45), 6.0)
+		for i in range(3):
+			draw_circle(top + Vector2(-w / 2.0 + w * 0.5 * float(i), -r * (0.3 if i != 1 else 0.36)), 3.5, Chalk.PINK)
+	elif hat:
+		var hw: float = r * 0.36
+		Chalk.polygon(self, PackedVector2Array([top + Vector2(-hw, 2), top + Vector2(-hw, -r * 0.12), top + Vector2(hw, -r * 0.12), top + Vector2(hw, 2)]), Chalk.WHITE, 2.6, 211, true, Color(Chalk.WHITE, 0.35), 5.0)
+		Chalk.circle(self, top + Vector2(-hw * 0.45, -r * 0.3), r * 0.2, Chalk.WHITE, 2.4, 212, true, 5.0)
+		Chalk.circle(self, top + Vector2(hw * 0.45, -r * 0.3), r * 0.2, Chalk.WHITE, 2.4, 213, true, 5.0)
+		Chalk.circle(self, top + Vector2(0, -r * 0.42), r * 0.22, Chalk.WHITE, 2.4, 214, true, 5.0)
+	if glasses:
+		var ey: float = c.y - r * 0.42
+		var ex: float = r * 0.30
+		var lw: float = r * 0.2
+		for s in [-1.0, 1.0]:
+			var ec: Vector2 = Vector2(c.x + ex * s, ey)
+			draw_rect(Rect2(ec - Vector2(lw, lw * 0.6), Vector2(lw * 2.0, lw * 1.25)), Color(0.05, 0.05, 0.07, 0.92))
+			draw_line(ec + Vector2(-lw * 0.6, -lw * 0.3), ec + Vector2(-lw * 0.1, -lw * 0.3), Color(Chalk.WHITE, 0.6), 2.0)
+		draw_line(Vector2(c.x - ex + lw, ey - lw * 0.2), Vector2(c.x + ex - lw, ey - lw * 0.2), Color(0.05, 0.05, 0.07), 3.0)
 
 
 func _draw_face(c: Vector2, r: float) -> void:

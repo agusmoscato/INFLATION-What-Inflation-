@@ -191,6 +191,15 @@ static func ln_limit(m: GameModel) -> float:
 	return maxf(floor_ln, minf(ln_cap(m), ln_brake(m)))
 
 
+## Qué tan cerca está la vuelta de la pared (0 = lejos, 1 = encima): progreso alto o inflación frenada contra el freno.
+## Es solo para la sensación (pantalla roja, empanada que transpira); no cambia el balance.
+static func wall_closeness(m: GameModel) -> float:
+	var w: float = clampf((progress(m) - 0.8) / 0.25, 0.0, 1.0)
+	if m.ln_p > 0.3 and braked(m):
+		w = maxf(w, 0.6)
+	return w
+
+
 ## ¿La inflación está frenada (cerca del freno o del tope)?
 static func braked(m: GameModel) -> bool:
 	return ln_limit(m) - m.ln_p < B("brake_soft") * 0.5

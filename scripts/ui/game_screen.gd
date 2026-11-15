@@ -32,6 +32,8 @@ var remark_bar: ChalkBar
 var remark_line: Label
 var empanada: EmpanadaButton
 var combo_bar: ChalkBar
+var barrio: BarrioView
+var backdrop: EraBackdrop
 var combo_label: Label
 var click_label: Label
 var reform_btn: Button
@@ -79,6 +81,11 @@ var _tut_step: int = -2
 var _headline_i: int = 0
 var _fps_watch: FpsWatch = FpsWatch.new(45.0, 5.0)
 var _last_era: int = 1
+var _last_pct: float = 0.0
+var _rate_shake: float = 0.0
+var _joke_p: float = 0.0               # ln P del último chiste de aumento
+var _joke_t: float = -99.0
+var _joke_i: int = 0
 var _toast_queue: Array = []          # [[texto, color]] esperando su turno
 var _last_toast: float = -99.0
 
@@ -264,6 +271,8 @@ func _build_left() -> Control:
 	var p: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	p.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(p)
+	backdrop = EraBackdrop.new()       # dibujos tenues de la capa, detrás de la empanada
+	p.add_child(backdrop)
 	var v: VBoxContainer = VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 6)
@@ -283,6 +292,8 @@ func _build_left() -> Control:
 	combo_bar.custom_minimum_size = Vector2(220, 12)
 	combo_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(combo_bar)
+	barrio = BarrioView.new()          # la calle del barrio que se va llenando
+	v.add_child(barrio)
 	reform_btn = Button.new()
 	reform_btn.custom_minimum_size = Vector2(0, 62)
 	UIKit.style_button(reform_btn, UIKit.C_GOLD, 19)
@@ -565,6 +576,10 @@ func _refresh_header(m: GameModel) -> void:
 		_last_era = era
 		Chalk.pop(era_label, 1.3, 0.5)
 	var pct: float = EconomyLogic.monthly_pct(m)
+	if pct > _last_pct + 0.05 and not EconomyLogic.frozen(m):
+		_rate_shake = 0.35
+	_last_pct = pct
+	_inflation_jokes(m)
 	if EconomyLogic.frozen(m):
 		rate_label.text = tr("ui.frozen") % int(ceil(m.freeze_left))
 		rate_label.add_theme_color_override("font_color", Chalk.BLUE)
@@ -584,6 +599,20 @@ func _refresh_header(m: GameModel) -> void:
 	cred_label.text = "%d" % m.credibility
 
 
+## Avisos graciosos cuando la inflación pega un salto (los precios subieron un 8 % desde el último), como mucho cada 25 s.
+const JOKES: int = 14
+
+
+func _inflation_jokes(m: GameModel) -> void:
+	if m.ln_p < _joke_p - 0.5:
+		_joke_p = m.ln_p          # empezó otra vuelta (o hubo deflación)
+	if m.ln_p - _joke_p >= 0.08 and _clock - _joke_t >= 25.0:
+		_joke_p = m.ln_p
+		_joke_t = _clock
+		_toast(tr("joke.%d" % (_joke_i % JOKES)), Chalk.RED)
+		_joke_i += 1 + randi() % 3
+
+
 func _pct(v: float) -> String:
 	if v >= 1000.0:
 		return BigNumber.from_float(v).format(1)
@@ -592,6 +621,18 @@ func _pct(v: float) -> String:
 
 func _refresh_left(m: GameModel) -> void:
 	empanada.rate = EconomyLogic.monthly_pct(m) / 100.0
+	var era: int = EconomyLogic.era_of(m)
+	barrio.refresh(m, era)
+	backdrop.era = era
+	# la empanada evoluciona con el árbol
+	var seals: int = 0
+	for id in m.tree:
+		if bool(GameData.node(id)["seal"]):
+			seals += 1
+	empanada.hat = m.tree.size() >= 3
+	empanada.glasses = m.tree.size() >= 20
+	empanada.crown = seals >= 6
+	empanada.gold = m.won
 	click_label.text = tr("ui.per_click") % EconomyLogic.click_value(m).format()
 	var cap: int = int(m.mods["combo_cap"])
 	combo_bar.max_value = float(cap)
@@ -681,10 +722,50 @@ func _refresh_biz(m: GameModel) -> void:
 			cost = EconomyLogic.business_cost(m, def, q)
 			btn.text = UIKit.money(cost) if q == 1 else "x%d  %s" % [q, UIKit.money(cost)]
 		btn.disabled = cost.gt(m.money)
+		_price_bump(r, n, cost)
 	var vb: VScrollBar = biz_scroll.get_v_scroll_bar()
 	biz_more.visible = vb.max_value - vb.page > float(biz_scroll.scroll_vertical) + 6.0
 	if biz_more.visible:
 		biz_more.position.y = biz_more.get_parent().size.y - 24.0 + sin(_clock * 4.0) * 3.0
+
+
+## Si el precio de un negocio subió por la inflación (sin comprar), el viejo se tacha con tiza y cae, y el nuevo salta.
+func _price_bump(r: Dictionary, n: int, cost: BigNumber) -> void:
+	var last: Variant = r.get("last_cost", null)
+	var same_n: bool = int(r.get("last_n", -1)) == n and int(r.get("last_mode", 0)) == _buy_mode
+	r["last_n"] = n
+	r["last_mode"] = _buy_mode
+	if last == null or not same_n:
+		r["last_cost"] = cost
+		return
+	var old: BigNumber = last
+	if cost.le(old.mul_f(1.03)):
+		if cost.lt(old):
+			r["last_cost"] = cost
+		return
+	r["last_cost"] = cost
+	var btn: Button = r["btn"]
+	if Settings.quality >= 2 or not btn.is_visible_in_tree() or _clock - float(r.get("bump_t", -99.0)) < 2.0:
+		return
+	r["bump_t"] = _clock
+	var br: Rect2 = btn.get_global_rect()
+	var l: Label = UIKit.label(UIKit.money(old), 15, Color(Chalk.WHITE, 0.8), HORIZONTAL_ALIGNMENT_CENTER)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.position = br.position + Vector2(-br.size.x * 0.62, 4)
+	l.size = Vector2(br.size.x, 20)
+	var strike: Control = Control.new()
+	strike.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strike.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	strike.draw.connect(func() -> void:
+		Chalk.line(strike, Vector2(br.size.x * 0.22, 12), Vector2(br.size.x * 0.78, 9), Chalk.RED, 2.4, 77, 1.0))
+	l.add_child(strike)
+	fx_layer.add_child(l)
+	var tw: Tween = create_tween()
+	tw.tween_property(l, "position:y", l.position.y + 26.0, 0.9).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(l, "rotation", randf_range(-0.25, 0.25), 0.9)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.9).set_delay(0.3)
+	tw.tween_callback(l.queue_free)
+	Chalk.pop(btn, 1.08, 0.3)
 
 
 func _refresh_qty_buttons() -> void:
@@ -923,7 +1004,18 @@ func _update_juice(delta: float) -> void:
 	else:
 		money_label.rotation = 0.0
 	var target: float = clampf((pct - EconomyLogic.B("hyper_month_pct")) / 400.0, 0.0, 0.28)
+	# cerca de la pared (final de la vuelta): la pantalla se pone roja y la empanada transpira, aunque el freno evite la traba
+	var wall: float = EconomyLogic.wall_closeness(gm())
+	target = maxf(target, wall * 0.2)
+	empanada.sweat = wall
 	tint.color.a = target * (0.75 + 0.25 * sin(_clock * 5.0))
+	if _rate_shake > 0.0:
+		_rate_shake = maxf(0.0, _rate_shake - delta)
+		rate_label.pivot_offset = rate_label.size / 2.0
+		rate_label.rotation = randf_range(-0.04, 0.04) * (_rate_shake / 0.35) * Settings.fx_scale()
+		rate_label.position.x += randf_range(-1.5, 1.5) * Settings.fx_scale()
+	else:
+		rate_label.rotation = 0.0
 	var nudge: bool = EconomyLogic.reform_advised(gm())
 	if _reform_pulse > 0.0 or nudge:
 		_reform_pulse = maxf(0.0, _reform_pulse - delta)

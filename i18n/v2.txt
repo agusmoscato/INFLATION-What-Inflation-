@@ -22,7 +22,7 @@
 "ui.crit","CRÍTICO","CRITICAL"
 "ui.collapse","Los precios se te escaparon. ¡Hacé la reforma y empezá más fuerte!","Prices got away from you. Do the reform and start stronger!"
 "ui.reform.btn","Reformar ahora: +%d Credibilidad","Reform now: +%d Credibility"
-"ui.reform.btn_at","Reforma: disponible al llegar a %s (te falta %s)","Reform: available at %s (%s to go)"
+"ui.reform.btn_at","Reforma: cuando ganes %s en la vuelta (te falta %s)","Reform: once you earn %s this run (%s to go)"
 "ui.reform.stuck","Los precios se te escaparon. ¡Hacé la reforma y empezá más fuerte!","Prices got away from you. Do the reform and start stronger!"
 "ui.reform.advice","Buen momento para reformar: seguir en esta vuelta rinde cada vez menos.","Good time to reform: staying in this run pays less and less."
 "ui.reform.what","¿Qué es la reforma monetaria?","What is the monetary reform?"

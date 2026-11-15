@@ -910,6 +910,13 @@ static func reform_target(m: GameModel) -> BigNumber:
 	return exp_big(x * BigNumber.LN10).mul_f(1.0001)
 
 
+## Cuánto falta ganar en la vuelta para poder reformar (0 cuando ya se puede). La condición es sobre lo ganado en la
+## vuelta (lo que define la Credibilidad), no sobre la plata en mano: gastar no lo hace subir.
+static func reform_missing(m: GameModel) -> BigNumber:
+	var target: BigNumber = reform_target(m)
+	return target.sub(m.run_earned) if target.gt(m.run_earned) else BigNumber.zero()
+
+
 ## Alcanza la Credibilidad mínima (y la demo no llegó a su tope).
 static func reform_ready(m: GameModel) -> bool:
 	if m.demo_mode and m.reforms >= int(B("demo_max_reforms")):

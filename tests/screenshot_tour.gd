@@ -128,6 +128,7 @@ func _early() -> void:
 	var m: GameModel = GameState.m
 	m.clicks = 40
 	m.money = BigNumber.from_float(220.0)
+	m.run_earned = BigNumber.from_float(1450.0)
 	m.owned["empanadas"] = 6
 	m.owned["kiosco"] = 1
 	m.run_time = 70.0

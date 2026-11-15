@@ -202,6 +202,30 @@ func run(t) -> void:
 	mc.best_run = BigNumber.from_float(1e5)
 	mc.run_earned = BigNumber.from_float(1e7)
 	t.near(EconomyLogic.reform_gain_f(mc), ck * pow(7.0 - cc, 2.0), "la Credibilidad de la vuelta se cobra completa, sin importar la mejor vuelta")
+	# "te falta $X": baja a medida que se gana en la vuelta y llega a 0 justo cuando se habilita la reforma
+	var mf2: GameModel = GameModel.new(21)
+	mf2.owned["kiosco"] = 20
+	mf2.dirty = true
+	var prev_left: BigNumber = EconomyLogic.reform_missing(mf2)
+	var mono: bool = true
+	var agree: bool = true
+	for i in range(900):
+		EconomyLogic.tick(mf2, 1.0)
+		mf2.money = BigNumber.zero()           # gastar lo que se tiene no cambia lo que falta
+		var left: BigNumber = EconomyLogic.reform_missing(mf2)
+		if left.gt(prev_left.mul_f(1.000001)):
+			mono = false
+		if left.is_zero() != EconomyLogic.can_reform(mf2):
+			agree = false
+		prev_left = left
+	t.check(mono, "lo que falta para la reforma nunca sube")
+	t.check(agree, "lo que falta llega a 0 justo cuando se habilita la reforma")
+	t.check(EconomyLogic.can_reform(mf2), "y en 15 min con 20 kioscos se habilita")
+	# la caja de mejoras no está vacía ni en el primer segundo: la primera aparece como Próxima, con su condición
+	var m0: GameModel = GameModel.new(22)
+	var up0: Array = EconomyLogic.upcoming_upgrades(m0)
+	t.check(up0.size() >= 1 and EconomyLogic.upgrade_condition_text(m0, up0[0]) != "", "al empezar, una Próxima con su condición (%s)" % (str(up0[0]["id"]) if not up0.is_empty() else "-"))
+	t.near(EconomyLogic.upgrade_condition_progress(m0, up0[0]), 0.0, "con su barra en 0")
 	# trabado: 15 s sin poder comprar nada
 	var mx: GameModel = GameModel.new(14)
 	mx.run_earned = BigNumber.from_float(1e6)

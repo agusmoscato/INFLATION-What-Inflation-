@@ -653,9 +653,7 @@ func _refresh_left(m: GameModel) -> void:
 	elif demo_over:
 		reform_btn.text = tr("ui.reform.btn_off")
 	else:
-		var target: BigNumber = EconomyLogic.reform_target(m)
-		var left: BigNumber = target.sub(m.run_earned) if target.gt(m.run_earned) else BigNumber.zero()
-		reform_btn.text = tr("ui.reform.btn_at") % [UIKit.money(target), UIKit.money(left)]
+		reform_btn.text = tr("ui.reform.btn_at") % [UIKit.money(EconomyLogic.reform_target(m)), UIKit.money(EconomyLogic.reform_missing(m))]
 	reform_hint.add_theme_color_override("font_color", UIKit.C_DIM)
 	if demo_over:
 		reform_hint.text = tr("ui.reform.demo")

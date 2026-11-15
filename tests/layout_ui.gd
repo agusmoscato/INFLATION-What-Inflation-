@@ -142,6 +142,40 @@ func _check_empanada() -> void:
 			joined = true
 		if not joined:
 			failures.append("[%s] 3 mejoras nuevas juntas no salieron en un solo aviso" % tag)
+		# árbol: el "Comprá esto" sale solo en la primera visita después de la primera reforma y la flecha nunca tapa
+		# nombres de nodos
+		m.tree = {}
+		m.reforms = 1
+		m.credibility = 30
+		m.tree_hint_seen = false
+		m.dirty = true
+		g._open_tree()
+		await _frames(3)
+		if g._tree_view.hint_id == "":
+			failures.append("[%s] en la primera visita al árbol no apareció la recomendación" % tag)
+		else:
+			var ha: Array = g._tree_view.hint_arrow()
+			var box: Rect2 = Rect2(ha[1], Vector2.ZERO).expand(ha[0]).grow(4.0)
+			var hc: Vector2 = g._tree_view.to_screen(GameData.node(g._tree_view.hint_id)["pos"])
+			for rc in g._tree_view.label_rects():
+				if (rc as Rect2).has_point(hc):
+					continue          # el propio nodo
+				if box.intersects(rc):
+					failures.append("[%s] la flecha de la recomendación tapa un nombre o un nodo: %s" % [tag, str(rc)])
+		g._close_overlay()
+		g._open_tree()
+		await _frames(2)
+		if g._tree_view.hint_id != "":
+			failures.append("[%s] la recomendación volvió a aparecer en la segunda visita" % tag)
+		g._close_overlay()
+		m.reforms = 3
+		m.credibility = 40
+		m.tree_hint_seen = false
+		g._open_tree()
+		await _frames(2)
+		if g._tree_view.hint_id != "":
+			failures.append("[%s] con 3 reformas y 40 de Credibilidad no tiene que haber recomendación" % tag)
+		g._close_overlay()
 		# el "+$X" de los clics nunca pisa el gorrito ni la corona (ni al nacer ni al terminar su recorrido)
 		var ko: Rect2 = g.empanada.keep_out_rect()
 		var er: Rect2 = g.empanada.get_global_rect()

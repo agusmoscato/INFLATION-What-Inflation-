@@ -1373,6 +1373,11 @@ func _open_tree() -> void:
 	var sv: VBoxContainer = VBoxContainer.new()
 	sv.add_theme_constant_override("separation", 7)
 	side.add_child(sv)
+	var hint_l: Label = UIKit.label("", 15, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_LEFT, true)     # "Comprá esto: ..." (al costado, nunca sobre el árbol)
+	hint_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint_l.custom_minimum_size = Vector2(300, 0)
+	hint_l.visible = false
+	sv.add_child(hint_l)
 	var name_l: Label = UIKit.label("", 24, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_l.custom_minimum_size = Vector2(300, 0)
@@ -1427,18 +1432,20 @@ func _open_tree() -> void:
 			best = int(n["cost"])
 			pick = n["id"]
 	_tree_view.selected = pick
-	# en las primeras vueltas, una flecha señala el nodo recomendado
+	# solo en la primera visita después de la primera reforma, una flecha señala el nodo recomendado ("Comprá esto")
 	var rec: String = BotPolicy.recommended_node(gm())
-	if gm().reforms <= 3 and rec != "" and TreeLogic.can_buy(gm(), rec):
+	if gm().reforms == 1 and not gm().tree_hint_seen and rec != "" and TreeLogic.can_buy(gm(), rec):
+		gm().tree_hint_seen = true
 		_tree_view.selected = rec
 		_tree_view.hint_id = rec
-		_tree_view.hint_text = tr("ui.tree.recommend")
+		hint_l.text = tr("ui.tree.recommend")
 	# con los 6 sellos, la flecha señala el centro
 	var rd: Dictionary = TreeLogic.road(gm())
 	if bool(rd["ready"]):
 		_tree_view.selected = "final"
 		_tree_view.hint_id = "final"
-		_tree_view.hint_text = tr("ui.road.ready") % int(rd["final_cost"])
+		hint_l.text = tr("ui.road.ready") % int(rd["final_cost"])
+	hint_l.visible = hint_l.text != ""
 	_tree_view.focus("")
 	_refresh_tree_info()
 

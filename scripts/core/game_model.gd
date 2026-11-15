@@ -84,6 +84,7 @@ var stickers: Dictionary = {}                      # id de figurita -> cantidad
 var packs_opened: int = 0
 var trades: int = 0
 var secret_seen: bool = false
+var tree_hint_seen: bool = false                   ## ya se mostró el "comprá esto" del árbol (solo la primera visita)
 
 var scratches: int = 0
 var scratch_big: int = 0
@@ -157,7 +158,7 @@ func to_dict() -> Dictionary:
 		"max_carts": max_carts, "max_tier": max_tier, "max_upgrades": max_upgrades, "max_rate_pct": max_rate_pct, "max_price_l10": max_price_l10,
 		"time_played": time_played, "achievements": achievements.duplicate(), "unlocked": unlocked.duplicate(),
 		"tutorial_done": tutorial_done, "free_packs_pending": free_packs_pending,
-		"stickers": stickers.duplicate(), "packs_opened": packs_opened, "trades": trades, "secret_seen": secret_seen,
+		"stickers": stickers.duplicate(), "packs_opened": packs_opened, "trades": trades, "secret_seen": secret_seen, "tree_hint_seen": tree_hint_seen,
 		"scratches": scratches, "scratch_big": scratch_big, "loss_streak": loss_streak, "loss_streak_max": loss_streak_max,
 		"gamble_won": gamble_won.to_save(), "gamble_lost": gamble_lost.to_save(),
 		"saved_unix": Time.get_unix_time_from_system(),
@@ -257,6 +258,7 @@ func from_dict(d: Dictionary) -> bool:
 	packs_opened = int(d.get("packs_opened", 0))
 	trades = int(d.get("trades", 0))
 	secret_seen = bool(d.get("secret_seen", false))
+	tree_hint_seen = bool(d.get("tree_hint_seen", false))
 	scratches = int(d.get("scratches", 0))
 	scratch_big = int(d.get("scratch_big", 0))
 	loss_streak = int(d.get("loss_streak", 0))

@@ -19,8 +19,7 @@ const BRANCH_ICON: Dictionary = {"emp": "empanadas", "neg": "kiosco", "inf": "ce
 var offset: Vector2 = Vector2.ZERO
 var zoom: float = 0.62
 var selected: String = ""
-var hint_id: String = ""              ## nodo recomendado: se dibuja una flecha de tiza que lo señala
-var hint_text: String = ""
+var hint_id: String = ""              ## nodo recomendado: una flecha de tiza lo señala (el texto va al costado, fuera del árbol)
 var _drag: bool = false
 var _drag_moved: float = 0.0
 var _t: float = 0.0
@@ -135,6 +134,48 @@ func _gui_input(event: InputEvent) -> void:
 		zoom_by((event as InputEventMagnifyGesture).factor, (event as InputEventMagnifyGesture).position)
 
 
+## Dónde va el nombre (y el costo) de cada nodo visible, en pantalla: lo que la flecha nunca tiene que tapar.
+func label_rects() -> Array:
+	var out: Array = []
+	for n in GameData.tree:
+		var id: String = n["id"]
+		if not TreeLogic.visible(m(), id):
+			continue
+		var c: Vector2 = to_screen(n["pos"])
+		var r: float = (FINAL_R if bool(n["final"]) else NODE_R) * zoom
+		out.append(Rect2(c + Vector2(-r - 2.0, -r - 2.0), Vector2(2.0 * r + 4.0, 2.0 * r + 4.0)))      # el nodo
+		var tw: float = 0.0
+		if zoom >= 0.55:
+			var body: Font = Chalk.hand_font if Chalk.hand_font != null else ThemeDB.fallback_font
+			tw = body.get_string_size(tr(n["name_key"]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(clampf(15.0 * zoom, 11.0, 20.0))).x
+		tw = clampf(maxf(tw, 60.0), 60.0, 180.0)
+		out.append(Rect2(c + Vector2(-tw / 2.0, r + 2.0), Vector2(tw, 40.0 * clampf(zoom, 0.8, 1.2))))     # nombre y costo
+	return out
+
+
+## La flecha al nodo recomendado: [cola, punta] en pantalla, del lado (izquierda, derecha, arriba, abajo, diagonales)
+## donde no pisa ningún nombre ni otro nodo. [] si no hay recomendación.
+func hint_arrow() -> Array:
+	if hint_id == "" or not GameData.tree_idx.has(hint_id) or m().tree.has(hint_id):
+		return []
+	var c: Vector2 = to_screen(GameData.node(hint_id)["pos"])
+	var r: float = (FINAL_R if hint_id == "final" else NODE_R) * zoom
+	var rects: Array = label_rects()
+	var own: Rect2 = Rect2(c - Vector2(r + 2.0, r + 2.0), Vector2(2.0 * r + 4.0, 2.0 * r + 4.0))
+	for dir in [Vector2.LEFT, Vector2.RIGHT, Vector2(-1, -1).normalized(), Vector2(1, -1).normalized(), Vector2.UP, Vector2(-1, 1).normalized(), Vector2(1, 1).normalized()]:
+		var tip: Vector2 = c + dir * (r + 10.0)
+		var tail: Vector2 = c + dir * (r + 62.0)
+		var box: Rect2 = Rect2(tip, Vector2.ZERO).expand(tail).grow(14.0)
+		var ok: bool = true
+		for rc in rects:
+			if (rc as Rect2) != own and box.intersects(rc):
+				ok = false
+				break
+		if ok:
+			return [tail, tip]
+	return [c + Vector2.LEFT * (r + 62.0), c + Vector2.LEFT * (r + 10.0)]
+
+
 func _state_color(id: String, n: Dictionary) -> Color:
 	var bc: Color = GameData.branch_color(str(n["branch"])) if not bool(n["final"]) else Chalk.YELLOW
 	if bool(n["bridge"]):
@@ -220,21 +261,16 @@ func _draw() -> void:
 			if not owned:
 				# el costo siempre (con cualquier zoom): amarillo si te alcanza, apagado si no
 				draw_string(body, c + Vector2(-90.0, yoff), tr("ui.tree.cost") % TreeLogic.cost(id), HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(14.0 * zoom, 12.0, 18.0)), Color(Chalk.YELLOW, 1.0) if can else Color(Chalk.WHITE, 0.6 * alpha))
-	# flecha al nodo recomendado (después de las primeras reformas)
-	if hint_id != "" and GameData.tree_idx.has(hint_id) and not gm.tree.has(hint_id):
-		var hc: Vector2 = to_screen(GameData.node(hint_id)["pos"])
-		var bob: float = sin(_t * 5.0) * 6.0
-		var tip: Vector2 = hc + Vector2(0, -(NODE_R * zoom + 14.0) + bob)
-		var tail: Vector2 = tip + Vector2(0, -70.0)
-		draw_line(tail, tip, Chalk.YELLOW, 5.0, true)
-		draw_colored_polygon(PackedVector2Array([tip + Vector2(0, 4), tip + Vector2(-14, -16), tip + Vector2(14, -16)]), Chalk.YELLOW)
-		if hint_text != "":
-			var tw: float = 300.0
-			var tp: Vector2 = tail + Vector2(-tw / 2.0, -12.0)
-			tp.x = clampf(tp.x, 6.0, maxf(6.0, size.x - tw - 6.0))
-			tp.y = maxf(tp.y, 40.0)
-			draw_rect(Rect2(tp + Vector2(-6, -26), Vector2(tw + 12, 60)), Color(0.04, 0.07, 0.05, 0.9))
-			draw_multiline_string(body, tp, hint_text, HORIZONTAL_ALIGNMENT_CENTER, tw, 17, 2, Chalk.YELLOW)
+	# flecha al nodo recomendado, del lado donde no tapa ningún nombre ni nodo (el texto va en el panel del costado)
+	var ha: Array = hint_arrow()
+	if not ha.is_empty():
+		var bob: Vector2 = (ha[0] - ha[1]).normalized() * sin(_t * 5.0) * 5.0
+		var tip: Vector2 = ha[1] + bob
+		var tail: Vector2 = ha[0] + bob
+		var d: Vector2 = (tip - tail).normalized()
+		var nrm: Vector2 = Vector2(-d.y, d.x)
+		draw_line(tail, tip - d * 10.0, Chalk.YELLOW, 5.0, true)
+		draw_colored_polygon(PackedVector2Array([tip, tip - d * 18.0 + nrm * 12.0, tip - d * 18.0 - nrm * 12.0]), Chalk.YELLOW)
 	# chispazos de compra
 	for s in _sparks:
 		var k: float = float(s["t"]) / 0.8

@@ -19,7 +19,7 @@
 "ui.road.ready_now","¡Ya podés estabilizar la economía! Tocá acá y comprá el centro del árbol.","You can stabilize the economy now! Tap here and buy the center of the tree."
 "ui.road.ready","¡Ya podés estabilizar la economía! Juntá %d de Credibilidad","You can stabilize the economy now! Save up %d Credibility"
 "ui.road.done","Economía estabilizada.","Economy stabilized."
-"ui.road.final","Centro: estabilizar la economía (los 6 sellos y %d).","Center: stabilize the economy (the 6 seals and %d)."
+"ui.road.final","Centro: los 6 sellos y %d. En total faltan ~%d.","Center: the 6 seals and %d. About %d to go in total."
 "ui.road.total","En total faltan ~%d de Credibilidad.","About %d more Credibility needed in total."
 "ui.road.seal_owned","%s: %s ✔","%s: %s ✔"
 "ui.road.seal_missing","%s: %s (~%d)","%s: %s (~%d)"

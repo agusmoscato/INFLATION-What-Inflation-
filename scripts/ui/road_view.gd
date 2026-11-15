@@ -114,9 +114,9 @@ func refresh(m: GameModel) -> void:
 	elif bool(r["ready"]):
 		_final_l.text = tr("ui.road.ready") % int(r["final_cost"])
 	else:
-		_final_l.text = tr("ui.road.final") % int(r["final_cost"])
-	_total_l.text = tr("ui.road.total") % int(r["need"]) if not bool(r["final_owned"]) else ""
-	_total_l.visible = _total_l.text != ""
+		_final_l.text = tr("ui.road.final") % [int(r["final_cost"]), int(r["need"])]
+	_total_l.text = ""
+	_total_l.visible = false
 
 
 ## "Negocios: Cadena de locales ✔" o "Negocios: Cadena de locales, ~110".

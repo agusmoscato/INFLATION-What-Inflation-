@@ -8,6 +8,7 @@ extends Control
 signal request_menu
 signal request_credits
 signal request_demo_end
+signal request_reload              ## rearmar la pantalla (cambió el idioma desde la pausa)
 
 const QTY: Array = [1, 10, -1]
 const TOAST_SECONDS: float = 3.0
@@ -91,6 +92,7 @@ var _joke_p: float = 0.0               # ln P del último chiste de aumento
 var _joke_t: float = -99.0
 var _joke_i: int = 0
 var _toast_queue: Array = []          # [[texto, color]] esperando su turno
+var _pause: PauseMenu                  # menú de pausa abierto (el juego entero está frenado)
 var _last_toast: float = -99.0
 
 
@@ -197,7 +199,7 @@ func _connect_bus() -> void:
 	EventBus.reform_done.connect(_on_reform_done)
 	EventBus.victory.connect(_on_victory)
 	EventBus.demo_end.connect(func() -> void:
-		get_tree().create_timer(2.5).timeout.connect(func() -> void: request_demo_end.emit()))
+		get_tree().create_timer(2.5, false).timeout.connect(func() -> void: request_demo_end.emit()))
 	EventBus.toast.connect(func(key: String) -> void: _toast(tr(key), UIKit.C_GOLD))
 
 
@@ -439,8 +441,9 @@ func _build_bottom() -> Control:
 	h.add_child(ticker_clip)
 	ticker_label = UIKit.label("", 16, UIKit.C_DIM)
 	ticker_clip.add_child(ticker_label)
-	var menu_btn: Button = _nav_button(tr("ui.menu"), UIKit.C_PANEL2, func() -> void: request_menu.emit())
-	h.add_child(menu_btn)
+	var pause_btn: Button = _nav_button(tr("ui.pause.btn"), UIKit.C_PANEL2, open_pause)
+	pause_btn.custom_minimum_size.x = 130
+	h.add_child(pause_btn)
 	return h
 
 
@@ -1032,7 +1035,7 @@ func _on_node_bought(id: String) -> void:
 
 func _on_victory() -> void:
 	_play("jackpot")
-	get_tree().create_timer(1.5).timeout.connect(func() -> void: request_credits.emit())
+	get_tree().create_timer(1.5, false).timeout.connect(func() -> void: request_credits.emit())
 
 
 # =====================================================================
@@ -1146,7 +1149,7 @@ func _burst(pos: Vector2, color: Color, amount: int) -> void:
 	p.scale_amount_max = 6.0 / 8.0
 	p.color = color
 	fx_layer.add_child(p)
-	get_tree().create_timer(1.2).timeout.connect(p.queue_free)
+	get_tree().create_timer(1.2, false).timeout.connect(p.queue_free)
 
 
 ## Cartel grande que aparece, late y se va (premios, colapso, remarcado).
@@ -1696,6 +1699,28 @@ func show_offline_report(report: Dictionary) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and _overlay != null:
-		_close_overlay()
+	if is_paused():
+		return                       # la pausa maneja su propio Esc
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		# Esc: primero cierra la capa abierta (árbol, álbum...); si no hay ninguna, abre la pausa
+		if _overlay != null:
+			_close_overlay()
+		elif _busy_overlay == null or not is_instance_valid(_busy_overlay):
+			open_pause()
 		get_viewport().set_input_as_handled()
+
+
+## Menú de pausa: guarda la partida y frena todo el juego hasta que se continúe.
+func open_pause() -> void:
+	if _pause != null and is_instance_valid(_pause):
+		return
+	_pause = PauseMenu.new()
+	_pause.resumed.connect(func() -> void:
+		if _pause.language_changed():
+			request_reload.emit())
+	_pause.to_menu.connect(func() -> void: request_menu.emit())
+	add_child(_pause)
+
+
+func is_paused() -> bool:
+	return _pause != null and is_instance_valid(_pause)

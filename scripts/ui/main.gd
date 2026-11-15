@@ -110,6 +110,7 @@ func start_game(continue_save: bool, resume_memory: bool = false) -> void:
 		SaveSystem.save_game()
 		show_menu())
 	g.request_demo_end.connect(show_demo_end)
+	g.request_reload.connect(func() -> void: start_game(true, true))
 	g.request_credits.connect(func() -> void:
 		if not GameState.m.won_notified:
 			GameState.m.won_notified = true
@@ -241,6 +242,16 @@ func _qa_screens(lang: String, failures: Array, tag: String = "") -> void:
 	if _game._scratch_overlay != null and is_instance_valid(_game._scratch_overlay):
 		_game._scratch_overlay.queue_free()
 		_game._scratch_overlay = null
+	# menú de pausa: todo frenado mientras está abierto
+	var money_before: String = GameState.m.money.to_save()
+	_game.open_pause()
+	await _qa_wait(0.8)
+	_qa_shot("pausa_" + suffix, failures)
+	if GameState.m.money.to_save() != money_before:
+		failures.append("[pausa_%s] LA PLATA SIGUIÓ CAMBIANDO CON EL JUEGO EN PAUSA" % suffix)
+	if _game._pause != null and is_instance_valid(_game._pause):
+		_game._pause._resume()
+	await _qa_wait(0.3)
 
 
 func _qa_run() -> void:

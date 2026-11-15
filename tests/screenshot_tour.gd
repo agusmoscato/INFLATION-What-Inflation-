@@ -19,6 +19,8 @@ func _ready() -> void:
 	SaveSystem.delete_save()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	main = load("res://scenes/Main.tscn").instantiate()
+	process_mode = Node.PROCESS_MODE_ALWAYS          # el recorrido sigue aunque el juego esté en pausa
+	main.process_mode = Node.PROCESS_MODE_PAUSABLE
 	shot_vp = get_viewport()
 	var sz: Vector2i = get_window().size
 	var res: String = OS.get_environment("TOUR_RES")
@@ -64,6 +66,7 @@ func _ready() -> void:
 		["12_demo_fin", _demo_end],
 		["13_comprable_juego", _mix, 30],
 		["14_comprable_arbol", _mix_tree, 20],
+		["15_pausa", _pause, 20],
 	]
 	var only: String = OS.get_environment("TOUR_ONLY")
 	if only != "":
@@ -314,6 +317,11 @@ func _mix_tree() -> void:
 	_g()._open_tree()
 	_g()._tree_view.zoom = 0.8
 	_g()._tree_view.focus("")
+
+
+func _pause() -> void:
+	_g()._close_overlay()
+	_g().open_pause()
 
 
 func _noop() -> void:

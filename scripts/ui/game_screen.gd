@@ -590,7 +590,8 @@ func _refresh_header(m: GameModel) -> void:
 	else:
 		rate_label.text = tr("ui.rate") % _pct(pct)
 		rate_label.add_theme_color_override("font_color", Chalk.GREEN if pct < 10.0 else (Chalk.YELLOW if pct < 50.0 else Chalk.RED))
-		if EconomyLogic.braked(m) and m.ln_p > 0.05:
+		# "frenada" solo cuando el freno actúa de verdad: sin él, la inflación sería más de 2 puntos más alta
+		if EconomyLogic.raw_monthly_pct(m) - pct > 2.0:
 			rate_label.text = tr("ui.rate_braked") % _pct(EconomyLogic.raw_monthly_pct(m))
 			rate_label.add_theme_color_override("font_color", Chalk.BLUE)
 	price_label.text = tr("ui.prices") % EconomyLogic.price_level(m).format()

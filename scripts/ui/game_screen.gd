@@ -226,7 +226,7 @@ func _build_header() -> Control:
 	# la inflación y remarcar
 	var mid: VBoxContainer = VBoxContainer.new()
 	mid.custom_minimum_size = Vector2(330, 0)
-	mid.add_theme_constant_override("separation", 0)
+	mid.add_theme_constant_override("separation", 3)
 	h.add_child(mid)
 	era_label = UIKit.label("", 22, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, true)
 	mid.add_child(era_label)
@@ -1015,7 +1015,6 @@ func _update_juice(delta: float) -> void:
 		_rate_shake = maxf(0.0, _rate_shake - delta)
 		rate_label.pivot_offset = rate_label.size / 2.0
 		rate_label.rotation = randf_range(-0.04, 0.04) * (_rate_shake / 0.35) * Settings.fx_scale()
-		rate_label.position.x += randf_range(-1.5, 1.5) * Settings.fx_scale()
 	else:
 		rate_label.rotation = 0.0
 	var nudge: bool = EconomyLogic.reform_advised(gm())

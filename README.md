@@ -62,7 +62,7 @@ cuando el juego lo aconseja (el botón de reforma late). El simulador escribe `d
 Chequeos para los tres (falla si no se cumplen): nunca más de 20 s sin poder comprar ni reformar, la vuelta 2 llega a
 la plata de la vuelta 1 en menos de la mitad del tiempo, ninguna reforma da menos de 5 de Credibilidad (la primera,
 entre 5 y 10) y, salvo el pasivo, los clics son la fuente principal de plata en el primer minuto. Duración (activo):
-primera reforma entre los minutos 4 y 6, final entre 50 y 70, 100 % entre 3 y 4 horas, y la vuelta 10 llega a la plata
+primera reforma entre los minutos 4 y 6, final entre 45 y 60 (pasivo y distraído: entre 60 y 75), 100 % entre 3 y 4 horas, nunca más de 20 s sin una mejora a tiro en la primera hora, y la vuelta 10 llega a la plata
 de la vuelta 1 en un quinto del tiempo.
 
 `tools/qa_newplayer.ps1` arma `docs/qa/v2_0_a_10_min_<perfil>.jpg` (una captura cada 30 s) y

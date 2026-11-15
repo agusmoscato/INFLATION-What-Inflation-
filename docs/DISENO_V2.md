@@ -12,11 +12,13 @@
 | Hito | Objetivo | Quién |
 | --- | --- | --- |
 | Primer renacimiento (reforma) | minuto 4–6, entre 5 y 10 de Credibilidad | jugador activo |
-| Final: nodo "Estabilizar la economía" | minuto 50–70 | jugador activo |
+| Final: nodo "Estabilizar la economía" | minuto 45–60 | jugador activo |
+| Final para quien juega tranquilo | minuto 60–75 | pasivo y distraído |
 | 100 % (árbol + álbum + logros) | 3 h – 4 h, nunca más | jugador activo |
 | Aceleración | la vuelta 10 llega a la plata máxima de la vuelta 1 en ≤ 1/5 del tiempo | jugador activo |
 | Cada vuelta mejor | la vuelta 2 llega a la plata de la vuelta 1 en menos de la mitad del tiempo | los tres |
 | Nunca trabado | nunca más de 20 s sin poder comprar nada ni reformar | los tres |
+| Mejoras que no se acaban | en la primera hora, nunca más de 20 s sin una mejora a tiro (que se pueda pagar ya o juntando 20 s de ingreso) | los tres |
 | Reformas que valen la pena | ninguna reforma da menos de 5 de Credibilidad | los tres |
 | Los clics importan | en el primer minuto de la vuelta 1, los clics son la fuente principal de plata | activo y distraído |
 
@@ -48,6 +50,17 @@ Costo del n-ésimo = base × 1,15ⁿ × P (P = nivel de precios de la vuelta, ve
 | 9 | Imprenta de billetes | 8 B | 7,5 M | capstone NEGOCIOS |
 | 10 | Holding de ceros | 140 B | 80 M | capstone NEGOCIOS |
 
+**Lista de negocios**: filas compactas con scroll y una flecha "hay más abajo"; se ven todos los desbloqueados hasta
+donde llega la capa (3 negocios en El puesto, 5 en El barrio, 7 en La ciudad, todos en Las finanzas) y el siguiente
+como **"???"** con su precio (o "Se desbloquea en el árbol").
+
+**La calle del barrio**: debajo de la empanada, cada negocio comprado agrega su dibujito de tiza (una fila por tipo,
+tope 7 / 6 / 4 según la calidad de tiza; la parrilla tira humo). Detrás de la empanada, el fondo cambia con la capa
+(toldo y sol, casitas, edificios, rascacielos y $, llamas). La empanada evoluciona con el árbol: gorrito de cocinera
+(3 nodos), anteojos de sol (20), corona (los 6 sellos) y brillo dorado con el final.
+
+**El barrio trabaja solo**: si no tocás la empanada por 15 s, la producción va x2,5 (para quien juega tranquilo).
+
 Los ingresos son la mitad que en la primera versión del clicker: la vuelta 1 va más tranquila y en el primer minuto
 la plata sale sobre todo de los clics (≈ 67 % con un jugador activo).
 
@@ -64,8 +77,16 @@ hace, cuánto cuesta y cuánto te falta). Se compran con un clic. Se pierden al 
   base** (la primera ronda: Delantal del carrito $90, Dedo índice $50, Cartel del carrito $600, Delantal del kiosco $780).
 - **De clic** (6): con 15 / 80 / 250 / 600 / 1.200 / 2.500 clics en la vuelta → clic ×2, ×2, +1 % de $/s por clic,
   ×3, +1 % de $/s, ×3. Cuestan 50 / 1.000 / 30.000 / 1 M / 50 M / 5 B.
-- **Sinergias** (5) y **globales** (4) como antes (sinergia: +2 % por cada unidad del otro negocio; globales ×1,5 /
-  ×1,5 / ×2 / ×2 con 20 / 60 / 120 / 200 negocios).
+- **Niveles altos por negocio** (80): x2 a las 75, 100, 150, 200, 250, 300, 400 y 500 unidades; cada uno cuesta lo
+  que ~50 unidades de ese nivel, así siempre está cerca de lo que tenés.
+- **De clic por el total de clics** (7): con 1.500 / 4.000 / 8.000 / 15.000 / 25.000 / 40.000 / 60.000 clics en la
+  partida; su precio son 45–120 s de ingreso.
+- **Sinergias** (15): las 5 de +2 % y 10 de +1 % ("El kiosco vende choripán: +1 % por cada puesto").
+- **Globales** (4) como antes y **campañas de publicidad** (80, sin fin a la práctica): todo x1,03 cada una; la primera
+  cuesta 4 s de ingreso y cada una 8 % más. Siempre hay una tarjeta barata.
+- **Próximas**: hasta 4 tarjetas con candado; las desbloqueadas pero caras (más de 10 min de ingreso) y las que se
+  desbloquean pronto, con su condición ("a los 150 carritos", "a los 4.000 clics").
+Total: 232 mejoras.
 
 ### 2.4 La inflación: atada al progreso, con freno y tope
 - **No depende del reloj**: la tasa sube con el **progreso de la vuelta** φ = ceros ganados en la vuelta / (ceros de tu
@@ -120,8 +141,8 @@ hace, cuánto cuesta y cuánto te falta). Se compran con un clic. Se pierden al 
   Alrededor nacen 6 ramas, una cada 60°. Anillo r a 150 px × r del centro.
 - Un nodo se ve cuando su padre está comprado; los vecinos del borde se ven como niebla con "?"; el resto no se dibuja.
 - Se compran con Credibilidad, en cualquier momento (también a mitad de vuelta).
-- **Costos por anillo**: **2, 6**, 35, 120, 400, 1.500, 5.000, 11.000 (×1,15 si es lateral; puentes 3.500). Final:
-  **5.000** y requiere los 6 **sellos** (el nodo del anillo 4 de cada rama). En la primera hora cada reforma alcanza
+- **Costos por anillo**: **2, 6**, 25, 110, 260, 1.100, 4.000, 9.000 (×1,15 si es lateral; puentes 3.500). Final:
+  **3.300** y requiere los 6 **sellos** (el nodo del anillo 4 de cada rama). En la primera hora cada reforma alcanza
   para 2–6 nodos; los anillos 6 a 8 son el "después del final" (del minuto ~60 al 100 %).
 - **Los primeros nodos se notan enseguida** (cuestan 2): Empanada de horno **clic x2**, Socio del barrio **empezás con
   5 carritos y producís x2**, Precios cuidados **inflación −20 %**, Memoria colectiva **+25 % de Credibilidad**,
@@ -165,6 +186,9 @@ hace, cuánto cuesta y cuánto te falta). Se compran con un clic. Se pierden al 
   primeras 3 vueltas** salen de a uno (2,2 s entre avisos) y duran 5,5 s, y las mejoras aparecen de a una cada 20 s:
   da tiempo a leer y a cliquear.
 - Plata grande y brillante con ticker "+$/s" bien visible; números que "saltan" al cambiar.
+- **La inflación se siente** (sin cambiar el balance): cuando un precio sube, el viejo se tacha con tiza y cae; el
+  porcentaje tiembla al subir; cerca de la pared la pantalla se tiñe de rojo y la empanada transpira; y 14 avisos
+  graciosos cuando los precios pegan un salto ("¡Aumentó el colectivo!"), como mucho cada 25 s.
 - Cada compra: "pop" visual (escala) y sonoro. Nodos del árbol: chispazo de tiza al comprar.
 
 ## 8. Logros
@@ -179,8 +203,8 @@ hace, cuánto cuesta y cuánto te falta). Se compran con un clic. Se pierden al 
     y compra lo de mejor repago (entre lo que puede pagar en 45 s) una vez por segundo;
   - **pasivo**: 1 clic/s, toca el 30 % de los billetes (tarde), casi no remarca y compra siempre lo más barato;
   - **distraído**: 4 clics/s y en las vueltas largas deja de jugar 2 minutos a mitad de la vuelta.
-  Los tres reforman cuando el juego lo aconseja (sección 3) y compran el nodo que el juego recomienda (sellos y final
-  primero; después el más barato, con preferencia NEGOCIOS = EMPANADA > INFLACIÓN > RENACER > FIGURITAS > SUERTE).
+  Los tres reforman cuando el juego lo aconseja (sección 3), juntan para el final apenas tienen los 6 sellos y compran
+  el nodo que el juego recomienda (sellos y final primero; después el más barato, con preferencia NEGOCIOS = EMPANADA > INFLACIÓN > RENACER > FIGURITAS > SUERTE).
 - Reporte `docs/balance_v2.md`: chequeos por jugador y semilla, y la tabla de reformas de cada jugador.
 - `tools/simulate.gd -- --seeds=1,2,3,4 --qa` termina con código 1 si falla algún chequeo de la sección 1.
 - Hojas de contacto del juego real (`tools/qa_newplayer.ps1`): 0–10 min con el jugador pasivo

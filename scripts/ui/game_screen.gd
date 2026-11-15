@@ -411,10 +411,13 @@ func _build_right() -> Control:
 		var btn: Button = Button.new()
 		btn.custom_minimum_size = Vector2(160, 36)
 		UIKit.style_button(btn, UIKit.C_GREEN.darkened(0.25), 16)
+		btn.add_theme_color_override("font_disabled_color", Chalk.RED)     # no te alcanza: el precio en rojo
 		btn.pressed.connect(_on_buy_business.bind(def["id"]))
 		h.add_child(btn)
+		var glow: BuyGlow = BuyGlow.new()      # borde verde que late si se puede comprar; si no, la barrita de progreso
+		row.add_child(glow)
 		biz_list.add_child(row)
-		biz_rows.append({"def": def, "row": row, "icon": icon, "name": name_l, "info": info_l, "owned": owned, "btn": btn})
+		biz_rows.append({"def": def, "row": row, "icon": icon, "name": name_l, "info": info_l, "owned": owned, "btn": btn, "glow": glow})
 	_refresh_qty_buttons()
 	return col
 
@@ -712,8 +715,10 @@ func _refresh_biz(m: GameModel) -> void:
 		(r["icon"] as Control).modulate.a = 0.3 if mystery else 1.0
 		if mystery:
 			(r["info"] as Label).text = tr("ui.biz.locked_tree") if not avail else tr("ui.biz.mystery")
-			btn.text = UIKit.money(EconomyLogic.business_cost(m, def, 1))
-			btn.disabled = not avail or EconomyLogic.business_cost(m, def, 1).gt(m.money)
+			var mc: BigNumber = EconomyLogic.business_cost(m, def, 1)
+			btn.text = UIKit.money(mc)
+			btn.disabled = not avail or mc.gt(m.money)
+			_biz_state(r, not btn.disabled, mc, m)
 			continue
 		var each: BigNumber = def["base_income"].mul_f(float(m.mods["prod_mult"]))
 		if n > 0 and m.biz_income.has(id):
@@ -737,12 +742,31 @@ func _refresh_biz(m: GameModel) -> void:
 			cost = EconomyLogic.business_cost(m, def, q)
 			btn.text = UIKit.money(cost) if q == 1 else "x%d  %s" % [q, UIKit.money(cost)]
 		btn.disabled = cost.gt(m.money)
+		_biz_state(r, not btn.disabled, cost, m)
 		_price_bump(r, n, cost)
 	# la fila de la flecha siempre ocupa su lugar (así la lista no salta); solo se ve si hay más abajo
 	var vb: VScrollBar = biz_scroll.get_v_scroll_bar()
 	var more: bool = vb.max_value - vb.page > float(biz_scroll.scroll_vertical) + 6.0
 	biz_more.modulate.a = (0.75 + 0.25 * sin(_clock * 4.0)) if more else 0.0
 	biz_more.mouse_filter = Control.MOUSE_FILTER_STOP if more else Control.MOUSE_FILTER_IGNORE
+
+
+## Cómo se ve una fila de negocio: si se puede comprar, brillante con el borde verde que late y una chispa de tiza; si no
+## alcanza, apagada al 45 % con el precio en rojo y la barrita de cuánto falta.
+func _biz_state(r: Dictionary, can: bool, cost: BigNumber, m: GameModel) -> void:
+	var a: float = 1.0 if can else 0.45
+	for k in ["icon", "name", "info", "owned"]:
+		var c: Control = r[k]
+		c.modulate.a = minf(c.modulate.a, a) if k == "icon" else a
+	var btn: Button = r["btn"]
+	var glow: BuyGlow = r["glow"]
+	var prog: float = 1.0
+	if not can:
+		prog = clampf(pow(10.0, m.money.log10() - cost.log10()), 0.0, 1.0) if not m.money.is_zero() else 0.0
+	var br: Rect2 = btn.get_global_rect()
+	var gr: Rect2 = glow.get_global_rect()
+	var bar: Rect2 = Rect2(Vector2(br.position.x - gr.position.x + 8.0, br.end.y - gr.position.y - 7.0), Vector2(br.size.x - 16.0, 4.0))
+	glow.set_state(can, prog, bar)
 
 
 ## Si el precio de un negocio subió por la inflación (sin comprar), el viejo se tacha con tiza y cae, y el nuevo salta.
@@ -853,7 +877,11 @@ func _add_upgrade_card(ic: UpgradeIcon) -> void:
 
 func _refresh_nav(m: GameModel) -> void:
 	nav_tree.text = tr("ui.nav.tree") + (" (%d)" % m.credibility if m.credibility > 0 else "")
-	var affordable: bool = TreeLogic.any_affordable(m)
+	# si hay nodos para comprar, el botón lo dice y late: "¡Podés comprar 2 cosas!"
+	var can_n: int = TreeLogic.affordable_count(m)
+	if can_n > 0:
+		nav_tree.text += "  ·  " + (tr("ui.nav.tree_can1") if can_n == 1 else tr("ui.nav.tree_can") % can_n)
+	var affordable: bool = can_n > 0
 	if affordable:
 		nav_tree.modulate = Color(1, 1, 1).lerp(Chalk.YELLOW, 0.5 + 0.5 * sin(_clock * 5.0))
 	else:

@@ -62,6 +62,8 @@ func _ready() -> void:
 		["10_opciones", _options],
 		["11_creditos", _credits],
 		["12_demo_fin", _demo_end],
+		["13_comprable_juego", _mix, 30],
+		["14_comprable_arbol", _mix_tree, 20],
 	]
 	var only: String = OS.get_environment("TOUR_ONLY")
 	if only != "":
@@ -269,6 +271,49 @@ func _demo_end() -> void:
 func _credits() -> void:
 	GameState.m.won = true
 	main.show_credits(true)
+
+
+## Una partida a mitad de camino con de todo: negocios y mejoras que te alcanzan, otros que no, y "Próximas" bloqueadas.
+func _mix() -> void:
+	var m: GameModel = GameState.m
+	if _g() == null:
+		main.start_game(false)
+	_g()._close_overlay()
+	m.demo_mode = false
+	m.demo_finished = false
+	m.won = false
+	m.tree = {}
+	for n in GameData.tree:
+		if int(n["ring"]) <= 2 and not bool(n["final"]):
+			m.tree[n["id"]] = true
+	m.reforms = 3
+	m.run_index = 4
+	m.credibility = 40
+	m.owned = {"empanadas": 22, "kiosco": 14, "choripan": 7, "lavadero": 3}
+	m.upgrades = {}
+	m.run_clicks = 120
+	m.clicks = 2000
+	m.run_time = 200.0
+	m.ln_p = 0.05
+	m.freeze_left = 0.0
+	m.pending_choice = {}
+	m.dirty = true
+	EconomyLogic.ensure_fresh(m)
+	for i in range(40):
+		EconomyLogic.reveal_next(m)
+	m.run_earned = BigNumber.from_float(2.0e5)
+	m.best_run = BigNumber.from_float(1.0e12)      # lejos de la pared: inflación tranquila
+	m.money = BigNumber.from_float(2600.0)
+	m.combo = 8
+	m.combo_idle = 0.0
+
+
+## El árbol con nodos que se pueden comprar ya (latiendo), otros que no alcanzan (apagados con su costo) y comprados.
+func _mix_tree() -> void:
+	GameState.m.credibility = 40
+	_g()._open_tree()
+	_g()._tree_view.zoom = 0.8
+	_g()._tree_view.focus("")
 
 
 func _noop() -> void:

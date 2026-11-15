@@ -1,8 +1,10 @@
 class_name UpgradeIcon
 extends Button
 ## Tarjeta de una mejora en la fila de mejoras. Se entiende de un vistazo, sin hacer clic ni pasar el mouse:
-## ícono, nombre corto, efecto ("Carritos x2") y precio. Si te alcanza, borde verde que late; si no, el precio en rojo y
-## una barrita que muestra cuánto te falta. Las "Próximas" (todavía lejos) se ven apagadas y con candado.
+## ícono, nombre corto, efecto ("Carritos x2") y precio. Tres estados bien distintos:
+##  - te alcanza: brillante, borde grueso verde que late y una chispa de tiza cada tanto;
+##  - no te alcanza: apagada (45 %), con el precio en rojo y una barrita de cuánto te falta;
+##  - "Próximas" (bloqueadas): candado, tiza tenue y la condición con su barrita.
 ## Tocarla la compra; el detalle aparece al instante al pasar el mouse (lo dibuja GameScreen).
 
 const CARD: Vector2 = Vector2(200, 80)
@@ -20,6 +22,8 @@ var price_text: String = ""
 var cond_text: String = ""           ## "Próximas" que todavía no se desbloquean: la condición en lugar del precio
 var cond_progress: float = 0.0
 var _t: float = 0.0
+var _spark_t: float = -9.0
+var _spark_at: float = 0.0
 
 
 func _init(u: Dictionary = {}, is_locked: bool = false) -> void:
@@ -27,7 +31,7 @@ func _init(u: Dictionary = {}, is_locked: bool = false) -> void:
 	locked = is_locked
 	custom_minimum_size = CARD
 	text = ""
-	UIKit.style_button(self, UIKit.C_PANEL2.darkened(0.25) if locked else UIKit.C_PANEL2, 15)
+	_restyle()
 	focus_mode = Control.FOCUS_NONE
 	mouse_default_cursor_shape = Control.CURSOR_ARROW if locked else Control.CURSOR_POINTING_HAND
 
@@ -35,7 +39,22 @@ func _init(u: Dictionary = {}, is_locked: bool = false) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	if affordable and not locked:
+		if _t - _spark_t > 1.3 + fmod(float(get_instance_id() % 97) * 0.013 + _t * 0.37, 0.8):
+			_spark_t = _t
+			_spark_at = fmod(_t * 0.618 + float(get_instance_id() % 13) * 0.1, 1.0)
 		queue_redraw()
+
+
+## Estilo del fondo según el estado: brillante si te alcanza, oscuro si no, más oscuro si está bloqueada.
+func _restyle() -> void:
+	var base: Color = UIKit.C_PANEL2
+	if locked:
+		base = UIKit.C_PANEL2.darkened(0.35)
+	elif affordable:
+		base = UIKit.C_PANEL2.lightened(0.18)
+	else:
+		base = UIKit.C_PANEL2.darkened(0.2)
+	UIKit.style_button(self, base, 15)
 
 
 func set_cond(text: String, prog: float) -> void:
@@ -47,6 +66,9 @@ func set_cond(text: String, prog: float) -> void:
 
 func set_state(can: bool, prog: float, price: String) -> void:
 	if can != affordable or absf(prog - progress) > 0.01 or price != price_text:
+		if can != affordable:
+			affordable = can
+			_restyle()
 		affordable = can
 		progress = prog
 		price_text = price
@@ -100,7 +122,8 @@ static func _num(v: float) -> String:
 func _draw() -> void:
 	var f: Font = Chalk.title_font if Chalk.title_font != null else ThemeDB.fallback_font
 	var body: Font = Chalk.hand_font if Chalk.hand_font != null else ThemeDB.fallback_font
-	var dim: float = 0.45 if locked else 1.0
+	# apagada al 45 % si no te alcanza o está bloqueada (el precio en rojo y la barrita quedan bien visibles)
+	var dim: float = 1.0 if affordable and not locked else 0.45
 	# ícono
 	var ir: Rect2 = Rect2(Vector2(7, 12), Vector2(44, 44))
 	var icon: String = str(upg.get("icon", "empanadas"))
@@ -135,11 +158,19 @@ func _draw() -> void:
 	if not affordable and not locked:
 		var br: Rect2 = Rect2(Vector2(8, size.y - 9), Vector2(size.x - 16, 5))
 		draw_rect(br, Color(1, 1, 1, 0.12))
-		draw_rect(Rect2(br.position, Vector2(br.size.x * clampf(progress, 0.0, 1.0), br.size.y)), Color(Chalk.GREEN, 0.7))
-	# borde verde que late si te alcanza
+		draw_rect(Rect2(br.position, Vector2(br.size.x * clampf(progress, 0.0, 1.0), br.size.y)), Color(Chalk.GREEN, 0.85))
+	if locked:
+		# tiza tenue: un borde punteado
+		var r: Rect2 = Rect2(Vector2(3, 3), size - Vector2(6, 6))
+		for i in range(0, int(r.size.x), 10):
+			draw_line(r.position + Vector2(i, 0), r.position + Vector2(mini(i + 5, int(r.size.x)), 0), Color(Chalk.WHITE, 0.18), 1.5)
+			draw_line(Vector2(r.position.x + i, r.end.y), Vector2(r.position.x + mini(i + 5, int(r.size.x)), r.end.y), Color(Chalk.WHITE, 0.18), 1.5)
+	# te alcanza: borde grueso verde que late y una chispa de tiza cada tanto
 	if affordable and not locked:
-		var a: float = 0.55 + 0.4 * sin(_t * 5.0)
-		draw_rect(Rect2(Vector2(2, 2), size - Vector2(4, 4)), Color(Chalk.GREEN, a), false, 3.0)
+		BuyGlow.draw_pulse_border(self, Rect2(Vector2.ZERO, size), _t)
+		var k: float = (_t - _spark_t) / 0.5
+		if k >= 0.0 and k <= 1.0:
+			BuyGlow.draw_spark(self, BuyGlow.border_point(Rect2(Vector2.ZERO, size), _spark_at), k)
 
 
 static func _fonts() -> Array:

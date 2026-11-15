@@ -7,6 +7,8 @@
 "ui.upgrades_none","Mejoras: comprá negocios y tocá la empanada para que aparezcan","Upgrades: buy businesses and poke the empanada to unlock them"
 "ui.businesses","Negocios","Businesses"
 "ui.nav.tree","Árbol","Tree"
+"ui.nav.tree_can","¡Podés comprar %d cosas!","You can buy %d things!"
+"ui.nav.tree_can1","¡Podés comprar 1 cosa!","You can buy 1 thing!"
 "ui.nav.album","Álbum","Album"
 "ui.nav.scratch","Raspadita (5 %)","Scratch card (5%)"
 "ui.nav.ach","Logros","Achievements"

@@ -164,6 +164,15 @@ static func any_affordable(m: GameModel) -> bool:
 	return false
 
 
+## Cuántos nodos se pueden comprar ya mismo.
+static func affordable_count(m: GameModel) -> int:
+	var n: int = 0
+	for nd in GameData.tree:
+		if can_buy(m, nd["id"]):
+			n += 1
+	return n
+
+
 static func cheapest_open(m: GameModel) -> int:
 	var best: int = -1
 	for n in GameData.tree:

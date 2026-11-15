@@ -1,7 +1,11 @@
 class_name SkillTreeView
 extends Control
 ## El árbol de habilidades dibujado con tiza: se arrastra (cualquier botón del mouse), se hace zoom con la rueda
-## (o pellizcando) y se toca un nodo para verlo. Lo desconocido aparece como niebla con "?".
+## (o pellizcando) y se toca un nodo para verlo. Cuatro estados que se distinguen de un vistazo:
+##  - comprable ya: brillante, latiendo con un aro amarillo y una chispa;
+##  - visible pero no te alcanza (o le falta el nodo anterior): apagado al 45 % con su costo;
+##  - comprado: relleno y con la línea al padre marcada en amarillo;
+##  - desconocido: niebla gris con "?".
 
 signal node_selected(id: String)
 
@@ -181,12 +185,17 @@ func _draw() -> void:
 		var owned: bool = gm.tree.has(id)
 		var can: bool = TreeLogic.can_buy(gm, id)
 		var open: bool = TreeLogic.requirements_met(gm, id) and not TreeLogic.demo_locked(gm, id)
-		var alpha: float = 1.0 if (owned or open) else 0.45
+		var alpha: float = 1.0 if (owned or can) else 0.45
 		if can:
 			var pulse: float = 0.5 + 0.5 * sin(_t * 5.0)
-			Chalk.circle(self, c, r + 6.0 + pulse * 4.0, Color(Chalk.YELLOW, 0.5 + 0.4 * pulse), 2.4, sv + 1)
+			draw_circle(c, r + 10.0 + pulse * 5.0, Color(Chalk.YELLOW, 0.08 + 0.08 * pulse))
+			Chalk.circle(self, c, r + 6.0 + pulse * 5.0, Color(Chalk.YELLOW, 0.6 + 0.4 * pulse), 3.4, sv + 1)
+			var sk: float = fmod(_t * 0.8 + float(sv % 7) * 0.13, 1.0)
+			if sk < 0.4:
+				var ang: float = float(sv % 360) * 0.0174 + floor(_t * 0.8 + float(sv % 7) * 0.13) * 2.4
+				BuyGlow.draw_spark(self, c + Vector2(cos(ang), sin(ang)) * (r + 8.0), sk / 0.4)
 		if owned:
-			draw_circle(c, r, Color(col, 0.32))
+			draw_circle(c, r, Color(col, 0.62))
 		else:
 			draw_circle(c, r, Color(0.02, 0.05, 0.04, 0.85))
 		Chalk.circle(self, c, r, Color(col, alpha), (3.4 if owned else 2.4) * clampf(zoom * 1.5, 0.7, 1.5), sv)
@@ -196,14 +205,21 @@ func _draw() -> void:
 			Chalk.circle(self, c, r + 12.0 * zoom + 4.0, Chalk.WHITE, 2.0, sv + 3)
 		var icon: String = str(BRANCH_ICON.get(str(n["branch"]), "empanadas"))
 		var ir: float = r * 1.15
-		ChalkIcons.draw(self, icon, Rect2(c - Vector2(ir, ir) / 2.0, Vector2(ir, ir)), sv, Chalk.WHITE if owned else Color(col, alpha * 0.75))
+		ChalkIcons.draw(self, icon, Rect2(c - Vector2(ir, ir) / 2.0, Vector2(ir, ir)), sv, Chalk.WHITE if owned else Color(col, alpha * 0.85))
+		if owned:
+			# tilde de comprado
+			Chalk.polyline(self, PackedVector2Array([c + Vector2(r * 0.35, r * 0.55), c + Vector2(r * 0.55, r * 0.78), c + Vector2(r * 0.95, r * 0.3)]), Chalk.GREEN, 3.0, sv + 5)
 		if TreeLogic.demo_locked(gm, id) and not owned:
 			draw_string(body, c + Vector2(-r * 2.0, r + 16.0), tr("ui.tree.full_game"), HORIZONTAL_ALIGNMENT_CENTER, r * 4.0, 13, Color(Chalk.PINK, 0.8))
-		elif zoom >= 0.55:
-			var name: String = tr(n["name_key"])
-			draw_string(body, c + Vector2(-90.0, r + 17.0), name, HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(15.0 * zoom, 11.0, 20.0)), Color(Chalk.WHITE, 0.85 * alpha))
+		else:
+			var yoff: float = r + 17.0
+			if zoom >= 0.55:
+				var name: String = tr(n["name_key"])
+				draw_string(body, c + Vector2(-90.0, yoff), name, HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(15.0 * zoom, 11.0, 20.0)), Color(Chalk.WHITE, 0.85 * alpha))
+				yoff = r + 34.0 * clampf(zoom, 0.8, 1.2)
 			if not owned:
-				draw_string(body, c + Vector2(-90.0, r + 34.0 * clampf(zoom, 0.8, 1.2)), tr("ui.tree.cost") % TreeLogic.cost(id), HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(14.0 * zoom, 11.0, 18.0)), Color(Chalk.YELLOW if can else Chalk.WHITE, 0.8 * alpha))
+				# el costo siempre (con cualquier zoom): amarillo si te alcanza, apagado si no
+				draw_string(body, c + Vector2(-90.0, yoff), tr("ui.tree.cost") % TreeLogic.cost(id), HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(14.0 * zoom, 12.0, 18.0)), Color(Chalk.YELLOW, 1.0) if can else Color(Chalk.WHITE, 0.6 * alpha))
 	# flecha al nodo recomendado (después de las primeras reformas)
 	if hint_id != "" and GameData.tree_idx.has(hint_id) and not gm.tree.has(hint_id):
 		var hc: Vector2 = to_screen(GameData.node(hint_id)["pos"])

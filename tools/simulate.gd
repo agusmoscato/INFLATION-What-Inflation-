@@ -3,7 +3,7 @@ extends SceneTree
 ## activo, pasivo y distraído) hasta el 100 % (o 5 h) y escribe docs/balance_v2.md.
 ## Uso: godot --headless --script tools/simulate.gd [-- --seeds=1,2 --profiles=activo,pasivo,distraido --qa --quiet]
 ##   --qa        termina con código 1 si algún chequeo falla
-##   --seeds     semillas del jugador activo (los otros dos juegan con la primera)
+##   --seeds     semillas del jugador activo (el pasivo y el distraído juegan con las tres primeras)
 ##   --trace     imprime cada reforma y el estado cada 30 s de los primeros 10 minutos
 ##
 ## Chequeos para los tres jugadores (la regla de oro: nunca trabado y cada vuelta mejor que la anterior):
@@ -61,7 +61,7 @@ func _init() -> void:
 	var all_ok: bool = true
 	var results: Array = []
 	for p in profiles:
-		var sl: Array = seeds if p == "activo" else [seeds[0]]
+		var sl: Array = seeds if p == "activo" else seeds.slice(0, 3)
 		for sd in sl:
 			print("== %s, semilla %d" % [p, int(sd)])
 			var r: Dictionary = run_sim(int(sd), hours, str(p))

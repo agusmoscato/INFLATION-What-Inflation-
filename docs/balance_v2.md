@@ -6,164 +6,200 @@ Generado por `godot --headless --script tools/simulate.gd`. Los jugadores de pru
 
 | Jugador | Semilla | Chequeo | Valor | Objetivo | Resultado |
 | --- | --- | --- | --- | --- | --- |
-| activo | 1 | Máxima espera sin poder comprar ni reformar (s) | 4.3 (en el min 1.4) | <= 20 | PASA |
-| activo | 1 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 24.0 | < 125 (1/2 de 250) | PASA |
+| activo | 1 | Máxima espera sin poder comprar ni reformar (s) | 4.0 (en el min 1.6) | <= 20 | PASA |
+| activo | 1 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 9.3 (en el min 4.9) | <= 20 | PASA |
+| activo | 1 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 25.3 | < 125 (1/2 de 250) | PASA |
 | activo | 1 | Credibilidad mínima en una reforma | 9.0 (vuelta 1) | >= 5 | PASA |
 | activo | 1 | Credibilidad de la primera reforma | 9.0 | 5–10 | PASA |
-| activo | 1 | Plata de clics en el primer minuto (%) | 67.0 | >= 50 | PASA |
+| activo | 1 | Plata de clics en el primer minuto (%) | 65.7 | >= 50 | PASA |
 | activo | 1 | Primer renacimiento (min) | 4.2 | 4–6 | PASA |
-| activo | 1 | Final: Estabilizar la economía (min) | 59.4 | 50–70 | PASA |
-| activo | 1 | 100 %: árbol + álbum + logros (min) | 226.8 | 180–240 | PASA |
-| activo | 1 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 4.5 | <= 50 (1/5 de 250) | PASA |
-| activo | 2 | Máxima espera sin poder comprar ni reformar (s) | 3.0 (en el min 0.7) | <= 20 | PASA |
-| activo | 2 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 97.3 | < 125 (1/2 de 250) | PASA |
+| activo | 1 | Final: Estabilizar la economía (min) | 49.4 | 45–60 | PASA |
+| activo | 1 | 100 %: árbol + álbum + logros (min) | 196.9 | 180–240 | PASA |
+| activo | 1 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 5.5 | <= 50 (1/5 de 250) | PASA |
+| activo | 2 | Máxima espera sin poder comprar ni reformar (s) | 2.3 (en el min 0.6) | <= 20 | PASA |
+| activo | 2 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 10.0 (en el min 6.9) | <= 20 | PASA |
+| activo | 2 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 93.3 | < 125 (1/2 de 250) | PASA |
 | activo | 2 | Credibilidad mínima en una reforma | 10.0 (vuelta 1) | >= 5 | PASA |
 | activo | 2 | Credibilidad de la primera reforma | 10.0 | 5–10 | PASA |
-| activo | 2 | Plata de clics en el primer minuto (%) | 67.0 | >= 50 | PASA |
+| activo | 2 | Plata de clics en el primer minuto (%) | 65.7 | >= 50 | PASA |
 | activo | 2 | Primer renacimiento (min) | 4.2 | 4–6 | PASA |
-| activo | 2 | Final: Estabilizar la economía (min) | 60.1 | 50–70 | PASA |
-| activo | 2 | 100 %: árbol + álbum + logros (min) | 229.0 | 180–240 | PASA |
-| activo | 2 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 4.5 | <= 50 (1/5 de 250) | PASA |
-| activo | 3 | Máxima espera sin poder comprar ni reformar (s) | 3.0 (en el min 0.7) | <= 20 | PASA |
-| activo | 3 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 24.8 | < 125 (1/2 de 250) | PASA |
+| activo | 2 | Final: Estabilizar la economía (min) | 52.3 | 45–60 | PASA |
+| activo | 2 | 100 %: árbol + álbum + logros (min) | 208.3 | 180–240 | PASA |
+| activo | 2 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 6.3 | <= 50 (1/5 de 250) | PASA |
+| activo | 3 | Máxima espera sin poder comprar ni reformar (s) | 2.3 (en el min 0.6) | <= 20 | PASA |
+| activo | 3 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 9.3 (en el min 4.9) | <= 20 | PASA |
+| activo | 3 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 26.0 | < 125 (1/2 de 250) | PASA |
 | activo | 3 | Credibilidad mínima en una reforma | 10.0 (vuelta 1) | >= 5 | PASA |
 | activo | 3 | Credibilidad de la primera reforma | 10.0 | 5–10 | PASA |
-| activo | 3 | Plata de clics en el primer minuto (%) | 67.0 | >= 50 | PASA |
+| activo | 3 | Plata de clics en el primer minuto (%) | 65.7 | >= 50 | PASA |
 | activo | 3 | Primer renacimiento (min) | 4.2 | 4–6 | PASA |
-| activo | 3 | Final: Estabilizar la economía (min) | 56.7 | 50–70 | PASA |
-| activo | 3 | 100 %: árbol + álbum + logros (min) | 225.4 | 180–240 | PASA |
-| activo | 3 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 6.0 | <= 50 (1/5 de 250) | PASA |
-| activo | 4 | Máxima espera sin poder comprar ni reformar (s) | 3.8 (en el min 1.5) | <= 20 | PASA |
-| activo | 4 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 23.5 | < 125 (1/2 de 250) | PASA |
+| activo | 3 | Final: Estabilizar la economía (min) | 47.4 | 45–60 | PASA |
+| activo | 3 | 100 %: árbol + álbum + logros (min) | 202.2 | 180–240 | PASA |
+| activo | 3 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 7.5 | <= 50 (1/5 de 250) | PASA |
+| activo | 4 | Máxima espera sin poder comprar ni reformar (s) | 3.5 (en el min 1.5) | <= 20 | PASA |
+| activo | 4 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 9.3 (en el min 4.9) | <= 20 | PASA |
+| activo | 4 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 25.0 | < 125 (1/2 de 250) | PASA |
 | activo | 4 | Credibilidad mínima en una reforma | 8.0 (vuelta 1) | >= 5 | PASA |
 | activo | 4 | Credibilidad de la primera reforma | 8.0 | 5–10 | PASA |
-| activo | 4 | Plata de clics en el primer minuto (%) | 67.0 | >= 50 | PASA |
+| activo | 4 | Plata de clics en el primer minuto (%) | 65.7 | >= 50 | PASA |
 | activo | 4 | Primer renacimiento (min) | 4.2 | 4–6 | PASA |
-| activo | 4 | Final: Estabilizar la economía (min) | 65.9 | 50–70 | PASA |
-| activo | 4 | 100 %: árbol + álbum + logros (min) | 231.0 | 180–240 | PASA |
-| activo | 4 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 3.8 | <= 50 (1/5 de 250) | PASA |
-| pasivo | 1 | Máxima espera sin poder comprar ni reformar (s) | 11.3 (en el min 1.5) | <= 20 | PASA |
-| pasivo | 1 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 103.5 | < 188 (1/2 de 375) | PASA |
+| activo | 4 | Final: Estabilizar la economía (min) | 52.2 | 45–60 | PASA |
+| activo | 4 | 100 %: árbol + álbum + logros (min) | 195.9 | 180–240 | PASA |
+| activo | 4 | Vuelta 10 llega a la plata de la vuelta 1 (s) | 4.8 | <= 50 (1/5 de 250) | PASA |
+| pasivo | 1 | Máxima espera sin poder comprar ni reformar (s) | 11.5 (en el min 5.5) | <= 20 | PASA |
+| pasivo | 1 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 12.0 (en el min 0.2) | <= 20 | PASA |
+| pasivo | 1 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 140.8 | < 198 (1/2 de 395) | PASA |
 | pasivo | 1 | Credibilidad mínima en una reforma | 5.0 (vuelta 1) | >= 5 | PASA |
 | pasivo | 1 | Credibilidad de la primera reforma | 5.0 | 5–10 | PASA |
-| pasivo | 1 | Primer renacimiento (min) | 6.3 | (informativo) | PASA |
-| pasivo | 1 | Final: Estabilizar la economía (min) | 92.0 | (informativo) | PASA |
-| distraido | 1 | Máxima espera sin poder comprar ni reformar (s) | 5.5 (en el min 2.3) | <= 20 | PASA |
-| distraido | 1 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 22.0 | < 135 (1/2 de 270) | PASA |
-| distraido | 1 | Credibilidad mínima en una reforma | 5.0 (vuelta 1) | >= 5 | PASA |
-| distraido | 1 | Credibilidad de la primera reforma | 5.0 | 5–10 | PASA |
-| distraido | 1 | Plata de clics en el primer minuto (%) | 67.6 | >= 50 | PASA |
+| pasivo | 1 | Primer renacimiento (min) | 6.6 | (informativo) | PASA |
+| pasivo | 1 | Final: Estabilizar la economía (min) | 67.8 | 60–75 | PASA |
+| pasivo | 2 | Máxima espera sin poder comprar ni reformar (s) | 11.3 (en el min 4.8) | <= 20 | PASA |
+| pasivo | 2 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 12.0 (en el min 0.2) | <= 20 | PASA |
+| pasivo | 2 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 27.8 | < 177 (1/2 de 353) | PASA |
+| pasivo | 2 | Credibilidad mínima en una reforma | 5.0 (vuelta 1) | >= 5 | PASA |
+| pasivo | 2 | Credibilidad de la primera reforma | 5.0 | 5–10 | PASA |
+| pasivo | 2 | Primer renacimiento (min) | 5.9 | (informativo) | PASA |
+| pasivo | 2 | Final: Estabilizar la economía (min) | 65.3 | 60–75 | PASA |
+| pasivo | 3 | Máxima espera sin poder comprar ni reformar (s) | 11.3 (en el min 4.3) | <= 20 | PASA |
+| pasivo | 3 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 12.0 (en el min 0.2) | <= 20 | PASA |
+| pasivo | 3 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 150.8 | < 164 (1/2 de 328) | PASA |
+| pasivo | 3 | Credibilidad mínima en una reforma | 5.0 (vuelta 1) | >= 5 | PASA |
+| pasivo | 3 | Credibilidad de la primera reforma | 5.0 | 5–10 | PASA |
+| pasivo | 3 | Primer renacimiento (min) | 5.5 | (informativo) | PASA |
+| pasivo | 3 | Final: Estabilizar la economía (min) | 70.4 | 60–75 | PASA |
+| distraido | 1 | Máxima espera sin poder comprar ni reformar (s) | 5.3 (en el min 2.5) | <= 20 | PASA |
+| distraido | 1 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 9.8 (en el min 6.3) | <= 20 | PASA |
+| distraido | 1 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 25.5 | < 135 (1/2 de 270) | PASA |
+| distraido | 1 | Credibilidad mínima en una reforma | 6.0 (vuelta 1) | >= 5 | PASA |
+| distraido | 1 | Credibilidad de la primera reforma | 6.0 | 5–10 | PASA |
+| distraido | 1 | Plata de clics en el primer minuto (%) | 66.4 | >= 50 | PASA |
 | distraido | 1 | Primer renacimiento (min) | 4.5 | (informativo) | PASA |
-| distraido | 1 | Final: Estabilizar la economía (min) | 85.8 | (informativo) | PASA |
+| distraido | 1 | Final: Estabilizar la economía (min) | 73.1 | 60–75 | PASA |
+| distraido | 2 | Máxima espera sin poder comprar ni reformar (s) | 4.0 (en el min 2.6) | <= 20 | PASA |
+| distraido | 2 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 9.8 (en el min 6.3) | <= 20 | PASA |
+| distraido | 2 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 38.3 | < 135 (1/2 de 270) | PASA |
+| distraido | 2 | Credibilidad mínima en una reforma | 7.0 (vuelta 1) | >= 5 | PASA |
+| distraido | 2 | Credibilidad de la primera reforma | 7.0 | 5–10 | PASA |
+| distraido | 2 | Plata de clics en el primer minuto (%) | 66.4 | >= 50 | PASA |
+| distraido | 2 | Primer renacimiento (min) | 4.5 | (informativo) | PASA |
+| distraido | 2 | Final: Estabilizar la economía (min) | 65.3 | 60–75 | PASA |
+| distraido | 3 | Máxima espera sin poder comprar ni reformar (s) | 3.8 (en el min 1.4) | <= 20 | PASA |
+| distraido | 3 | Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s) | 4.0 (en el min 38.5) | <= 20 | PASA |
+| distraido | 3 | Vuelta 2 llega a la plata de la vuelta 1 (s) | 75.8 | < 135 (1/2 de 270) | PASA |
+| distraido | 3 | Credibilidad mínima en una reforma | 8.0 (vuelta 1) | >= 5 | PASA |
+| distraido | 3 | Credibilidad de la primera reforma | 8.0 | 5–10 | PASA |
+| distraido | 3 | Plata de clics en el primer minuto (%) | 66.4 | >= 50 | PASA |
+| distraido | 3 | Primer renacimiento (min) | 4.5 | (informativo) | PASA |
+| distraido | 3 | Final: Estabilizar la economía (min) | 63.7 | 60–75 | PASA |
 
 ## Activo (clickea mucho), semilla 1
 
 | Vuelta | Minuto | Duración | Plata máxima ganada | +Credibilidad | Nodos comprados después | Llega a la plata de la vuelta 1 en |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 4.2 | 4:10 | $135,99 K | 9 | 4 | 250 s |
-| 2 | 5.1 | 0:55 | $5,13 M | 26 | 5 | 24 s |
-| 3 | 7.1 | 1:59 | $10,4 M | 29 | 5 | 21 s |
-| 4 | 8.0 | 0:55 | $2,39 B | 75 | 10 | 16 s |
-| 5 | 9.3 | 1:16 | $5,12 B | 84 | 2 | 15 s |
-| 6 | 10.5 | 1:11 | $10,55 B | 91 | 3 | 7 s |
-| 7 | 11.7 | 1:12 | $9,9 B | 125 | 1 | 8 s |
-| 8 | 13.3 | 1:38 | $56,85 B | 134 | 1 | 7 s |
-| 9 | 15.8 | 2:30 | $5,51 B | 105 | 1 | 8 s |
-| 10 | 17.7 | 1:55 | $2,9 T | 190 | 5 | 5 s |
-| 11 | 19.9 | 2:09 | $5,82 T | 221 | 3 | 4 s |
-| 12 | 22.0 | 2:07 | $11,79 T | 303 | 4 | 3 s |
-| 13 | 23.5 | 1:30 | $24,01 T | 349 | 5 | 3 s |
-| 14 | 25.3 | 1:50 | $48,43 T | 367 | 3 | 2 s |
-| 15 | 26.8 | 1:28 | $96,85 T | 386 | 2 | 2 s |
-| 16 | 28.3 | 1:30 | $157,02 T | 424 | 3 | 2 s |
-| 17 | 29.8 | 1:30 | $752,8 T | 451 | 3 | 2 s |
-| 18 | 32.3 | 2:30 | $481,15 T | 437 | 1 | 1 s |
-| 19 | 34.8 | 2:30 | $700,83 T | 448 | 1 | 1 s |
-| 20 | 36.5 | 1:38 | $1,54 Qa | 471 | 1 | 1 s |
-| 21 | 38.0 | 1:29 | $1,53 Qa | 519 | 1 | 1 s |
-| 22 | 39.4 | 1:25 | $13,76 Qa | 544 | 0 | 1 s |
-| 23 | 41.9 | 2:30 | $23,11 Qa | 557 | 0 | 1 s |
-| 24 | 44.4 | 2:30 | $45,6 Qa | 580 | 0 | 1 s |
-| 25 | 46.9 | 2:30 | $19,2 Qa | 551 | 0 | 1 s |
+| 1 | 4.2 | 4:10 | $137,61 K | 9 | 4 | 250 s |
+| 2 | 5.1 | 0:55 | $3,04 M | 23 | 5 | 25 s |
+| 3 | 7.0 | 1:57 | $6,15 M | 26 | 4 | 21 s |
+| 4 | 8.0 | 0:55 | $619,69 M | 64 | 9 | 20 s |
+| 5 | 9.2 | 1:17 | $1,25 B | 72 | 4 | 19 s |
+| 6 | 10.4 | 1:06 | $2,59 B | 78 | 3 | 8 s |
+| 7 | 11.9 | 1:35 | $17,35 B | 119 | 4 | 8 s |
+| 8 | 13.7 | 1:46 | $36,61 B | 129 | 3 | 7 s |
+| 9 | 15.5 | 1:45 | $173,72 B | 149 | 1 | 7 s |
+| 10 | 17.8 | 2:23 | $349,19 B | 158 | 3 | 6 s |
+| 11 | 19.3 | 1:25 | $1,17 T | 193 | 4 | 3 s |
+| 12 | 21.3 | 2:00 | $2,34 T | 266 | 3 | 2 s |
+| 13 | 21.9 | 0:40 | $5,2 T | 310 | 3 | 1 s |
+| 14 | 23.6 | 1:40 | $10,5 T | 327 | 3 | 1 s |
+| 15 | 24.4 | 0:50 | $40,93 T | 363 | 2 | 2 s |
+| 16 | 26.9 | 2:30 | $34,66 T | 358 | 3 | 2 s |
+| 17 | 29.4 | 2:29 | $51,16 T | 391 | 2 | 2 s |
+| 18 | 31.9 | 2:30 | $136,6 T | 401 | 0 | 1 s |
+| 19 | 34.4 | 2:30 | $207,11 T | 412 | 0 | 1 s |
+| 20 | 36.9 | 2:30 | $101,56 T | 392 | 0 | 1 s |
+| 21 | 39.4 | 2:30 | $43,22 T | 369 | 0 | 1 s |
+| 22 | 41.9 | 2:30 | $51,45 T | 374 | 0 | 1 s |
+| 23 | 44.4 | 2:30 | $162,7 T | 406 | 0 | 1 s |
+| 24 | 46.9 | 2:30 | $148,65 T | 403 | 0 | 1 s |
+| 25 | 49.4 | 2:30 | $47,37 T | 372 | 1 | 1 s |
 | … | | | | | | |
-| 100 | 222.8 | 2:30 | $78,75 Sx | 6626 | 0 | 0 s |
-| 101 | 225.3 | 2:30 | $197,78 Sx | 6881 | 1 | 0 s |
-| 102 | 226.8 | 1:29 | $858,15 Sx | 7297 | 1 | 0 s |
+| 92 | 192.9 | 2:30 | $75,73 Sx | 6615 | 0 | 0 s |
+| 93 | 194.4 | 1:30 | $152,29 Sx | 6808 | 1 | 0 s |
+| 94 | 196.9 | 2:30 | $69,74 Sx | 6593 | 1 | 0 s |
 
-- Final (Estabilizar la economía): minuto **59.4**
-- 100 %: minuto **226.8**
-- Al terminar la simulación (min 227): nodos 115/115, figuritas 60/60, logros 53/53, vueltas 103
+- Final (Estabilizar la economía): minuto **49.4**
+- 100 %: minuto **196.9**
+- Al terminar la simulación (min 197): nodos 115/115, figuritas 60/60, logros 53/53, vueltas 95
 
 ## Pasivo (casi no clickea, compra lo más barato), semilla 1
 
 | Vuelta | Minuto | Duración | Plata máxima ganada | +Credibilidad | Nodos comprados después | Llega a la plata de la vuelta 1 en |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 6.3 | 6:15 | $18,12 K | 5 | 2 | 375 s |
-| 2 | 8.5 | 2:17 | $36,27 K | 6 | 3 | 104 s |
-| 3 | 10.3 | 1:42 | $72,73 K | 9 | 2 | 27 s |
-| 4 | 11.3 | 1:00 | $7,14 M | 27 | 4 | 23 s |
-| 5 | 13.8 | 2:30 | $4,81 M | 30 | 5 | 17 s |
-| 6 | 16.3 | 2:30 | $5,95 M | 32 | 4 | 18 s |
-| 7 | 17.5 | 1:14 | $14,33 M | 39 | 4 | 9 s |
-| 8 | 18.8 | 1:18 | $28,76 M | 43 | 1 | 5 s |
-| 9 | 20.0 | 1:12 | $25,74 M | 49 | 2 | 5 s |
-| 10 | 22.5 | 2:30 | $94,88 M | 51 | 1 | 5 s |
-| 11 | 24.6 | 2:06 | $189,64 M | 77 | 2 | 4 s |
-| 12 | 25.4 | 0:50 | $414,26 M | 85 | 0 | 4 s |
-| 13 | 27.3 | 1:48 | $828,95 M | 93 | 1 | 4 s |
-| 14 | 29.8 | 2:30 | $138,3 M | 74 | 1 | 4 s |
-| 15 | 31.8 | 2:02 | $1,66 B | 101 | 1 | 3 s |
-| 16 | 34.3 | 2:30 | $3 B | 108 | 3 | 3 s |
-| 17 | 36.8 | 2:30 | $2,73 B | 107 | 2 | 2 s |
-| 18 | 39.3 | 2:30 | $1,33 B | 98 | 1 | 2 s |
-| 19 | 41.8 | 2:30 | $1,27 B | 98 | 2 | 2 s |
-| 20 | 42.7 | 0:55 | $9,53 B | 159 | 2 | 2 s |
-| 21 | 44.2 | 1:30 | $8,44 T | 322 | 5 | 2 s |
-| 22 | 45.8 | 1:38 | $17 T | 339 | 2 | 1 s |
-| 23 | 47.7 | 1:51 | $34,06 T | 358 | 3 | 1 s |
-| 24 | 49.5 | 1:50 | $2,61 Qa | 482 | 4 | 1 s |
-| 25 | 52.0 | 2:30 | $280,82 T | 421 | 3 | 1 s |
+| 1 | 6.6 | 6:35 | $18,1 K | 5 | 2 | 395 s |
+| 2 | 9.8 | 3:10 | $45,44 K | 6 | 3 | 141 s |
+| 3 | 11.9 | 2:10 | $161,53 K | 12 | 2 | 57 s |
+| 4 | 13.0 | 1:05 | $331,21 K | 14 | 3 | 24 s |
+| 5 | 13.9 | 0:55 | $709,72 K | 21 | 3 | 18 s |
+| 6 | 15.2 | 1:17 | $1,42 M | 24 | 3 | 17 s |
+| 7 | 16.8 | 1:33 | $2,85 M | 28 | 4 | 16 s |
+| 8 | 17.6 | 0:50 | $23,43 M | 42 | 4 | 9 s |
+| 9 | 18.4 | 0:50 | $139,4 M | 54 | 2 | 5 s |
+| 10 | 20.9 | 2:30 | $81,92 M | 50 | 2 | 5 s |
+| 11 | 23.4 | 2:30 | $37,99 M | 61 | 3 | 5 s |
+| 12 | 25.9 | 2:30 | $114,97 M | 72 | 2 | 5 s |
+| 13 | 27.7 | 1:45 | $295,92 M | 82 | 3 | 5 s |
+| 14 | 30.2 | 2:30 | $395,81 M | 85 | 0 | 4 s |
+| 15 | 32.7 | 2:30 | $320,13 M | 82 | 1 | 2 s |
+| 16 | 34.7 | 2:00 | $2,52 B | 106 | 3 | 2 s |
+| 17 | 35.8 | 1:05 | $6,36 B | 117 | 1 | 1 s |
+| 18 | 36.9 | 1:10 | $13,09 B | 127 | 2 | 1 s |
+| 19 | 37.9 | 1:00 | $29,83 B | 138 | 3 | 1 s |
+| 20 | 39.1 | 1:09 | $60,9 B | 192 | 2 | 1 s |
+| 21 | 40.4 | 1:16 | $121,91 B | 224 | 2 | 1 s |
+| 22 | 41.9 | 1:31 | $244,47 B | 238 | 1 | 1 s |
+| 23 | 43.0 | 1:07 | $487,19 B | 254 | 2 | 1 s |
+| 24 | 44.1 | 1:06 | $989,56 B | 270 | 3 | 1 s |
+| 25 | 45.6 | 1:32 | $2,07 T | 292 | 2 | 1 s |
 | … | | | | | | |
-| 64 | 146.4 | 2:30 | $1,09 Qi | 898 | 1 | 0 s |
-| 65 | 148.9 | 2:30 | $427,69 Qa | 1277 | 0 | 0 s |
-| 66 | 151.4 | 2:30 | $517,28 Qa | 1290 | 1 | 0 s |
+| 57 | 122.1 | 2:30 | $22,64 Qa | 722 | 1 | 0 s |
+| 58 | 124.6 | 2:30 | $50,12 Qa | 756 | 1 | 0 s |
+| 59 | 126.6 | 2:01 | $90,31 Qa | 1186 | 1 | 0 s |
 
-- Final (Estabilizar la economía): minuto **92.0**
-- Al terminar la simulación (min 152): nodos 88/115, figuritas 60/60, logros 45/53, vueltas 67
+- Final (Estabilizar la economía): minuto **67.8**
+- Al terminar la simulación (min 128): nodos 88/115, figuritas 60/60, logros 45/53, vueltas 60
 
 ## Distraído (deja de jugar 2 min a mitad de la vuelta), semilla 1
 
 | Vuelta | Minuto | Duración | Plata máxima ganada | +Credibilidad | Nodos comprados después | Llega a la plata de la vuelta 1 en |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 4.5 | 4:30 | $19,77 K | 5 | 2 | 270 s |
-| 2 | 5.4 | 0:55 | $243,83 K | 10 | 4 | 22 s |
-| 3 | 6.4 | 1:00 | $4,18 M | 25 | 4 | 22 s |
-| 4 | 7.3 | 0:50 | $8,37 M | 34 | 5 | 15 s |
-| 5 | 8.2 | 0:55 | $378,03 M | 60 | 9 | 13 s |
-| 6 | 9.9 | 1:45 | $151,95 B | 118 | 3 | 14 s |
-| 7 | 12.4 | 2:30 | $254,08 B | 123 | 3 | 4 s |
-| 8 | 15.7 | 3:15 | $1,34 B | 90 | 1 | 4 s |
-| 9 | 19.3 | 3:37 | $670,92 M | 82 | 0 | 4 s |
-| 10 | 23.1 | 3:48 | $12,14 B | 115 | 1 | 4 s |
-| 11 | 27.0 | 3:54 | $66,83 B | 149 | 3 | 2 s |
-| 12 | 28.9 | 1:50 | $694,88 B | 185 | 4 | 2 s |
-| 13 | 30.9 | 2:00 | $13,96 T | 236 | 3 | 2 s |
-| 14 | 33.9 | 3:00 | $742,18 B | 241 | 4 | 2 s |
-| 15 | 35.0 | 1:10 | $28,03 T | 353 | 4 | 1 s |
-| 16 | 36.5 | 1:26 | $55,84 T | 371 | 2 | 1 s |
-| 17 | 38.0 | 1:35 | $112,76 T | 390 | 3 | 1 s |
-| 18 | 39.4 | 1:23 | $229,61 T | 411 | 3 | 1 s |
-| 19 | 40.8 | 1:20 | $89,97 T | 473 | 2 | 1 s |
-| 20 | 43.3 | 2:30 | $2,67 Qa | 488 | 1 | 1 s |
-| 21 | 46.5 | 3:15 | $256,62 T | 418 | 1 | 1 s |
-| 22 | 50.2 | 3:37 | $1,62 Qa | 473 | 1 | 0 s |
-| 23 | 54.0 | 3:48 | $7,25 Qa | 520 | 0 | 0 s |
-| 24 | 57.9 | 3:54 | $5,21 Qa | 509 | 0 | 0 s |
-| 25 | 61.8 | 3:57 | $3,91 Qa | 500 | 0 | 0 s |
+| 1 | 4.5 | 4:30 | $32,8 K | 6 | 3 | 270 s |
+| 2 | 5.4 | 0:55 | $78,4 K | 8 | 3 | 26 s |
+| 3 | 6.4 | 1:00 | $2,81 M | 23 | 4 | 24 s |
+| 4 | 7.4 | 0:56 | $5,67 M | 31 | 4 | 16 s |
+| 5 | 8.3 | 0:55 | $167,87 M | 54 | 8 | 15 s |
+| 6 | 10.0 | 1:45 | $89,34 B | 112 | 6 | 16 s |
+| 7 | 12.2 | 2:10 | $610,8 B | 166 | 6 | 5 s |
+| 8 | 15.3 | 3:05 | $628,31 M | 82 | 2 | 4 s |
+| 9 | 18.8 | 3:32 | $1,24 B | 89 | 1 | 3 s |
+| 10 | 22.6 | 3:46 | $1,54 B | 91 | 0 | 3 s |
+| 11 | 26.5 | 3:53 | $4,44 B | 113 | 3 | 3 s |
+| 12 | 27.5 | 1:00 | $1,26 T | 195 | 3 | 2 s |
+| 13 | 29.4 | 1:53 | $2,52 T | 206 | 3 | 1 s |
+| 14 | 31.9 | 2:30 | $4,67 T | 281 | 3 | 1 s |
+| 15 | 33.0 | 1:08 | $9,35 T | 324 | 2 | 1 s |
+| 16 | 35.1 | 2:06 | $18,74 T | 342 | 3 | 1 s |
+| 17 | 36.1 | 0:58 | $37,53 T | 360 | 3 | 1 s |
+| 18 | 38.6 | 2:30 | $55,49 T | 376 | 3 | 1 s |
+| 19 | 41.8 | 3:15 | $8,89 T | 328 | 0 | 1 s |
+| 20 | 45.5 | 3:37 | $87,95 T | 388 | 0 | 1 s |
+| 21 | 49.3 | 3:48 | $63,92 T | 380 | 0 | 1 s |
+| 22 | 53.2 | 3:54 | $43,14 T | 369 | 0 | 1 s |
+| 23 | 57.1 | 3:57 | $137,37 T | 401 | 0 | 1 s |
+| 24 | 61.1 | 3:58 | $48,54 T | 372 | 0 | 1 s |
+| 25 | 65.1 | 3:59 | $121,03 T | 397 | 0 | 1 s |
 | … | | | | | | |
-| 48 | 136.4 | 3:54 | $1,5 Qi | 913 | 0 | 0 s |
-| 49 | 140.3 | 3:57 | $336,15 Qa | 842 | 1 | 0 s |
-| 50 | 144.3 | 3:58 | $2 Qi | 927 | 0 | 0 s |
+| 45 | 124.0 | 3:10 | $4,43 Qa | 653 | 1 | 0 s |
+| 46 | 127.6 | 3:35 | $21,84 Qa | 720 | 0 | 0 s |
+| 47 | 131.4 | 3:47 | $20,09 Qa | 717 | 1 | 0 s |
 
-- Final (Estabilizar la economía): minuto **85.8**
-- Al terminar la simulación (min 146): nodos 83/115, figuritas 60/60, logros 45/53, vueltas 51
+- Final (Estabilizar la economía): minuto **73.1**
+- Al terminar la simulación (min 133): nodos 85/115, figuritas 60/60, logros 45/53, vueltas 48

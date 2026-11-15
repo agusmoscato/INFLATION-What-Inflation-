@@ -179,7 +179,7 @@ static func recommended_node(m: GameModel) -> String:
 	return best
 
 
-## Compra nodos del árbol por prioridad. Si ya están los 6 sellos y le falta poco para el final, junta para el final.
+## Compra nodos del árbol por prioridad. Con los 6 sellos comprados junta para el final (mientras tanto, solo nodos baratos).
 func buy_nodes(m: GameModel) -> void:
 	var guard: int = 0
 	while guard < 30:
@@ -190,7 +190,7 @@ func buy_nodes(m: GameModel) -> void:
 		var best: String = recommended_node(m)
 		if best == "":
 			return
-		if final_ready and m.credibility + 8 * last_gain >= TreeLogic.cost("final") and TreeLogic.cost(best) > TreeLogic.cost("final") * 0.05:
+		if final_ready and TreeLogic.cost(best) > TreeLogic.cost("final") * 0.05:
 			return
 		if not TreeLogic.buy(m, best):
 			return

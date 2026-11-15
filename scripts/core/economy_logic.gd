@@ -259,11 +259,18 @@ static func income_per_sec(m: GameModel) -> BigNumber:
 		k *= float(md["frenzy_mult"])
 	if m.run_time < boost_seconds(m):
 		k *= B("early_boost_mult")
+	if idle_bonus(m):
+		k *= B("idle_mult")
 	if float(md["indexation"]) > 0.0 and monthly_pct(m) >= 50.0:
 		k *= 1.0 + float(md["indexation"])
 	if float(md["infl_pays"]) > 0.0:
 		k *= 1.0 + float(md["infl_pays"]) * ln_price(m) / BigNumber.LN10      # "la inflación te paga": +50 % por cada cero de P
 	return m.base_income.mul_f(k)
+
+
+## "El barrio trabaja solo": si no tocás la empanada por un rato, la producción sube (para quien juega tranquilo).
+static func idle_bonus(m: GameModel) -> bool:
+	return m.combo_idle >= B("idle_after_s") and m.clicks > 0
 
 
 ## Arranque x10: después de cada reforma la moneda nueva trae confianza (`fresh_boost_s`), más lo que sume el árbol.

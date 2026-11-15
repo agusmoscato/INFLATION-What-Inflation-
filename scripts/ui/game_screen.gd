@@ -569,6 +569,8 @@ func _refresh_header(m: GameModel) -> void:
 	ips_label.text = tr("ui.ips") % ips.format()
 	if m.frenzy_left > 0.0:
 		ips_label.text += "   " + tr("ui.frenzy_on") % int(ceil(m.frenzy_left))
+	elif EconomyLogic.idle_bonus(m):
+		ips_label.text += "   " + tr("ui.idle_on") % ("x" + UpgradeIcon._num(EconomyLogic.B("idle_mult")))
 	var era: int = EconomyLogic.era_of(m)
 	era_label.text = tr(GameData.era_def(era)["name_key"])
 	era_label.add_theme_color_override("font_color", GameData.era_def(era)["color"])

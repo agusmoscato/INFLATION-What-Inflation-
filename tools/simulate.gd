@@ -11,12 +11,14 @@ extends SceneTree
 ##   - la vuelta 2 llega a la plata de la vuelta 1 en menos de la mitad del tiempo (y nunca más lenta)
 ##   - ninguna reforma da menos de 5 de Credibilidad; la primera da entre 5 y 10
 ##   - en el primer minuto de la vuelta 1, los clics son la fuente principal de plata (salvo el pasivo, que casi no clickea)
-## Duración (jugador activo): primera reforma 4–6 min, final 50–70 min, 100 % en 3–4 h, vuelta 10 cinco veces más rápida.
+## Duración: activo con primera reforma 4–6 min, final 45–60 min, 100 % en 3–4 h y vuelta 10 cinco veces más rápida;
+## pasivo y distraído llegan al final entre los minutos 60 y 75.
 
 const STEP: float = 0.25
 
 const FIRST_REFORM_MIN: Array = [4.0, 6.0]
-const FINAL_MIN: Array = [50.0, 70.0]
+const FINAL_MIN: Array = [45.0, 60.0]
+const FINAL_CASUAL_MIN: Array = [60.0, 75.0]   ## pasivo y distraído: el juego dura alrededor de una hora también para ellos
 const FULL_MIN: Array = [180.0, 240.0]
 const FIRST_CRED: Array = [5.0, 10.0]
 const MAX_GAP_S: float = 20.0
@@ -197,7 +199,7 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 			"ok": r10 > 0.0 and r1 > 0.0 and r10 * SPEEDUP_10 <= r1, "note": ""})
 	else:
 		checks.append({"name": "Primer renacimiento (min)", "value": first_min, "target": "(informativo)", "ok": first_min > 0.0, "note": ""})
-		checks.append({"name": "Final: Estabilizar la economía (min)", "value": final_min, "target": "(informativo)", "ok": final_min > 0.0, "note": ""})
+		checks.append(_chk("Final: Estabilizar la economía (min)", final_min, FINAL_CASUAL_MIN))
 	var ok: bool = true
 	for c in checks:
 		ok = ok and bool(c["ok"])

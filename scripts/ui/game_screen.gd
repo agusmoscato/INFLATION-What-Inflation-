@@ -100,6 +100,7 @@ var _toast_queue: Array = []          # [[texto, color]] esperando su turno
 var _new_upgrades: Array = []         # mejoras nuevas que llegaron juntas: salen en un solo aviso
 var _new_upg_t: float = 0.0
 var _pause: PauseMenu                  # menú de pausa abierto (el juego entero está frenado)
+var _debug: DebugMenu                  # menú de prueba (F10 con debug.txt)
 var _last_toast: float = -99.0
 
 
@@ -1805,6 +1806,16 @@ func show_offline_report(report: Dictionary) -> void:
 func _input(event: InputEvent) -> void:
 	if is_paused():
 		return                       # la pausa maneja su propio Esc
+	# menú de prueba: F10, solo si hay un debug.txt al lado del ejecutable (no llega a los jugadores)
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F10 and DebugMenu.enabled():
+		if _debug != null and is_instance_valid(_debug):
+			_debug.queue_free()
+			_debug = null
+		else:
+			_debug = DebugMenu.new()
+			add_child(_debug)
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		# Esc: primero cierra la capa abierta (árbol, álbum...); si no hay ninguna, abre la pausa
 		if _overlay != null:

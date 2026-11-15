@@ -51,6 +51,34 @@ func _ready() -> void:
 	await get_tree().create_timer(0.6).timeout
 	if m.run_time <= float(after["tiempo de la vuelta"]):
 		failures.append("al continuar el juego no siguió")
+	# menú de prueba (F10): solo con debug.txt
+	var dbg_path: String = ProjectSettings.globalize_path("res://").path_join("debug.txt")
+	var had_dbg: bool = FileAccess.file_exists(dbg_path)
+	if not had_dbg and DebugMenu.enabled():
+		failures.append("el menú de prueba está habilitado sin debug.txt")
+	var fdbg: FileAccess = FileAccess.open(dbg_path, FileAccess.WRITE)
+	fdbg.store_string("test")
+	fdbg.close()
+	if not DebugMenu.enabled():
+		failures.append("con debug.txt el menú de prueba no se habilita")
+	var c0: int = m.credibility
+	DebugMenu.add_cred(1000)
+	var money0: BigNumber = m.money
+	DebugMenu.money_x10()
+	var t0: float = m.run_time
+	DebugMenu.skip(300.0)
+	if m.credibility != c0 + 1000 or m.money.lt(money0.mul_f(9.9)) or m.run_time < t0 + 299.0:
+		failures.append("el menú de prueba no suma Credibilidad, plata o tiempo como debe")
+	m.tree = {}
+	DebugMenu.unlock_all()
+	if m.tree.has("final") or m.tree.size() != TreeLogic.total() - 1:
+		failures.append("desbloquear todo tiene que comprar todo el árbol menos el centro")
+	_esc_f10()
+	await _frames(2)
+	if g._debug == null:
+		failures.append("F10 no abrió el menú de prueba")
+	if not had_dbg:
+		DirAccess.remove_absolute(dbg_path)
 	SaveSystem.delete_save()
 	DirAccess.remove_absolute(Settings.path)
 	for f in failures:
@@ -82,6 +110,13 @@ func _esc() -> void:
 	up.keycode = KEY_ESCAPE
 	up.pressed = false
 	Input.parse_input_event(up)
+
+
+func _esc_f10() -> void:
+	var ev: InputEventKey = InputEventKey.new()
+	ev.keycode = KEY_F10
+	ev.pressed = true
+	Input.parse_input_event(ev)
 
 
 func _frames(n: int) -> void:

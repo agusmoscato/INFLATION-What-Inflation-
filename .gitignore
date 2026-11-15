@@ -11,3 +11,5 @@ tools/godot*
 
 # rcedit (para el ícono del .exe)
 tools/rcedit*
+# menú de prueba (F10): solo en la máquina del desarrollador
+/debug.txt

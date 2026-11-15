@@ -52,20 +52,30 @@ static func layout(root: Node, vr: Rect2) -> Array:
 	var bad: Array = []
 	_collect(root, items, false, Rect2(), bad)
 	for c in items:
-		var r: Rect2 = (c as Control).get_global_rect()
+		var r: Rect2 = layout_rect(c)
 		if r.position.x < vr.position.x - 1.5 or r.position.y < vr.position.y - 1.5 or r.end.x > vr.end.x + 1.5 or r.end.y > vr.end.y + 1.5:
 			bad.append("FUERA DE LA VENTANA: %s %s (ventana %s)" % [(c as Node).get_path(), _fmt(r), _fmt(vr)])
 	for i in range(items.size()):
 		var a: Control = items[i]
-		var ra: Rect2 = a.get_global_rect()
+		var ra: Rect2 = layout_rect(a)
 		for j in range(i + 1, items.size()):
 			var b: Control = items[j]
 			if a.is_ancestor_of(b) or b.is_ancestor_of(a):
 				continue
-			var inter: Rect2 = ra.intersection(b.get_global_rect())
+			var inter: Rect2 = ra.intersection(layout_rect(b))
 			if inter.size.x > 3.0 and inter.size.y > 3.0 and inter.get_area() > 40.0:
 				bad.append("SE SUPERPONEN: %s y %s (%s)" % [a.get_path(), b.get_path(), _fmt(inter)])
 	return bad
+
+
+## El rectángulo de layout (sin las animaciones momentáneas: el temblor de la inflación, un pop de escala). Así el QA
+## mide dónde quedó cada cosa y no falla por agarrar un texto en medio de un sacudón.
+static func layout_rect(c: Control) -> Rect2:
+	var par: Control = c.get_parent_control()
+	if (c.rotation != 0.0 or c.scale != Vector2.ONE) and par != null:
+		var t: Transform2D = par.get_global_transform()
+		return Rect2(t * c.position, c.size * t.get_scale())
+	return c.get_global_rect()
 
 
 static func _fmt(r: Rect2) -> String:

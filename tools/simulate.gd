@@ -38,7 +38,7 @@ var out_path: String = "res://docs/balance_v2.md"
 func _init() -> void:
 	var hours: float = 5.0
 	var seeds: Array = [1]
-	var profiles: Array = ["activo", "pasivo", "distraido", "autoclicker"]
+	var profiles: Array = ["activo", "pasivo", "distraido", "autoclicker", "gastador"]
 	var qa: bool = false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--hours="):
@@ -242,7 +242,8 @@ func _missing_ach(m: GameModel) -> Array:
 #  Reporte
 # =====================================================================
 const PROFILE_NAME: Dictionary = {"activo": "Activo (clickea mucho)", "pasivo": "Pasivo (casi no clickea, compra lo más barato)",
-	"distraido": "Distraído (deja de jugar 2 min a mitad de la vuelta)"}
+	"distraido": "Distraído (deja de jugar 2 min a mitad de la vuelta)", "autoclicker": "Autoclicker (17 clics/s, compra lo más rentable)",
+	"gastador": "Gastador (autoclicker que en el árbol compra apenas puede el nodo más barato, sin ahorrar)"}
 
 
 func _write_report(results: Array) -> void:

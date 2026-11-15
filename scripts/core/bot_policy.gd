@@ -7,7 +7,10 @@ extends RefCounted
 ##    el 25 % y compra siempre lo más barato que pueda pagar, cada 2 s.
 ##  - "distraido": juega como uno activo pero más lento (4 clics/s) y en las primeras vueltas deja de jugar 2 minutos a
 ##    mitad de la vuelta.
-## Los tres reforman cuando el juego lo aconseja (el botón de reforma late: la Credibilidad que suman por minuto cae
+##  - "autoclicker": 17 clics/s sin parar, compra lo de mejor repago.
+##  - "gastador": como un jugador real con autoclicker (17 clics/s): en el árbol compra apenas puede el nodo más barato
+##    que tenga disponible, sin ahorrar para nada (ni para los sellos ni para el centro).
+## Todos reforman cuando el juego lo aconseja (el botón de reforma late: la Credibilidad que suman por minuto cae
 ## debajo del promedio de la vuelta, el tutorial de la primera vuelta lo pide o están trabados). Nodos: sellos y final primero; después el más barato, con preferencia
 ## NEGOCIOS > EMPANADA > RENACER > INFLACIÓN > FIGURITAS > SUERTE. Abren sobres, hacen chupi y juegan raspaditas.
 
@@ -16,6 +19,7 @@ const PROFILES: Dictionary = {
 	"pasivo": {"cps": 1.0, "catch": 0.3, "react": 3.0, "remark_pct": 25.0, "buy_every": 2.0, "cheap": true, "afk": 0.0},
 	"distraido": {"cps": 4.0, "catch": 0.7, "react": 2.0, "remark_pct": 8.0, "buy_every": 1.5, "cheap": false, "afk": 120.0},
 	"autoclicker": {"cps": 17.0, "catch": 0.9, "react": 1.0, "remark_pct": 4.0, "buy_every": 1.0, "cheap": false, "afk": 0.0},
+	"gastador": {"cps": 17.0, "catch": 0.6, "react": 1.5, "remark_pct": 8.0, "buy_every": 1.0, "cheap": false, "afk": 0.0, "spender": true},
 }
 const BRANCH_W: Dictionary = {"neg": 1.0, "emp": 1.0, "inf": 1.1, "ren": 1.25, "fig": 1.4, "sue": 1.5, "bridge": 1.3, "final": 0.5}
 
@@ -145,7 +149,9 @@ static func cheap_buy(m: GameModel) -> bool:
 ## Reforma cuando el juego lo aconseja (el botón late: trabado, el tutorial de la primera vuelta o "seguir rinde cada vez
 ## menos").
 func _reform_policy(m: GameModel, _dt: float) -> Dictionary:
-	if not EconomyLogic.reform_advised(m):
+	# el activo, con el árbol completo, va por el logro de la vuelta relámpago (reformar antes de los 90 s con 10+)
+	var lightning: bool = profile == "activo" and TreeLogic.complete(m) and not m.achievements.has("fast_run") 		and m.run_time <= 90.0 and EconomyLogic.can_reform(m) and EconomyLogic.reform_gain(m) >= 10
+	if not EconomyLogic.reform_advised(m) and not lightning:
 		return {}
 	var cred_before: int = m.credibility
 	var t_before: float = m.run_time
@@ -185,19 +191,34 @@ static func recommended_node(m: GameModel) -> String:
 
 ## Compra nodos del árbol por prioridad. Con los 6 sellos comprados junta para el final (mientras tanto, solo nodos baratos).
 func buy_nodes(m: GameModel) -> void:
+	if bool(cfg.get("spender", false)):
+		spend_cheapest(m)
+		return
 	var guard: int = 0
-	while guard < 30:
+	while guard < 60:
 		guard += 1
 		var final_ready: bool = not m.tree.has("final") and TreeLogic.requirements_met(m, "final") and not TreeLogic.demo_locked(m, "final")
 		if final_ready and TreeLogic.buy(m, "final"):
 			continue
 		var best: String = recommended_node(m)
-		if best == "":
+		if best == "" or not TreeLogic.buy(m, best):
 			return
-		if final_ready and TreeLogic.cost(best) > TreeLogic.cost("final") * 0.05:
-			return
-		if not TreeLogic.buy(m, best):
-			return
+
+
+## El gastador: compra el nodo más barato que pueda pagar, una y otra vez, sin ahorrar.
+static func spend_cheapest(m: GameModel) -> void:
+	var guard: int = 0
+	while guard < 120 and spend_cheapest_one(m):
+		guard += 1
+
+
+## Compra el nodo más barato que se pueda pagar. true si compró.
+static func spend_cheapest_one(m: GameModel) -> bool:
+	var pick: String = ""
+	for n in GameData.tree:
+		if TreeLogic.can_buy(m, n["id"]) and (pick == "" or TreeLogic.cost(n["id"]) < TreeLogic.cost(pick)):
+			pick = n["id"]
+	return pick != "" and TreeLogic.buy(m, pick)
 
 
 ## Álbum: abre los sobres de regalo, compra sobres si salen menos del 10 % de la plata y hace chupi.

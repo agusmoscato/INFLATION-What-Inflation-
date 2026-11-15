@@ -13,6 +13,8 @@ const QTY: Array = [1, 10, -1]
 const TOAST_SECONDS: float = 3.0
 const TOAST_SECONDS_SLOW: float = 5.5      ## en las primeras vueltas los avisos duran más (da tiempo a leerlos)
 const UPG_BOX_H: float = 2.0 * 80.0 + 6.0   ## dos filas de tarjetas de mejoras
+const EMPANADA_SIZE: Vector2 = Vector2(300, 182)  ## tamaño fijo de la empanada en su panel
+const LEFT_W: float = 370.0                       ## ancho fijo de la columna de la empanada
 
 var world: MarginContainer
 var body: BoxContainer
@@ -268,21 +270,23 @@ func _build_header() -> Control:
 
 func _build_left() -> Control:
 	var col: VBoxContainer = VBoxContainer.new()
-	col.custom_minimum_size = Vector2(360, 0)
+	col.custom_minimum_size = Vector2(LEFT_W, 0)
 	col.add_theme_constant_override("separation", 8)
 	var p: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	p.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(p)
 	backdrop = EraBackdrop.new()       # dibujos tenues de la capa, detrás de la empanada
 	p.add_child(backdrop)
+	# todo lo de este panel tiene alto fijo y arriba de todo va la empanada: nada la empuja ni le cambia el tamaño
+	# (accesorios, calle llena, combo, textos); el espacio que sobre en ventanas más altas queda abajo
 	var v: VBoxContainer = VBoxContainer.new()
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.alignment = BoxContainer.ALIGNMENT_BEGIN
 	v.add_theme_constant_override("separation", 6)
 	p.add_child(v)
 	empanada = EmpanadaButton.new()
 	empanada.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	empanada.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	empanada.custom_minimum_size = Vector2(250, 170)
+	empanada.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	empanada.custom_minimum_size = EMPANADA_SIZE
 	empanada.pressed.connect(func(_pos: Vector2) -> void: Economy.click())
 	v.add_child(empanada)
 	click_label = UIKit.label("", 17, Chalk.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -294,16 +298,23 @@ func _build_left() -> Control:
 	combo_bar.custom_minimum_size = Vector2(220, 12)
 	combo_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(combo_bar)
-	barrio = BarrioView.new()          # la calle del barrio que se va llenando
+	barrio = BarrioView.new()          # la calle del barrio que se va llenando (alto fijo)
 	v.add_child(barrio)
+	var rest: Control = Control.new()
+	rest.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rest.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(rest)
 	reform_btn = Button.new()
 	reform_btn.custom_minimum_size = Vector2(0, 62)
+	reform_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # el texto largo va en dos renglones: no ensancha la columna
 	UIKit.style_button(reform_btn, UIKit.C_GOLD, 19)
 	reform_btn.pressed.connect(_open_reform_dialog)
 	col.add_child(reform_btn)
 	reform_hint = UIKit.label("", 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	reform_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	reform_hint.custom_minimum_size = Vector2(300, 0)
+	reform_hint.custom_minimum_size = Vector2(300, 44)     # siempre dos renglones: el panel de arriba no cambia de alto
+	reform_hint.max_lines_visible = 2
+	reform_hint.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	col.add_child(reform_hint)
 	left_col = col
 	return col

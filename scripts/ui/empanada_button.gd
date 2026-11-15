@@ -4,6 +4,8 @@ extends Control
 ## con mipmaps); todo lo demás se dibuja por código encima: la cara (ojos que siguen el mouse, parpadeo, boca en "o"
 ## al clic, pánico, transpiración), los cachetes, el vapor, los accesorios del árbol y el brillo dorado del final.
 ## Squash & stretch al clic; transpira con inflación alta o cerca de la pared y entra en pánico en la hiperinflación.
+## El tamaño y la posición del control nunca cambian: el squash, el temblor y los accesorios se aplican solo al dibujo
+## (draw_set_transform), así nada empuja ni agranda la empanada.
 ## Con calidad de tiza Baja se mantiene la textura y se apagan el vapor y el halo.
 
 signal pressed(global_pos: Vector2)
@@ -42,6 +44,8 @@ var streak: float = 0.0
 var show_face: bool = true
 
 var _tween: Tween
+var _sq: Vector2 = Vector2.ONE          # squash del clic (solo visual)
+var _rot: float = 0.0                   # inclinación del clic o temblor de pánico (solo visual)
 var _t: float = 0.0
 var _o_mouth: float = 0.0
 var _blink: float = 0.0
@@ -55,12 +59,16 @@ func _ready() -> void:
 		custom_minimum_size = Vector2(280, 220)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	_update_pivot()
-	resized.connect(_update_pivot)
 
 
-func _update_pivot() -> void:
-	pivot_offset = Vector2(size.x / 2.0, size.y * 0.88)
+## Punto fijo del squash (la base de la empanada).
+func _pivot() -> Vector2:
+	return Vector2(size.x / 2.0, size.y * 0.88)
+
+
+## Squash visual actual (para el test de layout: tiene que volver a 1 exacto).
+func squash() -> Vector2:
+	return _sq
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -74,12 +82,15 @@ func poke() -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	_o_mouth = 0.35
-	scale = Vector2(1.28, 0.72)
-	rotation = randf_range(-0.05, 0.05)
+	_sq = Vector2(1.28, 0.72)
+	_rot = randf_range(-0.05, 0.05)
 	_tween = create_tween()
-	_tween.tween_property(self, "scale", Vector2(0.86, 1.2), 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_tween.tween_property(self, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	_tween.parallel().tween_property(self, "rotation", 0.0, 0.42).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	_tween.tween_property(self, "_sq", Vector2(0.86, 1.2), 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_tween.tween_property(self, "_sq", Vector2.ONE, 0.42).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	_tween.parallel().tween_property(self, "_rot", 0.0, 0.42).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	_tween.tween_callback(func() -> void:
+		_sq = Vector2.ONE              # vuelve a escala 1 exacta
+		_rot = 0.0)
 
 
 func _process(delta: float) -> void:
@@ -89,8 +100,9 @@ func _process(delta: float) -> void:
 	_blink = maxf(0.0, _blink - delta)
 	if _blink <= 0.0 and fmod(_t, 3.6) < delta:
 		_blink = 0.13
-	if rate > 0.5 and (_tween == null or not _tween.is_running()):
-		rotation = sin(_t * 38.0) * 0.025          # temblor de pánico
+	if _tween == null or not _tween.is_running():
+		_sq = Vector2.ONE
+		_rot = sin(_t * 38.0) * 0.025 if rate > 0.5 else 0.0      # temblor de pánico (solo visual)
 	queue_redraw()
 
 
@@ -119,6 +131,8 @@ func _fancy() -> bool:
 
 func _draw() -> void:
 	_layout()
+	var pv: Vector2 = _pivot()
+	draw_set_transform_matrix(Transform2D(_rot, _sq, 0.0, pv) * Transform2D(0.0, -pv))
 	var c: Vector2 = T(CENTER_UV)
 	if gold and _fancy():
 		# halo dorado que late, detrás del cuerpo

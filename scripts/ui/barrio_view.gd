@@ -5,15 +5,17 @@ extends Control
 ## tiza. Abajo, la vereda cambia con la capa de la vuelta (tierra, vereda con faroles, ciudad, finanzas, hiperinflación).
 ## Rendimiento: los dibujos se rehacen solo cuando cambia algo (cantidades o capa); el humo es una capa aparte, liviana.
 
-const ROW_H: float = 27.0
-const ICON: float = 25.0
-const COLS: int = 2
+## Alto fijo: la calle nunca empuja a la empanada. Con muchos tipos de negocio pasa a 3 columnas y las filas se achican.
+const HEIGHT: float = 92.0
+const ROW_H_MAX: float = 27.0
 const CAPS: Array = [7, 6, 4]            ## dibujitos por tipo según la calidad (alta, media, baja)
 
 var _sig: String = ""
 var _rows: Array = []                   ## [{id, n}]
 var _era: int = 1
 var _smoke: Control
+var _cols: int = 2
+var _row_h: float = ROW_H_MAX
 
 
 func _init() -> void:
@@ -40,13 +42,14 @@ func refresh(m: GameModel, era: int) -> void:
 		if n > 0:
 			rows.append({"id": def["id"], "n": mini(n, c)})
 			sig += "%s:%d," % [def["id"], mini(n, c)]
-	var lines: int = int(ceil(float(rows.size()) / float(COLS)))
-	custom_minimum_size = Vector2(0, 12.0 + ROW_H * float(lines)) if not rows.is_empty() else Vector2.ZERO
-	visible = not rows.is_empty()
+	custom_minimum_size = Vector2(0, HEIGHT)
 	if sig != _sig:
 		_sig = sig
 		_rows = rows
 		_era = era
+		_cols = 2 if rows.size() <= 6 else 3
+		var lines: int = maxi(1, int(ceil(float(rows.size()) / float(_cols))))
+		_row_h = minf(ROW_H_MAX, (HEIGHT - 10.0) / float(lines))
 		queue_redraw()
 	if Settings.quality < 2 and _has("choripan"):
 		_smoke.queue_redraw()
@@ -60,21 +63,28 @@ func _has(id: String) -> bool:
 
 
 func _cell(i: int) -> Rect2:
-	var w: float = size.x / float(COLS)
-	return Rect2(Vector2(w * float(i % COLS), 4.0 + ROW_H * float(i / COLS)), Vector2(w, ROW_H))
+	var w: float = size.x / float(_cols)
+	return Rect2(Vector2(w * float(i % _cols), 4.0 + _row_h * float(i / _cols)), Vector2(w, _row_h))
+
+
+func _icon() -> float:
+	return _row_h - 2.0
 
 
 func _draw() -> void:
+	if _rows.is_empty():
+		return
 	_draw_street()
 	var c: int = cap()
+	var ic: float = _icon()
 	for i in range(_rows.size()):
 		var r: Rect2 = _cell(i)
 		var id: String = _rows[i]["id"]
 		var n: int = int(_rows[i]["n"])
-		var step: float = minf(ICON * 0.98, (r.size.x - ICON - 6.0) / float(maxi(1, c - 1)))
+		var step: float = minf(ic * 0.98, (r.size.x - ic - 6.0) / float(maxi(1, c - 1)))
 		for k in range(n):
 			var p: Vector2 = r.position + Vector2(4.0 + step * float(k), 1.0)
-			ChalkIcons.draw(self, id, Rect2(p, Vector2(ICON, ICON)), k * 13 + i)
+			ChalkIcons.draw(self, id, Rect2(p, Vector2(ic, ic)), k * 13 + i)
 
 
 ## La vereda de abajo y los detalles de cada capa (una línea de tiza, faroles, edificios, signos de $, llamas).
@@ -104,8 +114,9 @@ func _draw_smoke() -> void:
 			continue
 		var r: Rect2 = _cell(i)
 		var n: int = int(_rows[i]["n"])
-		var step: float = minf(ICON * 0.98, (r.size.x - ICON - 6.0) / float(maxi(1, cap() - 1)))
+		var ic: float = _icon()
+		var step: float = minf(ic * 0.98, (r.size.x - ic - 6.0) / float(maxi(1, cap() - 1)))
 		for k in range(0, n, 3):
 			var f: float = fmod(t * 0.6 + float(k) * 0.37, 1.0)
-			var p: Vector2 = r.position + Vector2(4.0 + step * float(k) + ICON * 0.5 + sin(t * 2.0 + k) * 2.0, 2.0 - f * 10.0)
+			var p: Vector2 = r.position + Vector2(4.0 + step * float(k) + ic * 0.5 + sin(t * 2.0 + k) * 2.0, 2.0 - f * 10.0)
 			_smoke.draw_circle(p, 1.5 + f * 2.5, Color(Chalk.WHITE, 0.3 * (1.0 - f)))

@@ -5,6 +5,7 @@ signal clicked(result: Dictionary)          ## {value, crit, combo}
 signal business_bought(id: String, amount: int)
 signal milestone(id: String, count: int)
 signal upgrade_bought(id: String)
+signal upgrade_new(id: String)              ## apareció una mejora nueva en la fila
 signal node_bought(id: String)
 signal remarked(seconds: float, manual: bool)
 signal bill_spawn(bill_id: int)
@@ -14,7 +15,7 @@ signal event_choice(id: String)             ## se abrió una noticia (10 s para 
 signal event_choice_done(id: String, idx: int)
 signal event_ended(id: String)
 signal unlock(feature: String)
-signal collapse                             ## "¡La economía colapsó! Hacé la reforma"
+signal collapse                             ## trabado: "Los precios se te escaparon. ¡Hacé la reforma!"
 signal page_done(page: int)
 signal pack_opened
 signal sticker_won(id: String)

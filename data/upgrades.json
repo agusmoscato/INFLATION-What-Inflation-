@@ -3,25 +3,25 @@
     {
       "suffix": "1",
       "owned": 1,
-      "cost_mult": "10",
+      "cost_mult": "6",
       "mult": 2.0
     },
     {
       "suffix": "2",
       "owned": 5,
-      "cost_mult": "60",
+      "cost_mult": "40",
       "mult": 2.0
     },
     {
       "suffix": "3",
       "owned": 15,
-      "cost_mult": "600",
+      "cost_mult": "400",
       "mult": 2.0
     },
     {
       "suffix": "4",
       "owned": 40,
-      "cost_mult": "2e4",
+      "cost_mult": "1.5e4",
       "mult": 2.0
     }
   ],

@@ -35,6 +35,7 @@ func flush() -> void:
 			"business_bought": EventBus.business_bought.emit(a[0], a[1])
 			"milestone": EventBus.milestone.emit(a[0], a[1])
 			"upgrade_bought": EventBus.upgrade_bought.emit(a[0])
+			"upgrade_new": EventBus.upgrade_new.emit(a[0])
 			"node_bought": EventBus.node_bought.emit(a[0])
 			"remarked": EventBus.remarked.emit(a[0], a[1])
 			"bill_spawn": EventBus.bill_spawn.emit(a[0])

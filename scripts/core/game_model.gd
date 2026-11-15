@@ -30,8 +30,15 @@ var pending_choice: Dictionary = {}                ## {id, remaining, total}
 var auto_click_acc: float = 0.0
 var manager_timer: float = 0.0
 var auto_scratch_timer: float = 0.0
-var collapse_shown: bool = false
+var collapse_shown: bool = false                  ## ya se avisó de la traba en esta racha
 var max_rate_run: float = 0.0
+var stuck_t: float = 0.0                           ## segundos seguidos sin poder comprar nada
+var stuck_check: float = 0.0
+var stuck_bought: int = 0
+var revealed: Dictionary = {}                      ## mejoras que ya aparecieron en la fila de esta vuelta
+var reveal_cd: float = 2.0
+var gain_hist: Array = []                          ## Credibilidad posible cada 5 s (para el consejo de reforma; no se guarda)
+var gain_hist_t: float = 0.0
 
 # ---- permanente ----
 var credibility: int = 0                           ## sin gastar
@@ -64,6 +71,7 @@ var max_carts: int = 0
 var max_tier: int = 0
 var max_upgrades: int = 0
 var max_rate_pct: float = 0.0
+var max_price_l10: float = 0.0                     ## ceros del nivel de precios más alto que se vio en una vuelta
 var time_played: float = 0.0
 var achievements: Dictionary = {}
 var saved_unix: float = 0.0
@@ -138,13 +146,14 @@ func to_dict() -> Dictionary:
 		"frenzy_left": frenzy_left, "clickfrenzy_left": clickfrenzy_left, "bill_timer": bill_timer,
 		"event_timer": event_timer, "active_events": active_events.duplicate(true), "manager_timer": manager_timer,
 		"auto_scratch_timer": auto_scratch_timer, "collapse_shown": collapse_shown, "max_rate_run": max_rate_run,
+		"stuck_t": stuck_t, "revealed": revealed.duplicate(), "reveal_cd": reveal_cd,
 		"credibility": credibility, "cred_total": cred_total, "lifetime_earned": lifetime_earned.to_save(), "tree": tree.duplicate(), "reforms": reforms,
 		"runs": runs.duplicate(true), "best_run": best_run.to_save(), "fastest_run": fastest_run, "lazy_run": lazy_run,
 		"early_remark": early_remark, "album": album.duplicate(), "zeros_cut": zeros_cut, "won": won,
 		"won_notified": won_notified, "demo_finished": demo_finished,
 		"clicks": clicks, "crits": crits, "max_combo": max_combo, "remarks": remarks, "bills": bills,
 		"bills_missed": bills_missed, "frenzies": frenzies, "events_seen": events_seen, "max_buildings": max_buildings,
-		"max_carts": max_carts, "max_tier": max_tier, "max_upgrades": max_upgrades, "max_rate_pct": max_rate_pct,
+		"max_carts": max_carts, "max_tier": max_tier, "max_upgrades": max_upgrades, "max_rate_pct": max_rate_pct, "max_price_l10": max_price_l10,
 		"time_played": time_played, "achievements": achievements.duplicate(), "unlocked": unlocked.duplicate(),
 		"tutorial_done": tutorial_done, "free_packs_pending": free_packs_pending,
 		"stickers": stickers.duplicate(), "packs_opened": packs_opened, "trades": trades, "secret_seen": secret_seen,
@@ -187,6 +196,14 @@ func from_dict(d: Dictionary) -> bool:
 	auto_scratch_timer = float(d.get("auto_scratch_timer", 0.0))
 	collapse_shown = bool(d.get("collapse_shown", false))
 	max_rate_run = float(d.get("max_rate_run", 0.0))
+	stuck_t = float(d.get("stuck_t", 0.0))
+	reveal_cd = float(d.get("reveal_cd", 2.0))
+	revealed = {}
+	for k in d.get("revealed", upgrades):
+		if GameData.upgrade_idx.has(k):
+			revealed[k] = true
+	for k in upgrades:
+		revealed[k] = true
 	credibility = int(d.get("credibility", 0))
 	cred_total = int(d.get("cred_total", 0))
 	lifetime_earned = _bn(d, "lifetime_earned")
@@ -222,6 +239,7 @@ func from_dict(d: Dictionary) -> bool:
 	max_tier = int(d.get("max_tier", 0))
 	max_upgrades = int(d.get("max_upgrades", 0))
 	max_rate_pct = float(d.get("max_rate_pct", 0.0))
+	max_price_l10 = float(d.get("max_price_l10", 0.0))
 	time_played = float(d.get("time_played", 0.0))
 	achievements = {}
 	for k in d.get("achievements", {}):

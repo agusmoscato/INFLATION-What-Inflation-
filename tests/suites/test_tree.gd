@@ -57,13 +57,14 @@ func run(t) -> void:
 	var me: GameModel = GameModel.new(3)
 	me.credibility = 1000
 	TreeLogic.buy(me, "emp_1")
-	t.near(EconomyLogic.click_value(me).to_float(), 2.0, "Empanada de horno: +1 por clic")
+	t.near(EconomyLogic.click_value(me).to_float(), 2.0, "Empanada de horno: clic x2")
 	TreeLogic.buy(me, "neg_1")
 	me.owned["kiosco"] = 1
 	me.dirty = true
-	t.near(EconomyLogic.income_per_sec(me).to_float(), 4.0 * 1.5, "Socio del barrio: producción x1,5")
+	t.near(EconomyLogic.income_per_sec(me).to_float(), 2.0 * 2.0, "Socio del barrio: producción x2")
+	t.eq(int((me.mods["start_biz"] as Dictionary).get("empanadas", 0)), 5, "Socio del barrio: empezás con 5 carritos")
 	TreeLogic.buy(me, "inf_1")
-	t.near(EconomyLogic.infl_speed(me), 0.92, "Precios cuidados: inflación x0,92")
+	t.near(EconomyLogic.infl_speed(me), 0.8, "Precios cuidados: inflación -20 %")
 	TreeLogic.buy(me, "fig_1")
 	t.check(TreeLogic.has(me, "album") and me.free_packs_pending >= 1, "el nodo del álbum lo desbloquea con un sobre de regalo")
 	TreeLogic.buy(me, "sue_1")
@@ -71,7 +72,7 @@ func run(t) -> void:
 	t.check(GambleLogic.unlocked(me), "el nodo de la raspadita la desbloquea")
 	TreeLogic.buy(me, "ren_1")
 	me.run_earned = BigNumber.from_float(1e6)
-	t.near(EconomyLogic.reform_gain_f(me), 4.0 * 1.2, "Memoria colectiva: +20 % de Credibilidad")
+	t.near(EconomyLogic.reform_gain_f(me), EconomyLogic.cred_curve(6.0) * 1.25, "Memoria colectiva: +25 % de Credibilidad")
 	TreeLogic.buy(me, "neg_2")
 	TreeLogic.buy(me, "neg_2b")
 	me.collapse_shown = true

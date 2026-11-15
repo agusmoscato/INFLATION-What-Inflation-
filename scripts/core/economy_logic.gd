@@ -58,7 +58,7 @@ static func recalc(m: GameModel) -> void:
 				all_mult *= float(fx["value"])
 	var buildings: int = m.total_businesses()
 	var pages: int = StickerLogic.pages_done(m)
-	var gm: float = float(md["prod_mult"]) * all_mult
+	var gm: float = float(md["prod_mult"]) * all_mult * cred_bonus(m)
 	gm *= 1.0 + float(md["album_income"])
 	gm *= 1.0 + float(md["collection"]) * float(m.stickers.size())
 	gm *= 1.0 + float(md["gold_bonus"]) * float(golden_owned(m))
@@ -78,6 +78,11 @@ static func recalc(m: GameModel) -> void:
 	m.base_income = base
 	m.click_mult = cm * (1.0 + float(md["click_per_building"]) * float(buildings))
 	m.click_pct = cp
+
+
+## La Credibilidad ganada en total da confianza: +`cred_prod` (1 %) de producción por punto (aunque esté gastada).
+static func cred_bonus(m: GameModel) -> float:
+	return 1.0 + B("cred_prod") * float(m.cred_total)
 
 
 # =====================================================================
@@ -116,10 +121,96 @@ static func infl_speed(m: GameModel) -> float:
 	return float(m.mods["infl_speed"]) * maxf(0.3, 1.0 - float(m.mods["album_inflation"])) * event_mult(m, "infl_mult")
 
 
-## Tasa instantánea (por segundo) sin contar el congelamiento: r = A · velocidad · e^(t/T), con t = tiempo de la vuelta.
-## Sube sola durante la vuelta (se duplica cada ~54 s): esa es la pared. El árbol baja la velocidad.
+## Progreso de la vuelta: ceros ganados en la vuelta / (ceros de tu mejor vuelta + `infl_ref_ahead`), como mínimo
+## `infl_ref_min`. La pared queda un poco más allá de tu récord: cada vuelta puede superar a la anterior.
+## La inflación depende de esto y no del reloj: si no avanzás, no se acelera; y como cada vuelta llega más rápido al
+## mismo progreso, cada vuelta acumula menos inflación.
+static func progress(m: GameModel) -> float:
+	var d: float = m.run_earned.log10()
+	if is_inf(d) or d <= 0.0:
+		return 0.0
+	var ref: float = B("infl_ref_min")
+	if not m.best_run.is_zero():
+		ref = maxf(ref, m.best_run.log10() + B("infl_ref_ahead"))
+	return d / ref
+
+
+## Las primeras vueltas tienen una inflación más suave (vuelta 1, 2, 3...).
+static func infl_soft(m: GameModel) -> float:
+	var arr: Array = GameData.balance["infl_soft"]
+	return float(arr[mini(m.reforms, arr.size() - 1)])
+
+
+## Tope de la vuelta: los precios no pasan de x10^(tope), que crece con las reformas.
+static func ln_cap(m: GameModel) -> float:
+	return BigNumber.LN10 * minf(B("infl_cap0") + B("infl_cap_step") * float(m.reforms), B("infl_cap_max"))
+
+
+## Un clic sin combo ni frenesí (para el freno y para lo que "está al alcance").
+static func base_click_value(m: GameModel) -> BigNumber:
+	ensure_fresh(m)
+	var v: BigNumber = BigNumber.from_float((B("click_base") + float(m.mods["click_add"])) * m.click_mult)
+	if m.click_pct > 0.0:
+		v = v.add(m.base_income.mul_f(m.click_pct))
+	return v
+
+
+## Lo que el negocio más barato costaría sin inflación (con el árbol y lo que ya tenés).
+static func cheapest_nominal(m: GameModel) -> BigNumber:
+	ensure_fresh(m)
+	var best: BigNumber = null
+	for def in GameData.businesses:
+		if not business_available(m, def):
+			continue
+		var c: BigNumber = def["base_cost"].mul(growth_pow(float(m.owned_count(def["id"])))).mul_f(float(m.mods["cost_mult"]))
+		if best == null or c.lt(best):
+			best = c
+	return best if best != null else BigNumber.one()
+
+
+## Freno: ln P máximo para que el negocio más barato nunca cueste más que `brake_s` segundos de lo que ganás produciendo
+## más `brake_cps` clic por segundo (12 s con 1 clic/s: alcanza aunque casi no cliquees). Si la inflación se va a pasar,
+## se frena sola (y si hace falta, los precios bajan).
+static func brake_allowance(m: GameModel) -> BigNumber:
+	ensure_fresh(m)
+	return m.base_income.add(base_click_value(m).mul_f(B("brake_cps"))).mul_f(B("brake_s"))
+
+
+static func ln_brake(m: GameModel) -> float:
+	var allowed: BigNumber = brake_allowance(m)
+	var nominal: BigNumber = cheapest_nominal(m)
+	if allowed.is_zero():
+		return -INF
+	return allowed.div(nominal).log10() * BigNumber.LN10 / maxf(0.05, float(m.mods["cost_p_exp"]))
+
+
+## Hasta dónde puede llegar ln P ahora mismo (el freno o el tope de la vuelta, lo que sea menor). Puede ser negativo:
+## si ni con precios x1 el negocio más barato está al alcance, hay deflación (hasta x1/1000).
+static func ln_limit(m: GameModel) -> float:
+	var floor_ln: float = -BigNumber.LN10 * B("deflation_max_dec") if m.run_time >= B("deflation_after_s") else 0.0
+	return maxf(floor_ln, minf(ln_cap(m), ln_brake(m)))
+
+
+## ¿La inflación está frenada (cerca del freno o del tope)?
+static func braked(m: GameModel) -> bool:
+	return ln_limit(m) - m.ln_p < B("brake_soft") * 0.5
+
+
+## Tasa sin freno: r = A · velocidad · suavidad · e^(k · progreso).
+static func raw_rate(m: GameModel) -> float:
+	return B("infl_base") * infl_speed(m) * infl_soft(m) * exp(minf(B("infl_k") * progress(m), 40.0))
+
+
+## Tasa instantánea (por segundo) sin contar el congelamiento. Sube con el progreso de la vuelta y se apaga al
+## acercarse al freno o al tope. El árbol baja la velocidad.
 static func rate_per_sec(m: GameModel) -> float:
-	return B("infl_base") * exp(m.run_time / B("infl_T")) * infl_speed(m)
+	var room: float = ln_limit(m) - m.ln_p
+	return raw_rate(m) * clampf(room / B("brake_soft"), 0.0, 1.0)
+
+
+## Presión inflacionaria "mensual" sin el freno (lo que muestra el cartel de inflación frenada), en %.
+static func raw_monthly_pct(m: GameModel) -> float:
+	return (exp(raw_rate(m) * B("month_seconds")) - 1.0) * 100.0
 
 
 ## Inflación "mensual" que se muestra (1 mes = 10 s), en %.
@@ -157,13 +248,18 @@ static func income_per_sec(m: GameModel) -> BigNumber:
 	var k: float = event_mult(m, "prod_mult")
 	if m.frenzy_left > 0.0:
 		k *= float(md["frenzy_mult"])
-	if m.run_time < float(md["early_boost_s"]):
+	if m.run_time < boost_seconds(m):
 		k *= B("early_boost_mult")
 	if float(md["indexation"]) > 0.0 and monthly_pct(m) >= 50.0:
 		k *= 1.0 + float(md["indexation"])
 	if float(md["infl_pays"]) > 0.0:
 		k *= 1.0 + float(md["infl_pays"]) * ln_price(m) / BigNumber.LN10      # "la inflación te paga": +50 % por cada cero de P
 	return m.base_income.mul_f(k)
+
+
+## Arranque x10: después de cada reforma la moneda nueva trae confianza (`fresh_boost_s`), más lo que sume el árbol.
+static func boost_seconds(m: GameModel) -> float:
+	return float(m.mods["early_boost_s"]) + (B("fresh_boost_s") if m.reforms > 0 else 0.0)
 
 
 static func combo_mult(m: GameModel) -> float:
@@ -294,20 +390,68 @@ static func upgrade_cost(m: GameModel, u: Dictionary) -> BigNumber:
 	return u["cost"].mul(cost_factor(m))
 
 
+## Ingreso "de todos los días": producción sin frenesí ni eventos más unos clics tranquilos por segundo.
+static func steady_income(m: GameModel) -> BigNumber:
+	ensure_fresh(m)
+	return m.base_income.add(base_click_value(m).mul_f(B("reach_cps")))
+
+
+## Al alcance: cuesta como mucho `reach_s` segundos de ingreso (o lo que ya tenés). Las demás quedan en "Próximas".
+static func upgrade_in_reach(m: GameModel, u: Dictionary) -> bool:
+	var c: BigNumber = upgrade_cost(m, u)
+	return c.le(m.money) or c.le(steady_income(m).mul_f(B("reach_s")))
+
+
+## La mejora ya apareció en la fila (se revelan de a una, con pausa en las primeras vueltas).
+static func upgrade_shown(m: GameModel, u: Dictionary) -> bool:
+	return m.revealed.has(u["id"]) and upgrade_visible(m, u)
+
+
+## Mejoras en la fila, de la más barata a la más cara.
 static func visible_upgrades(m: GameModel) -> Array:
 	var out: Array = []
 	for u in GameData.upgrades:
-		if upgrade_visible(m, u):
+		if upgrade_shown(m, u):
 			out.append(u)
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["cost"].lt(b["cost"]))
 	return out
+
+
+## "Próximas": desbloqueadas pero todavía lejos (más de `reach_s` de ingreso). Las más baratas primero.
+## (Las que ya están al alcance esperan su turno sin mostrarse: aparecen de a una, como novedad.)
+static func upcoming_upgrades(m: GameModel, limit: int = 4) -> Array:
+	var out: Array = []
+	for u in GameData.upgrades:
+		if upgrade_visible(m, u) and not m.revealed.has(u["id"]) and not upgrade_in_reach(m, u):
+			out.append(u)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["cost"].lt(b["cost"]))
+	return out.slice(0, limit)
+
+
+## Revela la próxima mejora al alcance (la más barata). Devuelve su id o "".
+static func reveal_next(m: GameModel) -> String:
+	var pick: Dictionary = {}
+	for u in GameData.upgrades:
+		if m.revealed.has(u["id"]) or not upgrade_visible(m, u) or not upgrade_in_reach(m, u):
+			continue
+		if pick.is_empty() or (u["cost"] as BigNumber).lt(pick["cost"]):
+			pick = u
+	if pick.is_empty():
+		return ""
+	m.revealed[pick["id"]] = true
+	m.push("upgrade_new", [pick["id"]])
+	return pick["id"]
+
+
+static func reveal_pace(m: GameModel) -> float:
+	return B("reveal_pace_early") if m.reforms < int(B("slow_runs")) else B("reveal_pace")
 
 
 static func buy_upgrade(m: GameModel, id: String) -> bool:
 	if not GameData.upgrade_idx.has(id):
 		return false
 	var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[id]]
-	if not upgrade_visible(m, u):
+	if not upgrade_shown(m, u):
 		return false
 	var cost: BigNumber = upgrade_cost(m, u)
 	if cost.gt(m.money):
@@ -348,7 +492,7 @@ static func candidates(m: GameModel, biz_only: bool = false) -> Array:
 	if biz_only:
 		return out
 	for u in GameData.upgrades:
-		if not upgrade_visible(m, u):
+		if not upgrade_shown(m, u):
 			continue
 		var fx: Dictionary = u["fx"]
 		var v: float = float(fx["value"])
@@ -372,13 +516,16 @@ static func candidates(m: GameModel, biz_only: bool = false) -> Array:
 
 
 ## Compra el mejor candidato asequible (o uno casi tan bueno). true si compró algo.
-static func smart_buy(m: GameModel, tolerance: float = 1.8, biz_only: bool = false) -> bool:
+## Solo compara con lo que se puede pagar en menos de `horizon` segundos (nadie ahorra media hora para una sola cosa).
+static func smart_buy(m: GameModel, tolerance: float = 1.8, biz_only: bool = false, horizon: float = 45.0) -> bool:
 	var cands: Array = candidates(m, biz_only)
 	if cands.is_empty():
 		return false
+	var reach: BigNumber = BigNumber.max_of(m.money, m.money.add(steady_income(m).mul_f(horizon)))
 	var best_payback: float = INF
 	for c in cands:
-		best_payback = minf(best_payback, float(c["payback"]))
+		if (c["cost"] as BigNumber).le(reach):
+			best_payback = minf(best_payback, float(c["payback"]))
 	var pick: Dictionary = {}
 	var pick_payback: float = INF
 	for c in cands:
@@ -399,7 +546,7 @@ static func anything_affordable(m: GameModel) -> bool:
 		if business_available(m, def) and business_cost(m, def, 1).le(m.money):
 			return true
 	for u in GameData.upgrades:
-		if upgrade_visible(m, u) and upgrade_cost(m, u).le(m.money):
+		if upgrade_shown(m, u) and upgrade_cost(m, u).le(m.money):
 			return true
 	return TreeLogic.any_affordable(m)
 
@@ -607,62 +754,102 @@ static func update_events(m: GameModel, dt: float) -> void:
 # =====================================================================
 #  Reforma monetaria (renacer)
 # =====================================================================
-## Credibilidad base de una vuelta según lo máximo que se ganó en ella: k · (log10(ganado) − c)^p (logarítmica, no explota).
-static func cred_of(earned: BigNumber) -> float:
-	var l: float = earned.log10()
-	if is_inf(l) or l <= B("cred_c"):
+## Credibilidad de una vuelta según lo máximo que se ganó en ella: k · (log10(ganado) − c)^p. Se cobra completa (no hace
+## falta igualar la mejor vuelta) y crece con cada vuelta porque cada vuelta llega más lejos.
+static func cred_curve(x: float) -> float:
+	if is_inf(x) or x <= B("cred_c"):
 		return 0.0
-	return B("cred_k") * pow(l - B("cred_c"), B("cred_p"))
+	return B("cred_k") * pow(x - B("cred_c"), B("cred_p"))
 
 
-## Cuánto cuenta la vuelta: completa si iguala o supera tu mejor vuelta; nada si quedó más de `cred_window` ceros abajo
-## (así no conviene reformar a los 20 segundos una y otra vez). Con la economía colapsada cuenta al menos un 15 %.
-static func best_factor(m: GameModel) -> float:
-	if m.best_run.is_zero():
-		return 1.0
-	var l: float = m.run_earned.log10()
-	var best: float = m.best_run.log10()
-	if is_inf(l):
-		return 0.0
-	var w: float = B("cred_window")
-	var f: float = clampf((l - (best - w)) / w, 0.0, 1.0)
-	if m.collapse_shown:
-		f = maxf(f, B("cred_collapse_floor"))      # contra la pared nadie queda trabado sin poder reformar
-	return f
+## Multiplicador de Credibilidad (árbol + álbum).
+static func cred_mult(m: GameModel) -> float:
+	ensure_fresh(m)
+	var md: Dictionary = m.mods
+	return float(md["cred_mult"]) * (1.0 + float(md["album_cred"])) * (1.0 + float(md["cred_per_page"]) * float(StickerLogic.pages_done(m)))
 
 
 ## Credibilidad que daría reformar ahora, sin redondear.
 static func reform_gain_f(m: GameModel) -> float:
 	ensure_fresh(m)
-	var md: Dictionary = m.mods
-	var k: float = float(md["cred_mult"]) * (1.0 + float(md["album_cred"])) * (1.0 + float(md["cred_per_page"]) * float(StickerLogic.pages_done(m)))
-	var g: float = cred_of(m.run_earned) * best_factor(m) * k
-	return g + float(md["cred_flat"]) if g >= 1.0 else g
+	var g: float
+	if lifetime_mode():
+		g = maxf(0.0, cred_curve(m.lifetime_earned.add(m.run_earned).log10()) - cred_curve(m.lifetime_earned.log10()))
+	else:
+		g = cred_curve(m.run_earned.log10())
+	g *= cred_mult(m)
+	return g + float(m.mods["cred_flat"]) if g >= 1.0 else g
+
+
+## "lifetime": la reforma cobra lo que la curva sube sobre TODO lo ganado (estilo Cookie Clicker); "run": por vuelta.
+static func lifetime_mode() -> bool:
+	return str(GameData.balance.get("cred_mode", "run")) == "lifetime"
 
 
 static func reform_gain(m: GameModel) -> int:
 	return int(floor(reform_gain_f(m)))
 
 
+## Plata de la vuelta que hace falta para poder reformar: la que da `reform_min_gain` de Credibilidad y, desde la segunda
+## vuelta y durante los primeros `reform_window_s` segundos, llegar a `reform_window` ceros de tu mejor vuelta (así no
+## conviene reformar a los 5 segundos una y otra vez; pasado ese tiempo nunca bloquea).
+static func reform_target(m: GameModel) -> BigNumber:
+	ensure_fresh(m)
+	var need: float = maxf(1.0, B("reform_min_gain") - float(m.mods["cred_flat"])) / cred_mult(m)
+	if lifetime_mode():
+		var base: float = cred_curve(m.lifetime_earned.log10())
+		var xt: float = B("cred_c") + pow((base + need) / B("cred_k"), 1.0 / B("cred_p"))
+		var total: BigNumber = exp_big(xt * BigNumber.LN10).mul_f(1.0001)
+		return total.sub(m.lifetime_earned) if total.gt(m.lifetime_earned) else BigNumber.zero()
+	var x: float = B("cred_c") + pow(need / B("cred_k"), 1.0 / B("cred_p"))
+	if not m.best_run.is_zero() and m.run_time < B("reform_window_s"):
+		x = maxf(x, m.best_run.log10() - B("reform_window"))
+	return exp_big(x * BigNumber.LN10).mul_f(1.0001)
+
+
 ## Alcanza la Credibilidad mínima (y la demo no llegó a su tope).
 static func reform_ready(m: GameModel) -> bool:
 	if m.demo_mode and m.reforms >= int(B("demo_max_reforms")):
 		return false
-	return reform_gain(m) >= int(B("reform_min_gain"))
+	return reform_gain(m) >= int(B("reform_min_gain")) and m.run_earned.ge(reform_target(m))
 
 
-## La primera reforma recién se habilita cuando la economía colapsa (el cartel la sugiere); después, cuando se quiera.
+## La reforma se habilita apenas la vuelta llega al mínimo (desde la primera vuelta, sin esperar ningún colapso).
 static func can_reform(m: GameModel) -> bool:
-	if m.reforms == 0 and not m.collapse_shown:
-		return false
 	return reform_ready(m)
 
 
-static func collapsed(m: GameModel) -> bool:
-	if price_level(m).lt(BigNumber.from_float(B("collapse_min_price"))):
+## Trabado: pasaron `stuck_s` segundos sin poder comprar nada (el botón de reforma late y aparece el aviso).
+static func stuck(m: GameModel) -> bool:
+	return m.stuck_t >= B("stuck_s")
+
+
+## Lo que suma por minuto seguir en la vuelta (últimos 30 s) contra el promedio de la vuelta.
+## Cuando lo de ahora rinde menos que el promedio, conviene reformar (regla clásica de parada óptima).
+static func gain_slowing(m: GameModel, drop: float = -1.0) -> bool:
+	if drop < 0.0:
+		drop = B("advice_drop")
+	if m.run_time < 30.0 or m.gain_hist.size() < 7:
 		return false
-	var inc: BigNumber = income_per_sec(m)
-	return cheapest_business(m).gt(inc.mul_f(B("collapse_payback_s")))
+	var gf: float = reform_gain_f(m)
+	var avg: float = gf / (m.run_time / 60.0)
+	var marginal: float = (gf - float(m.gain_hist[0])) / 0.5
+	return marginal < avg * drop
+
+
+## El juego aconseja reformar (el botón late): si estás trabado, si el tutorial lo pide en la primera vuelta o si seguir
+## rinde cada vez menos Y ya duplicaste tu mejor vuelta (así cada vuelta queda claramente mejor que la anterior). Si la vuelta
+## pasa los `advice_long_s` segundos y seguir rinde poco, también.
+static func reform_advised(m: GameModel) -> bool:
+	if not can_reform(m):
+		return false
+	if stuck(m):
+		return true
+	if m.reforms == 0:
+		return tutorial_step(m) == 3
+	if not gain_slowing(m):
+		return false
+	return m.run_earned.ge(m.best_run.mul_f(B("advice_beat"))) or m.run_time >= B("advice_long_s")
 
 
 static func do_reform(m: GameModel) -> Dictionary:
@@ -675,7 +862,7 @@ static func do_reform(m: GameModel) -> Dictionary:
 	m.credibility += gain
 	m.cred_total += gain
 	m.reforms += 1
-	var cut: int = maxi(1, floori(ln_price(m) / BigNumber.LN10))      # la tijera corta al menos un cero
+	var cut: int = clampi(floori(m.run_earned.log10()) - 3, 1, 40)      # la tijera corta más ceros cuanto más se ganó
 	m.zeros_cut += cut
 	summary["cut"] = cut
 	if m.run_earned.gt(m.best_run):
@@ -719,6 +906,12 @@ static func _reset_run(m: GameModel, last_earned: BigNumber) -> void:
 	for b in sb:
 		m.owned[b] = int(sb[b])
 	m.upgrades = kept
+	m.revealed = kept.duplicate()
+	m.reveal_cd = 2.0
+	m.stuck_t = 0.0
+	m.stuck_check = 0.0
+	m.gain_hist = []
+	m.gain_hist_t = 0.0
 	m.run_clicks = 0
 	m.run_manual_clicks = 0
 	m.run_index += 1
@@ -737,6 +930,7 @@ static func _reset_run(m: GameModel, last_earned: BigNumber) -> void:
 	m.max_rate_run = 0.0
 	m.dirty = true
 	_track_buildings(m)
+	m.push("toast", ["ui.toast.fresh"])
 
 
 # =====================================================================
@@ -760,6 +954,7 @@ static func tick(m: GameModel, dt: float, offline: bool = false) -> void:
 		live = dt - used
 	if live > 0.0:
 		m.ln_p += rate_per_sec(m) * live
+	m.ln_p = minf(m.ln_p, ln_limit(m))      # el freno: el negocio más barato siempre al alcance (con deflación si hace falta)
 	var inc: BigNumber = income_per_sec(m)
 	if not inc.is_zero():
 		earn(m, inc.mul_f(dt))
@@ -788,10 +983,36 @@ static func tick(m: GameModel, dt: float, offline: bool = false) -> void:
 			GambleLogic.play_scratch(m, true)
 	update_bills(m, dt)
 	update_events(m, dt)
+	# mejoras: aparecen de a una (con pausa en las primeras vueltas, para que dé tiempo a leer)
+	m.reveal_cd -= dt
+	if m.reveal_cd <= 0.0:
+		m.reveal_cd = 0.5
+		if reveal_next(m) != "":
+			m.reveal_cd = reveal_pace(m)
 	var pct: float = monthly_pct(m)
-	m.max_rate_pct = maxf(m.max_rate_pct, pct)
+	m.max_rate_pct = maxf(m.max_rate_pct, raw_monthly_pct(m) if not frozen(m) else pct)
+	m.max_price_l10 = maxf(m.max_price_l10, m.ln_p / BigNumber.LN10)
+	m.gain_hist_t += dt
+	if m.gain_hist_t >= 5.0:
+		m.gain_hist_t = 0.0
+		m.gain_hist.append(reform_gain_f(m))
+		if m.gain_hist.size() > 7:
+			m.gain_hist.pop_front()
 	m.max_rate_run = maxf(m.max_rate_run, pct)
-	if not m.collapse_shown and reform_ready(m) and collapsed(m):
+	# detector de traba: segundos seguidos sin poder comprar nada
+	m.stuck_check += dt
+	var bought: int = m.total_businesses() + m.upgrades.size() + m.tree.size()
+	if bought != m.stuck_bought:
+		m.stuck_bought = bought        # comprar algo también cuenta: no estás trabado
+		m.stuck_t = 0.0
+	if m.stuck_check >= 0.5:
+		if anything_affordable(m):
+			m.stuck_t = 0.0
+			m.collapse_shown = false
+		else:
+			m.stuck_t += m.stuck_check
+		m.stuck_check = 0.0
+	if not m.collapse_shown and stuck(m) and can_reform(m):
 		m.collapse_shown = true
 		m.push("collapse")
 
@@ -819,6 +1040,7 @@ static func stats(m: GameModel) -> Dictionary:
 		"clicks": m.clicks, "max_combo": m.max_combo, "crits": m.crits, "buildings": m.total_businesses(),
 		"max_buildings": m.max_buildings, "max_carts": m.max_carts, "max_tier": m.max_tier, "max_upgrades": m.max_upgrades,
 		"remarks": m.remarks, "early_remark": m.early_remark, "max_rate_pct": m.max_rate_pct, "rate_pct": monthly_pct(m),
+		"raw_rate_pct": raw_monthly_pct(m), "max_price_log10": m.max_price_l10, "price_log10": m.ln_p / BigNumber.LN10,
 		"bills": m.bills, "bills_missed": m.bills_missed, "frenzies": m.frenzies, "reforms": m.reforms,
 		"fastest_run": m.fastest_run, "lazy_run": m.lazy_run, "zeros_cut": m.zeros_cut, "cred_total": m.cred_total,
 		"nodes": TreeLogic.count(m), "nodes_pct": 100.0 * float(TreeLogic.count(m)) / float(TreeLogic.total()),
@@ -845,7 +1067,8 @@ static func completion(m: GameModel) -> float:
 const TUTORIAL_STEPS: int = 4
 
 
-## 0 clic, 1 primer carrito, 2 remarcar (cuando la inflación se nota), 3 reforma (al colapsar); 4 = terminado.
+## 0 clic, 1 primer carrito, 2 remarcar (cuando la inflación se nota), 3 reforma (cuando conviene o si te trabás);
+## 4 = terminado.
 static func tutorial_step(m: GameModel) -> int:
 	if m.tutorial_done or m.reforms > 0:
 		return TUTORIAL_STEPS
@@ -853,8 +1076,8 @@ static func tutorial_step(m: GameModel) -> int:
 		return 0
 	if m.total_businesses() < 1:
 		return 1
-	if m.remarks < 1:
-		return 2 if m.run_time >= 75.0 else -1
-	if can_reform(m) and (m.collapse_shown or m.run_time >= 270.0):
+	if m.remarks < 1 and m.run_time < 180.0:
+		return 2 if m.run_time >= 75.0 and monthly_pct(m) >= 2.0 else -1
+	if can_reform(m) and (m.collapse_shown or m.run_time >= B("tutorial_reform_s")):
 		return 3
 	return -1

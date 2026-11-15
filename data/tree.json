@@ -10,7 +10,7 @@
   "final": {"id": "final", "req": ["emp_4", "neg_4", "inf_4", "sue_4", "fig_4", "ren_4"],
     "fx": [["final", "=", true], ["prod_mult", "*", 2.0], ["infl_speed", "*", 0.8]]},
   "nodes": [
-    {"id": "emp_1",  "r": 1, "s": 0,  "fx": [["click_add", "+", 1]]},
+    {"id": "emp_1",  "r": 1, "s": 0,  "fx": [["click_mult", "*", 2]]},
     {"id": "emp_2a", "r": 2, "s": -1, "fx": [["combo_cap", "+", 10]]},
     {"id": "emp_2",  "r": 2, "s": 0,  "fx": [["click_mult", "*", 2]]},
     {"id": "emp_2b", "r": 2, "s": 1,  "fx": [["click_pct", "+", 0.01]]},
@@ -29,7 +29,7 @@
     {"id": "emp_7",  "r": 7, "s": 0,  "fx": [["autoclick", "+", 10]], "cap": true, "unlock": "autoclick"},
     {"id": "emp_8",  "r": 8, "s": 0,  "fx": [["click_mult", "*", 5], ["autoclick", "+", 10]]},
 
-    {"id": "neg_1",  "r": 1, "s": 0,  "fx": [["prod_mult", "*", 1.5]]},
+    {"id": "neg_1",  "r": 1, "s": 0,  "fx": [["start_biz", "max", {"empanadas": 5}], ["prod_mult", "*", 2]]},
     {"id": "neg_2a", "r": 2, "s": -1, "fx": [["cost_mult", "*", 0.9]]},
     {"id": "neg_2",  "r": 2, "s": 0,  "fx": [["prod_mult", "*", 1.5]]},
     {"id": "neg_2b", "r": 2, "s": 1,  "fx": [["start_biz", "max", {"empanadas": 15, "kiosco": 5}]]},
@@ -48,7 +48,7 @@
     {"id": "neg_7",  "r": 7, "s": 0,  "fx": [["excl_biz", "=", true]], "cap": true, "unlock": "excl_biz"},
     {"id": "neg_8",  "r": 8, "s": 0,  "fx": [["prod_mult", "*", 4]]},
 
-    {"id": "inf_1",  "r": 1, "s": 0,  "fx": [["infl_speed", "*", 0.92]]},
+    {"id": "inf_1",  "r": 1, "s": 0,  "fx": [["infl_speed", "*", 0.8]]},
     {"id": "inf_2a", "r": 2, "s": -1, "fx": [["remark_freeze", "+", 2]]},
     {"id": "inf_2",  "r": 2, "s": 0,  "fx": [["remark_cd", "+", -5]]},
     {"id": "inf_2b", "r": 2, "s": 1,  "fx": [["events", "=", true]], "unlock": "events"},
@@ -105,7 +105,7 @@
     {"id": "fig_7",  "r": 7, "s": 0,  "fx": [["page_prod", "*", 1.5]], "cap": true},
     {"id": "fig_8",  "r": 8, "s": 0,  "fx": [["collection", "+", 0.08]]},
 
-    {"id": "ren_1",  "r": 1, "s": 0,  "fx": [["cred_mult", "*", 1.2]]},
+    {"id": "ren_1",  "r": 1, "s": 0,  "fx": [["cred_mult", "*", 1.25]]},
     {"id": "ren_2a", "r": 2, "s": -1, "fx": [["start_money", "+", 25000]]},
     {"id": "ren_2",  "r": 2, "s": 0,  "fx": [["cred_mult", "*", 1.2]]},
     {"id": "ren_2b", "r": 2, "s": 1,  "fx": [["cred_flat", "+", 2]]},

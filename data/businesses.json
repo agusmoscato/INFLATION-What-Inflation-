@@ -1,12 +1,12 @@
 [
-  {"id": "empanadas", "tier": 1,  "base_cost": "15",     "base_income": "0.5",   "color": "#e8a23a", "unlock": ""},
-  {"id": "kiosco",    "tier": 2,  "base_cost": "130",    "base_income": "4",     "color": "#d9534f", "unlock": ""},
-  {"id": "choripan",  "tier": 3,  "base_cost": "1.4e3",  "base_income": "32",    "color": "#b5651d", "unlock": ""},
-  {"id": "lavadero",  "tier": 4,  "base_cost": "1.6e4",  "base_income": "260",   "color": "#4aa3df", "unlock": ""},
-  {"id": "panaderia", "tier": 5,  "base_cost": "2e5",    "base_income": "2.1e3", "color": "#f0d58c", "unlock": ""},
-  {"id": "almacen",   "tier": 6,  "base_cost": "2.6e6",  "base_income": "1.8e4", "color": "#8fbf6a", "unlock": ""},
-  {"id": "remiseria", "tier": 7,  "base_cost": "3.5e7",  "base_income": "1.6e5", "color": "#6ad1c3", "unlock": "adv_biz"},
-  {"id": "fabrica",   "tier": 8,  "base_cost": "5e8",    "base_income": "1.5e6", "color": "#8a8f98", "unlock": "adv_biz"},
-  {"id": "imprenta",  "tier": 9,  "base_cost": "8e9",    "base_income": "1.5e7", "color": "#3aa56e", "unlock": "excl_biz"},
-  {"id": "holding",   "tier": 10, "base_cost": "1.4e11", "base_income": "1.6e8", "color": "#555555", "unlock": "excl_biz"}
+  {"id": "empanadas", "tier": 1,  "base_cost": "15",     "base_income": "0.25",   "color": "#e8a23a", "unlock": ""},
+  {"id": "kiosco",    "tier": 2,  "base_cost": "130",    "base_income": "2",     "color": "#d9534f", "unlock": ""},
+  {"id": "choripan",  "tier": 3,  "base_cost": "1.4e3",  "base_income": "16",    "color": "#b5651d", "unlock": ""},
+  {"id": "lavadero",  "tier": 4,  "base_cost": "1.6e4",  "base_income": "130",   "color": "#4aa3df", "unlock": ""},
+  {"id": "panaderia", "tier": 5,  "base_cost": "2e5",    "base_income": "1050", "color": "#f0d58c", "unlock": ""},
+  {"id": "almacen",   "tier": 6,  "base_cost": "2.6e6",  "base_income": "9000", "color": "#8fbf6a", "unlock": ""},
+  {"id": "remiseria", "tier": 7,  "base_cost": "3.5e7",  "base_income": "80000", "color": "#6ad1c3", "unlock": "adv_biz"},
+  {"id": "fabrica",   "tier": 8,  "base_cost": "5e8",    "base_income": "750000", "color": "#8a8f98", "unlock": "adv_biz"},
+  {"id": "imprenta",  "tier": 9,  "base_cost": "8e9",    "base_income": "7.5e+06", "color": "#3aa56e", "unlock": "excl_biz"},
+  {"id": "holding",   "tier": 10, "base_cost": "1.4e11", "base_income": "8e+07", "color": "#555555", "unlock": "excl_biz"}
 ]

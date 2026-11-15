@@ -8,6 +8,7 @@ func run(t) -> void:
 	m.money = BigNumber.from_float(1e6)
 	EconomyLogic.buy_business(m, "empanadas", 10)
 	EconomyLogic.buy_business(m, "kiosco", 3)
+	EconomyLogic.tick(m, 2.5)
 	EconomyLogic.buy_upgrade(m, "empanadas_1")
 	m.tree["neg_1"] = true
 	m.tree["fig_1"] = true

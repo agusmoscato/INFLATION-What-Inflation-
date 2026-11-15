@@ -1194,8 +1194,16 @@ func _burst(pos: Vector2, color: Color, amount: int) -> void:
 	p.scale_amount_min = 3.0 / 8.0
 	p.scale_amount_max = 6.0 / 8.0
 	p.color = color
-	fx_layer.add_child(p)
-	get_tree().create_timer(1.2, false).timeout.connect(p.queue_free)
+	_fx_parent().add_child(p)
+	get_tree().create_timer(1.2, false).timeout.connect(func() -> void:
+		if is_instance_valid(p):
+			p.queue_free())
+
+
+## Dónde van los efectos grandes (carteles, chispazos): encima de la capa abierta si hay una (así el festejo de un sello
+## se ve con el árbol abierto), si no en la capa de efectos del juego.
+func _fx_parent() -> Control:
+	return _overlay if _overlay != null and is_instance_valid(_overlay) else fx_layer
 
 
 ## Cartel grande que aparece, late y se va (premios, colapso, remarcado).
@@ -1204,7 +1212,7 @@ func _stamp(text: String, center: Vector2, color: Color = Chalk.YELLOW, fs: int 
 	l.add_theme_color_override("font_outline_color", Color.BLACK)
 	l.add_theme_constant_override("outline_size", 8)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fx_layer.add_child(l)
+	_fx_parent().add_child(l)
 	l.size = l.get_combined_minimum_size()
 	l.position = center - l.size / 2.0
 	l.pivot_offset = l.size / 2.0
@@ -1224,6 +1232,8 @@ func _toast(text: String, color: Color) -> void:
 
 
 func _pump_toasts() -> void:
+	if _overlay != null:
+		return                  # con una capa abierta (árbol, álbum...) los avisos esperan
 	# las mejoras nuevas que llegan juntas (medio segundo) salen en un solo aviso: "3 mejoras nuevas"
 	if not _new_upgrades.is_empty() and _clock - _new_upg_t >= 0.5:
 		if _new_upgrades.size() == 1:
@@ -1308,12 +1318,13 @@ func _update_ticker(delta: float) -> void:
 func _new_overlay(title: String) -> Array:
 	_close_overlay()
 	var ov: ColorRect = ColorRect.new()
-	ov.color = Color(Chalk.BOARD.darkened(0.45), 0.985)
+	ov.color = Color(Chalk.BOARD.darkened(0.45), 1.0)       # opaca: no se trasluce nada del juego de atrás
 	ov.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ov.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(ov)
 	_overlay = ov
 	world.visible = false      # la capa es opaca: el juego de abajo no se dibuja ni se pisa con ella
+	toast_box.visible = false  # los avisos esperan a que se cierre la capa
 	var mc: MarginContainer = MarginContainer.new()
 	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
@@ -1341,6 +1352,7 @@ func _close_overlay() -> void:
 		_overlay.queue_free()
 	_overlay = null
 	world.visible = true
+	toast_box.visible = true
 	_tree_view = null
 	_tree_road = null
 	_album_page = null

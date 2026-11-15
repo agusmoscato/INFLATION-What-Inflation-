@@ -149,8 +149,15 @@ func _check_empanada() -> void:
 		m.credibility = 30
 		m.tree_hint_seen = false
 		m.dirty = true
+		g._toast("aviso que no se tiene que ver con el árbol abierto", Chalk.YELLOW)
+		g._show_toast("otro aviso", Chalk.YELLOW)
 		g._open_tree()
 		await _frames(3)
+		# el árbol tapa todo lo de atrás: fondo opaco y sin avisos encima
+		if (g._overlay as ColorRect).color.a < 1.0:
+			failures.append("[%s] el fondo del árbol no es opaco" % tag)
+		if g.toast_box.is_visible_in_tree():
+			failures.append("[%s] con el árbol abierto se ven los avisos del juego" % tag)
 		if g._tree_view.hint_id == "":
 			failures.append("[%s] en la primera visita al árbol no apareció la recomendación" % tag)
 		else:

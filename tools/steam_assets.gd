@@ -134,9 +134,9 @@ class Art extends Control:
 		var h: float = size.y
 		match kind:
 			"wide":
-				_mascot(Vector2(w * 0.66, h * 0.50), Vector2(w * 0.30, h * 0.46), 0.55)
+				_mascot(Vector2(w * 0.65, h * 0.40), Vector2(w * 0.30, h * 0.46), 0.55)
 			"small":
-				_mascot(Vector2(w * 0.70, h * 0.18), Vector2(w * 0.28, h * 0.72), 0.3)
+				_mascot(Vector2(w * 0.68, h * 0.06), Vector2(w * 0.26, h * 0.74), 0.3)
 			"tall":
 				_mascot(Vector2(w * 0.22, h * 0.34), Vector2(w * 0.56, h * 0.30), 0.55)
 				_stickers(Vector2(w * 0.08, h * 0.70), w * 0.30)

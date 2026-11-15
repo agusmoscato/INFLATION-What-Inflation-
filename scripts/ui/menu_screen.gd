@@ -13,6 +13,7 @@ signal open_howto
 var _bills: Array = []
 var _note: BanknoteView
 var _logo: Label
+var _mascot: EmpanadaButton
 var _clock: float = 0.0
 var _zeros: float = 3.0
 var _confirm_btn: Button
@@ -53,6 +54,11 @@ func _ready() -> void:
 	left.alignment = BoxContainer.ALIGNMENT_CENTER
 	left.add_theme_constant_override("separation", 10)
 	_body.add_child(left)
+	# la empanada (la misma del juego), arriba del logo; si la tocás, hace squash
+	_mascot = EmpanadaButton.new()
+	_mascot.custom_minimum_size = Vector2(260, 150)
+	_mascot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	left.add_child(_mascot)
 	_logo = UIKit.label("INFLATION?", 100, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	_logo.add_theme_color_override("font_outline_color", Color("#1c1508"))
 	_logo.add_theme_constant_override("outline_size", 10)
@@ -101,6 +107,7 @@ func _update_layout() -> void:
 	# apaisado: dos columnas; vertical (o muy angosto): todo apilado
 	_body.vertical = size.x < size.y * 1.15 or size.x < 900.0
 	_logo.add_theme_font_size_override("font_size", int((70 if _body.vertical else 100) * UIKit.FS))
+	_mascot.custom_minimum_size = Vector2(180, 105) if _body.vertical else Vector2(260, 150)
 
 
 func _button(text: String, color: Color, cb: Callable) -> Button:

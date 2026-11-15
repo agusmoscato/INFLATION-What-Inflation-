@@ -1,49 +1,69 @@
 class_name BotPolicy
 extends RefCounted
-## El "jugador casual atento" que usan el simulador (tools/simulate.gd) y el QA del juego real (main.gd).
-##  - 5 clics/s con combo (en una vuelta "sin manos" no hace clic, para el logro secreto, si ya tiene autoclicker).
-##  - Toca el 85 % de los billetes voladores, 1,5 s después de que aparecen.
-##  - Remarca apenas puede cuando la inflación mensual pasa el 4 %.
-##  - Compra lo de mejor repago (negocios y mejoras) una vez por segundo.
-##  - Reforma cuando la Credibilidad que suma por minuto (últimos 30 s) cae debajo del promedio de la vuelta, o cuando
-##    pasan 12 s sin nada para comprar (contra la pared, un jugador casual no espera más).
-##  - Nodos: sellos y final primero; después el más barato, con preferencia NEGOCIOS > EMPANADA > RENACER > INFLACIÓN >
-##    FIGURITAS > SUERTE. Abre los sobres de regalo, compra sobres baratos, hace chupi y juega raspaditas para el álbum.
+## Jugadores de prueba que usan el simulador (tools/simulate.gd) y el QA del juego real (main.gd). Tres perfiles:
+##  - "activo": clickea mucho (7 clics/s con combo), toca el 90 % de los billetes al segundo, remarca cuando la inflación
+##    mensual pasa el 4 % y compra lo de mejor repago una vez por segundo.
+##  - "pasivo": casi no clickea (1 clic/s), toca el 30 % de los billetes (tarde), no remarca hasta que la inflación pasa
+##    el 25 % y compra siempre lo más barato que pueda pagar, cada 2 s.
+##  - "distraido": juega como uno activo pero más lento (4 clics/s) y en las primeras vueltas deja de jugar 2 minutos a
+##    mitad de la vuelta.
+## Los tres reforman cuando el juego lo aconseja (el botón de reforma late: la Credibilidad que suman por minuto cae
+## debajo del promedio de la vuelta, el tutorial de la primera vuelta lo pide o están trabados). Nodos: sellos y final primero; después el más barato, con preferencia
+## NEGOCIOS > EMPANADA > RENACER > INFLACIÓN > FIGURITAS > SUERTE. Abren sobres, hacen chupi y juegan raspaditas.
 
-const CPS: float = 5.0
-const BILL_CATCH: float = 0.85
-const BILL_REACT: float = 1.5
-const REFORM_DROP: float = 0.97
-const BRANCH_W: Dictionary = {"neg": 1.0, "emp": 1.1, "ren": 1.0, "inf": 1.2, "fig": 1.4, "sue": 1.5, "bridge": 1.3, "final": 0.5}
+const PROFILES: Dictionary = {
+	"activo": {"cps": 7.0, "catch": 0.9, "react": 1.0, "remark_pct": 4.0, "buy_every": 1.0, "cheap": false, "afk": 0.0},
+	"pasivo": {"cps": 1.0, "catch": 0.3, "react": 3.0, "remark_pct": 25.0, "buy_every": 2.0, "cheap": true, "afk": 0.0},
+	"distraido": {"cps": 4.0, "catch": 0.7, "react": 2.0, "remark_pct": 8.0, "buy_every": 1.5, "cheap": false, "afk": 120.0},
+}
+const BRANCH_W: Dictionary = {"neg": 1.0, "emp": 1.0, "inf": 1.1, "ren": 1.25, "fig": 1.4, "sue": 1.5, "bridge": 1.3, "final": 0.5}
 
+var profile: String = "activo"
+var cfg: Dictionary = PROFILES["activo"]
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var click_acc: float = 0.0
 var bill_plan: Dictionary = {}          # id -> {catch, age}
-var hist: Array = []                    # Credibilidad posible cada 5 s
-var hist_t: float = 0.0
 var buy_t: float = 0.0
 var tree_t: float = 0.0
 var album_t: float = 0.0
 var scratch_t: float = 0.0
 var last_gain: int = 0
 var lazy: bool = false
-var stuck_t: float = 0.0                ## segundos seguidos sin nada comprable
+var prev_run_time: float = 300.0        ## duración de la vuelta anterior (para saber cuándo es "la mitad")
+var afk_left: float = 0.0
+var afk_done: bool = false
 ## Callables opcionales para que el QA del juego real pase por la interfaz (señales, efectos): click(), bill(id), reform()
 var on_click: Callable
 var on_bill: Callable
 var on_reform: Callable
 
 
-func _init(seed_value: int = 1) -> void:
+func _init(seed_value: int = 1, profile_name: String = "activo") -> void:
 	rng.seed = seed_value * 7919
+	profile = profile_name if PROFILES.has(profile_name) else "activo"
+	cfg = PROFILES[profile]
+
+
+## ¿Está jugando ahora? (el distraído se va un rato)
+func away() -> bool:
+	return afk_left > 0.0
 
 
 ## Un paso del bot (antes del tick de la economía). Devuelve el resumen si reformó ({} si no).
 func step(m: GameModel, dt: float) -> Dictionary:
 	EconomyLogic.ensure_fresh(m)
+	# el distraído: a mitad de las vueltas largas deja de jugar 2 minutos
+	if float(cfg["afk"]) > 0.0 and not afk_done and prev_run_time >= 120.0 and m.run_time >= prev_run_time * 0.5:
+		afk_done = true
+		afk_left = float(cfg["afk"])
+	if afk_left > 0.0:
+		afk_left -= dt
+		for b in m.bills_active:
+			bill_plan[int(b["id"])] = {"catch": false, "age": 0.0}
+		return {}
 	# clics
 	if not lazy:
-		click_acc += CPS * dt
+		click_acc += float(cfg["cps"]) * dt
 		while click_acc >= 1.0:
 			click_acc -= 1.0
 			if on_click.is_valid():
@@ -54,9 +74,9 @@ func step(m: GameModel, dt: float) -> Dictionary:
 	for b in m.bills_active.duplicate():
 		var bid: int = int(b["id"])
 		if not bill_plan.has(bid):
-			bill_plan[bid] = {"catch": rng.randf() < BILL_CATCH, "age": 0.0}
+			bill_plan[bid] = {"catch": rng.randf() < float(cfg["catch"]), "age": 0.0}
 		bill_plan[bid]["age"] = float(bill_plan[bid]["age"]) + dt
-		if bool(bill_plan[bid]["catch"]) and float(bill_plan[bid]["age"]) >= BILL_REACT:
+		if bool(bill_plan[bid]["catch"]) and float(bill_plan[bid]["age"]) >= float(cfg["react"]):
 			bill_plan[bid]["catch"] = false
 			if on_bill.is_valid():
 				on_bill.call(bid)
@@ -64,18 +84,18 @@ func step(m: GameModel, dt: float) -> Dictionary:
 				EconomyLogic.click_bill(m, bid)
 	# remarcar
 	if EconomyLogic.can_remark(m) and m.freeze_left <= 0.0:
-		var paranoid: bool = not m.achievements.has("paranoid") and m.reforms >= 3 and m.run_time < 8.0
-		if EconomyLogic.monthly_pct(m) >= 4.0 or paranoid:
+		var paranoid: bool = profile == "activo" and not m.achievements.has("paranoid") and m.reforms >= 3 and m.run_time < 8.0
+		if EconomyLogic.monthly_pct(m) >= float(cfg["remark_pct"]) or paranoid:
 			EconomyLogic.remark(m, true)
 	# noticias
 	if not m.pending_choice.is_empty():
 		EconomyLogic.choose(m, 1 if str(m.pending_choice["id"]) in ["aguinaldo", "turistas"] else 0)
 	# compras
 	buy_t += dt
-	if buy_t >= 1.0:
+	if buy_t >= float(cfg["buy_every"]):
 		buy_t = 0.0
 		var guard: int = 0
-		while guard < 40 and EconomyLogic.smart_buy(m):
+		while guard < 40 and (cheap_buy(m) if bool(cfg["cheap"]) else EconomyLogic.smart_buy(m)):
 			guard += 1
 	tree_t += dt
 	if tree_t >= 2.0:
@@ -93,38 +113,70 @@ func step(m: GameModel, dt: float) -> Dictionary:
 	return _reform_policy(m, dt)
 
 
-## Marginal (últimos 30 s) contra promedio de la vuelta: cuando lo que suma ahora por minuto cae debajo del promedio,
-## conviene reformar (regla clásica de parada óptima).
-func _reform_policy(m: GameModel, dt: float) -> Dictionary:
-	var gf: float = EconomyLogic.reform_gain_f(m)
-	hist_t += dt
-	if hist_t >= 5.0:
-		hist_t = 0.0
-		hist.append(gf)
-		if hist.size() > 7:
-			hist.pop_front()
-	stuck_t = 0.0 if EconomyLogic.anything_affordable(m) else stuck_t + dt
-	if EconomyLogic.reform_gain(m) < 1 or m.run_time < 45.0 or hist.size() < 7:
-		return {}
-	var avg: float = gf / (m.run_time / 60.0)
-	var marginal: float = (gf - float(hist[0])) / 0.5
-	# completista: después del final, si falta el logro de hiperinflación, deja correr una vuelta hasta el 1000 %
-	var hyper_wait: bool = m.won and not m.achievements.has("hyper_1000") and EconomyLogic.monthly_pct(m) < 1000.0
-	var stuck: bool = stuck_t >= 12.0
-	if (marginal >= avg * REFORM_DROP and not stuck) or not EconomyLogic.can_reform(m) or hyper_wait:
+## El pasivo compra lo más barato que puede pagar (negocio o mejora). true si compró algo.
+static func cheap_buy(m: GameModel) -> bool:
+	var best_cost: BigNumber = null
+	var best_id: String = ""
+	var best_kind: String = ""
+	for def in GameData.businesses:
+		if not EconomyLogic.business_available(m, def):
+			continue
+		var c: BigNumber = EconomyLogic.business_cost(m, def, 1)
+		if c.le(m.money) and (best_cost == null or c.lt(best_cost)):
+			best_cost = c
+			best_id = def["id"]
+			best_kind = "biz"
+	for u in EconomyLogic.visible_upgrades(m):
+		var c2: BigNumber = EconomyLogic.upgrade_cost(m, u)
+		if c2.le(m.money) and (best_cost == null or c2.lt(best_cost)):
+			best_cost = c2
+			best_id = u["id"]
+			best_kind = "upg"
+	if best_id == "":
+		return false
+	if best_kind == "biz":
+		return EconomyLogic.buy_business(m, best_id, 1) > 0
+	return EconomyLogic.buy_upgrade(m, best_id)
+
+
+## Reforma cuando el juego lo aconseja (el botón late: trabado, el tutorial de la primera vuelta o "seguir rinde cada vez
+## menos").
+func _reform_policy(m: GameModel, _dt: float) -> Dictionary:
+	if not EconomyLogic.reform_advised(m):
 		return {}
 	var cred_before: int = m.credibility
+	var t_before: float = m.run_time
 	var s: Dictionary = on_reform.call() if on_reform.is_valid() else EconomyLogic.do_reform(m)
 	if s.is_empty():
 		return {}
 	last_gain = m.credibility - cred_before
-	stuck_t = 0.0
-	hist.clear()
+	prev_run_time = t_before
+	afk_done = false
 	bill_plan.clear()
 	buy_nodes(m)
 	album_policy(m)
-	lazy = float(m.mods["autoclick"]) > 0.0 and not m.achievements.has("no_hands")
+	lazy = profile == "activo" and float(m.mods["autoclick"]) > 0.0 and not m.achievements.has("no_hands")
 	return s
+
+
+## El nodo que el juego recomienda comprar (el mismo criterio que usa el bot): sellos y el camino a los sellos primero,
+## después el más barato con preferencia por ramas. "" si no hay ninguno abierto.
+static func recommended_node(m: GameModel) -> String:
+	var best: String = ""
+	var best_score: float = INF
+	for n in GameData.tree:
+		var id: String = n["id"]
+		if m.tree.has(id) or bool(n["final"]) or not TreeLogic.visible(m, id) or not TreeLogic.requirements_met(m, id) or TreeLogic.demo_locked(m, id):
+			continue
+		var score: float = float(n["cost"]) * float(BRANCH_W.get(str(n["branch"]), 1.0))
+		if int(n["slot"]) == 0 and int(n["ring"]) <= 4:
+			score *= 0.6          # el camino a los sellos
+		if bool(n["seal"]):
+			score *= 0.5
+		if score < best_score:
+			best_score = score
+			best = id
+	return best
 
 
 ## Compra nodos del árbol por prioridad. Si ya están los 6 sellos y le falta poco para el final, junta para el final.
@@ -135,23 +187,10 @@ func buy_nodes(m: GameModel) -> void:
 		var final_ready: bool = not m.tree.has("final") and TreeLogic.requirements_met(m, "final") and not TreeLogic.demo_locked(m, "final")
 		if final_ready and TreeLogic.buy(m, "final"):
 			continue
-		var best: String = ""
-		var best_score: float = INF
-		for n in GameData.tree:
-			var id: String = n["id"]
-			if m.tree.has(id) or bool(n["final"]) or not TreeLogic.visible(m, id) or not TreeLogic.requirements_met(m, id) or TreeLogic.demo_locked(m, id):
-				continue
-			var score: float = float(n["cost"]) * float(BRANCH_W.get(str(n["branch"]), 1.0))
-			if int(n["slot"]) == 0 and int(n["ring"]) <= 4:
-				score *= 0.6          # el camino a los sellos
-			if bool(n["seal"]):
-				score *= 0.5
-			if score < best_score:
-				best_score = score
-				best = id
+		var best: String = recommended_node(m)
 		if best == "":
 			return
-		if final_ready and m.credibility + 4 * last_gain >= TreeLogic.cost("final") and TreeLogic.cost(best) > TreeLogic.cost("final") * 0.05:
+		if final_ready and m.credibility + 8 * last_gain >= TreeLogic.cost("final") and TreeLogic.cost(best) > TreeLogic.cost("final") * 0.05:
 			return
 		if not TreeLogic.buy(m, best):
 			return

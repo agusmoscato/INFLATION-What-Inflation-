@@ -49,13 +49,24 @@ Nota: los scripts que usan los autoloads (`GameState`, `Economy`...) no compilan
 ## Simulador de balance y QA de duración
 
 ```
-godot --headless --script tools/simulate.gd -- --seeds=1,2,3,4 --qa   # código 1 si no se cumplen los objetivos
-powershell -File tools/qa_newplayer.ps1                               # 60 min con la interfaz real + hojas de contacto
+godot --headless --script tools/simulate.gd -- --seeds=1,2,3,4 --qa      # código 1 si algún chequeo falla
+powershell -File tools/qa_newplayer.ps1 -Profile pasivo -Seconds 600     # 10 min con la interfaz real + hoja de contacto
+powershell -File tools/qa_newplayer.ps1 -Profile activo -Seconds 3600    # 60 min (hojas 0–10 y 10–60 min)
 ```
 
-El bot (`scripts/core/bot_policy.gd`, el mismo en el simulador y en el QA del juego real) hace 5 clics/s, atrapa el 85 % de los billetes, remarca, compra lo de mejor repago, reforma cuando la Credibilidad por minuto empieza a bajar y compra nodos por prioridad. Escribe `docs/balance_v2.md` con el minuto de cada reforma, la duración de cada vuelta, el final y el 100 %. Objetivos (falla si no se cumplen): primera reforma entre los minutos 4 y 6, final entre 50 y 70, 100 % entre 3 y 4 horas, nunca más de 20 s sin algo comprable en la primera hora, y la vuelta 10 llega a la plata de la vuelta 1 en un quinto del tiempo.
+Tres jugadores de prueba (`scripts/core/bot_policy.gd`, los mismos en el simulador y en el QA del juego real):
+**activo** (7 clics/s, atrapa casi todos los billetes, compra lo de mejor repago), **pasivo** (1 clic/s, compra siempre
+lo más barato) y **distraído** (4 clics/s y deja de jugar 2 minutos a mitad de las vueltas largas). Los tres reforman
+cuando el juego lo aconseja (el botón de reforma late). El simulador escribe `docs/balance_v2.md`.
 
-`tools/qa_newplayer.ps1` arma `docs/qa/v2_0_a_10_min.jpg` (una captura cada 30 s) y `docs/qa/v2_10_a_60_min.jpg` (cada 2,5 min).
+Chequeos para los tres (falla si no se cumplen): nunca más de 20 s sin poder comprar ni reformar, la vuelta 2 llega a
+la plata de la vuelta 1 en menos de la mitad del tiempo, ninguna reforma da menos de 5 de Credibilidad (la primera,
+entre 5 y 10) y, salvo el pasivo, los clics son la fuente principal de plata en el primer minuto. Duración (activo):
+primera reforma entre los minutos 4 y 6, final entre 50 y 70, 100 % entre 3 y 4 horas, y la vuelta 10 llega a la plata
+de la vuelta 1 en un quinto del tiempo.
+
+`tools/qa_newplayer.ps1` arma `docs/qa/v2_0_a_10_min_<perfil>.jpg` (una captura cada 30 s) y
+`docs/qa/v2_10_a_60_min_<perfil>.jpg` (cada 2,5 min).
 
 ## Estructura
 

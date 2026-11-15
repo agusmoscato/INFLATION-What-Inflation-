@@ -407,12 +407,13 @@ func _qa_windows_only() -> void:
 
 
 # =====================================================================
-#  QA de jugador nuevo con la interfaz real: godot -- --qa-newplayer-shots [--np-seconds 3600]
-#  BotPolicy (el mismo bot del simulador) juega a velocidad x20 tocando la empanada y los billetes de verdad.
+#  QA de jugador nuevo con la interfaz real: godot -- --qa-newplayer-shots [--np-seconds 3600] [--np-profile pasivo]
+#  BotPolicy (el mismo jugador de prueba del simulador) juega a velocidad x20 tocando la empanada y los billetes de verdad.
 #  Capturas: cada 30 s hasta el minuto 10 y cada 2,5 min hasta el 60 (user://qa/newplayer/t_SSSS.png);
-#  tools/qa_newplayer.ps1 arma las hojas de contacto docs/qa/v2_0_a_10_min.jpg y docs/qa/v2_10_a_60_min.jpg.
-#  Falla si aparece un texto sin traducir, si la pantalla se sale de la ventana, si la primera reforma no llega entre
-#  los minutos 4 y 6 o si pasan más de 20 s seguidos sin nada comprable.
+#  tools/qa_newplayer.ps1 arma las hojas de contacto docs/qa/v2_0_a_10_min_<perfil>.jpg y v2_10_a_60_min_<perfil>.jpg.
+#  Falla si aparece un texto sin traducir, si la pantalla se sale de la ventana, si pasan más de 20 s sin poder comprar
+#  ni reformar, si una reforma da menos de 5, si la vuelta 2 es más lenta que la 1 o (activo) si la primera reforma no
+#  llega entre los minutos 4 y 6.
 # =====================================================================
 const NP_SPEED: float = 20.0
 
@@ -425,11 +426,14 @@ func _qa_newplayer_shots() -> void:
 	get_window().size = Vector2i(1280, 720)      # ventana sin bordes: si no, Windows puede dejar de dibujarla y las capturas salen viejas
 	get_window().always_on_top = true
 	var secs: float = 3600.0
+	var profile: String = "activo"
 	var ua: PackedStringArray = OS.get_cmdline_user_args()
 	if ua.has("--np-seconds") and ua.find("--np-seconds") + 1 < ua.size():
 		secs = float(ua[ua.find("--np-seconds") + 1])
+	if ua.has("--np-profile") and ua.find("--np-profile") + 1 < ua.size():
+		profile = ua[ua.find("--np-profile") + 1]
 	var failures: Array = []
-	await _qa_newplayer(failures, secs, true)
+	await _qa_newplayer(failures, secs, true, profile)
 	var out: FileAccess = FileAccess.open("user://qa/newplayer/result.txt", FileAccess.WRITE)
 	out.store_string("%s\n%s\n" % ["FAIL" if not failures.is_empty() else "PASS", "\n".join(failures)])
 	out.close()
@@ -444,7 +448,7 @@ func _fmt_t(gt: float) -> String:
 	return "%d:%02d" % [int(gt) / 60, int(gt) % 60]
 
 
-func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
+func _qa_newplayer(failures: Array, seconds: float, shots: bool, profile: String = "activo") -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://qa/newplayer"))
 	var save_before: String = SaveSystem.save_path
 	var settings_before: String = Settings.path
@@ -454,7 +458,7 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 	Settings.apply()
 	start_game(false)
 	await _qa_wait(0.5)
-	var bot: BotPolicy = BotPolicy.new(3)
+	var bot: BotPolicy = BotPolicy.new(3, profile)
 	bot.on_click = func() -> void: Economy.click()
 	bot.on_bill = func(id: int) -> void:
 		var o: Variant = _game._bills.get(id, null)
@@ -475,6 +479,11 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 	var max_gap: float = 0.0
 	var gap_at: float = 0.0
 	var first_reform: float = -1.0
+	var min_cred: int = 1 << 30
+	var run_start: float = 0.0
+	var run1_time: float = -1.0
+	var run1_money: BigNumber = null
+	var run2_reach: float = -1.0
 	var gt: float = 0.0
 	var reported: Dictionary = {}
 	var overlay_until: float = 0.0
@@ -501,19 +510,30 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 			_game._busy_overlay = null
 		if _game._overlay != null and gt >= overlay_until:
 			_game._close_overlay()
-		var s: Dictionary = bot.step(m, dt)
-		Economy.flush()
-		if not s.is_empty():
-			if first_reform < 0.0:
-				first_reform = gt
-			# después de cada reforma se mira el árbol unos segundos (como haría un jugador)
-			_game._open_tree()
-			overlay_until = gt + 6.0
-		if gt <= 3600.0 and EconomyLogic.anything_affordable(m):
+		var earned_before: BigNumber = m.run_earned
+		# ¿se puede hacer algo? (comprar o reformar) — se mira antes de que el bot compre
+		if gt <= 3600.0 and (EconomyLogic.anything_affordable(m) or EconomyLogic.can_reform(m)):
 			if gt - last_afford > max_gap:
 				max_gap = gt - last_afford
 				gap_at = gt
 			last_afford = gt
+		var bought_before: int = m.total_businesses() + m.upgrades.size() + TreeLogic.count(m)
+		var s: Dictionary = bot.step(m, dt)
+		if m.total_businesses() + m.upgrades.size() + TreeLogic.count(m) > bought_before:
+			last_afford = gt
+		Economy.flush()
+		if not s.is_empty():
+			min_cred = mini(min_cred, int(s["cred"]))
+			if first_reform < 0.0:
+				first_reform = gt
+				run1_time = gt
+				run1_money = earned_before
+			run_start = gt
+			# después de cada reforma se mira el árbol unos segundos (como haría un jugador)
+			_game._open_tree()
+			overlay_until = gt + 6.0
+		if run1_money != null and run2_reach < 0.0 and m.run_index == 2 and m.run_earned.ge(run1_money):
+			run2_reach = gt - run_start
 		if gt >= next_check:
 			next_check = gt + 1.0
 			for b in QaCheck.scan(self):
@@ -531,11 +551,17 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool) -> void:
 				m.credibility, TreeLogic.count(m), EconomyLogic.monthly_pct(m), str(EconomyLogic.anything_affordable(m))])
 			next_shot += 30.0 if next_shot < 600.0 else 150.0
 	Engine.time_scale = 1.0
-	if first_reform < 240.0 or first_reform > 360.0:
+	if profile == "activo" and (first_reform < 240.0 or first_reform > 360.0):
 		failures.append("LA PRIMERA REFORMA LLEGÓ A LOS %s (tiene que ser entre los minutos 4 y 6)" % _fmt_t(first_reform))
+	if first_reform < 0.0:
+		failures.append("NO HUBO NINGUNA REFORMA EN %s" % _fmt_t(gt))
 	if max_gap > 20.0:
-		failures.append("PASARON %.0f s SIN NADA COMPRABLE (hasta el %s; máximo 20 s en la primera hora)" % [max_gap, _fmt_t(gap_at)])
-	print("QA jugador nuevo: primera reforma %s, máxima espera sin nada comprable %.1f s (hasta el %s), %d reformas en %s" % [_fmt_t(first_reform), max_gap, _fmt_t(gap_at), GameState.m.reforms, _fmt_t(gt)])
+		failures.append("PASARON %.0f s SIN PODER COMPRAR NI REFORMAR (hasta el %s; máximo 20 s)" % [max_gap, _fmt_t(gap_at)])
+	if min_cred < 5 and first_reform >= 0.0:
+		failures.append("UNA REFORMA DIO %d DE CREDIBILIDAD (mínimo 5)" % min_cred)
+	if run1_time > 0.0 and run2_reach > 0.0 and run2_reach >= run1_time:
+		failures.append("LA VUELTA 2 FUE MÁS LENTA QUE LA 1 (%s contra %s)" % [_fmt_t(run2_reach), _fmt_t(run1_time)])
+	print("QA jugador nuevo (%s): primera reforma %s, vuelta 2 llega a la plata de la 1 en %s, máxima espera sin poder comprar ni reformar %.1f s (hasta el %s), %d reformas en %s" % [profile, _fmt_t(first_reform), _fmt_t(run2_reach), max_gap, _fmt_t(gap_at), GameState.m.reforms, _fmt_t(gt)])
 	var f: FileAccess = FileAccess.open("user://qa/newplayer/log.csv", FileAccess.WRITE)
 	f.store_string("\n".join(log) + "\n")
 	f.close()

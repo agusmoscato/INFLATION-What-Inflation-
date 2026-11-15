@@ -41,6 +41,8 @@ var upg_title: Label
 var upg_detail: PanelContainer
 var _upg_hover: UpgradeIcon
 var biz_list: VBoxContainer
+var biz_scroll: ScrollContainer
+var biz_more: Label
 var biz_rows: Array = []          # [{def,row,icon,name,info,owned,btn}]
 var qty_buttons: Array = []
 var nav_tree: Button
@@ -338,38 +340,51 @@ func _build_right() -> Control:
 			_refresh_qty_buttons())
 		top.add_child(b)
 		qty_buttons.append({"btn": b, "q": q})
+	# lista compacta con scroll; si hay más abajo, una flecha de tiza lo avisa
+	var holder: Control = Control.new()
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bv.add_child(holder)
 	var sc: ScrollContainer = ScrollContainer.new()
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	bv.add_child(sc)
+	holder.add_child(sc)
+	biz_scroll = sc
 	biz_list = VBoxContainer.new()
 	biz_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	biz_list.add_theme_constant_override("separation", 5)
+	biz_list.add_theme_constant_override("separation", 3)
 	sc.add_child(biz_list)
+	biz_more = UIKit.label(tr("ui.biz.more"), 15, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_CENTER, true)
+	biz_more.add_theme_color_override("font_outline_color", Color.BLACK)
+	biz_more.add_theme_constant_override("outline_size", 6)
+	biz_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	biz_more.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	biz_more.offset_top = -24.0
+	biz_more.set_meta("qa_ignore", true)
+	holder.add_child(biz_more)
 	for def in GameData.businesses:
-		var row: PanelContainer = UIKit.panel(UIKit.C_PANEL2, 8)
+		var row: PanelContainer = UIKit.panel(UIKit.C_PANEL2, 5)
 		var h: HBoxContainer = HBoxContainer.new()
-		h.add_theme_constant_override("separation", 10)
+		h.add_theme_constant_override("separation", 8)
 		row.add_child(h)
 		var icon: BusinessIcon = BusinessIcon.new(def["id"])
-		icon.custom_minimum_size = Vector2(50, 50)
+		icon.custom_minimum_size = Vector2(38, 38)
 		h.add_child(icon)
 		var info: VBoxContainer = VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.add_theme_constant_override("separation", -2)
+		info.add_theme_constant_override("separation", -4)
 		h.add_child(info)
-		var name_l: Label = UIKit.label(tr(def["name_key"]), 17)
+		var name_l: Label = UIKit.label(tr(def["name_key"]), 16)
 		name_l.clip_text = true
 		info.add_child(name_l)
-		var info_l: Label = UIKit.label("", 15, UIKit.C_DIM)
+		var info_l: Label = UIKit.label("", 13, UIKit.C_DIM)
 		info_l.clip_text = true
 		info.add_child(info_l)
-		var owned: Label = UIKit.label("", 22, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, true)
-		owned.custom_minimum_size = Vector2(56, 0)
+		var owned: Label = UIKit.label("", 20, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, true)
+		owned.custom_minimum_size = Vector2(50, 0)
 		h.add_child(owned)
 		var btn: Button = Button.new()
-		btn.custom_minimum_size = Vector2(170, 46)
-		UIKit.style_button(btn, UIKit.C_GREEN.darkened(0.25), 17)
+		btn.custom_minimum_size = Vector2(160, 36)
+		UIKit.style_button(btn, UIKit.C_GREEN.darkened(0.25), 16)
 		btn.pressed.connect(_on_buy_business.bind(def["id"]))
 		h.add_child(btn)
 		biz_list.add_child(row)
@@ -471,7 +486,8 @@ func _show_upgrade_detail(ic: UpgradeIcon) -> void:
 	var v: Node = upg_detail.get_child(0)
 	var u: Dictionary = ic.upg
 	(v.get_child(0) as Label).text = GameData.upgrade_title(u)
-	(v.get_child(1) as Label).text = UpgradeIcon.describe(u) + ("\n" + tr("ui.upg.locked") if ic.locked else "")
+	var why: String = tr("ui.upg.locked") if ic.cond_text == "" else tr("ui.upg.locked_cond") % ic.cond_text
+	(v.get_child(1) as Label).text = UpgradeIcon.describe(u) + ("\n" + why if ic.locked else "")
 	var cost: BigNumber = EconomyLogic.upgrade_cost(gm(), u)
 	var line: String = tr("ui.upg.cost") % UIKit.money(cost)
 	if cost.gt(gm().money):
@@ -608,24 +624,41 @@ func _refresh_left(m: GameModel) -> void:
 		reform_hint.text = tr("ui.reform.need")
 
 
+## Cuántos negocios se ven sin haberlos comprado todavía, según la capa de la vuelta (cada capa agrega negocios).
+const ERA_SHOW: Array = [0, 3, 5, 7, 10, 10]
+
+
 func _refresh_biz(m: GameModel) -> void:
-	var max_idx: int = 0
+	var shown: int = ERA_SHOW[clampi(EconomyLogic.era_of(m), 1, 5)]
 	for r in biz_rows:
 		if m.owned_count(r["def"]["id"]) > 0:
-			max_idx = maxi(max_idx, int(r["def"]["idx"]))
+			shown = maxi(shown, int(r["def"]["idx"]) + 2)
+	var mystery_idx: int = -1
 	for r in biz_rows:
 		var def: Dictionary = r["def"]
 		var id: String = def["id"]
+		var idx: int = int(def["idx"])
 		var avail: bool = EconomyLogic.business_available(m, def)
 		var n: int = m.owned_count(id)
 		var row: Control = r["row"]
-		# como en Cookie Clicker: se ven los que tenés, el siguiente y uno misterioso más
-		row.visible = avail and int(def["idx"]) <= max_idx + 2
+		# se ven todos los desbloqueados hasta donde llega la capa, y el siguiente como "???" con su precio
+		var visible_named: bool = n > 0 or (avail and idx < shown)
+		var mystery: bool = false
+		if not visible_named and mystery_idx < 0:
+			mystery_idx = idx
+			mystery = true
+		row.visible = visible_named or mystery
 		if not row.visible:
 			continue
-		var mystery: bool = int(def["idx"]) == max_idx + 2 and n == 0
 		(r["name"] as Label).text = "???" if mystery else tr(def["name_key"])
 		(r["owned"] as Label).text = str(n) if n > 0 else ""
+		var btn: Button = r["btn"]
+		(r["icon"] as Control).modulate.a = 0.3 if mystery else 1.0
+		if mystery:
+			(r["info"] as Label).text = tr("ui.biz.locked_tree") if not avail else tr("ui.biz.mystery")
+			btn.text = UIKit.money(EconomyLogic.business_cost(m, def, 1))
+			btn.disabled = not avail or EconomyLogic.business_cost(m, def, 1).gt(m.money)
+			continue
 		var each: BigNumber = def["base_income"].mul_f(float(m.mods["prod_mult"]))
 		if n > 0 and m.biz_income.has(id):
 			each = (m.biz_income[id] as BigNumber).div_f(float(n))
@@ -636,10 +669,9 @@ func _refresh_biz(m: GameModel) -> void:
 				break
 		var info: String = tr("ui.biz.each") % each.format()
 		if next_ms > 0 and n > 0:
-			info += "  ·  " + tr("ui.biz.next_ms") % next_ms
-		(r["info"] as Label).text = "" if mystery else info
+			info += "  -  " + tr("ui.biz.next_ms") % next_ms
+		(r["info"] as Label).text = info
 		var q: int = _buy_mode
-		var btn: Button = r["btn"]
 		var cost: BigNumber
 		if q < 0:
 			var k: int = maxi(1, EconomyLogic.max_affordable(m, def))
@@ -649,7 +681,10 @@ func _refresh_biz(m: GameModel) -> void:
 			cost = EconomyLogic.business_cost(m, def, q)
 			btn.text = UIKit.money(cost) if q == 1 else "x%d  %s" % [q, UIKit.money(cost)]
 		btn.disabled = cost.gt(m.money)
-		(r["icon"] as Control).modulate.a = 0.35 if mystery else 1.0
+	var vb: VScrollBar = biz_scroll.get_v_scroll_bar()
+	biz_more.visible = vb.max_value - vb.page > float(biz_scroll.scroll_vertical) + 6.0
+	if biz_more.visible:
+		biz_more.position.y = biz_more.get_parent().size.y - 24.0 + sin(_clock * 4.0) * 3.0
 
 
 func _refresh_qty_buttons() -> void:
@@ -690,7 +725,9 @@ func _refresh_upgrades(m: GameModel) -> void:
 			nl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			upg_flow.add_child(nl)
 			for u in next:
-				_add_upgrade_card(UpgradeIcon.new(u, true))
+				var lk: UpgradeIcon = UpgradeIcon.new(u, true)
+				lk.cond_text = EconomyLogic.upgrade_condition_text(m, u)
+				_add_upgrade_card(lk)
 	for ic in _upg_icons:
 		var card: UpgradeIcon = ic
 		var cost: BigNumber = EconomyLogic.upgrade_cost(m, card.upg)

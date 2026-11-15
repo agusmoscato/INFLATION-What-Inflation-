@@ -259,18 +259,13 @@ static func income_per_sec(m: GameModel) -> BigNumber:
 		k *= float(md["frenzy_mult"])
 	if m.run_time < boost_seconds(m):
 		k *= B("early_boost_mult")
-	if idle_bonus(m):
-		k *= B("idle_mult")
+	if m.reforms > 0:
+		k *= B("barrio_mult")      # "el barrio trabaja solo": desde la primera reforma y permanente (cliquear siempre suma encima)
 	if float(md["indexation"]) > 0.0 and monthly_pct(m) >= 50.0:
 		k *= 1.0 + float(md["indexation"])
 	if float(md["infl_pays"]) > 0.0:
 		k *= 1.0 + float(md["infl_pays"]) * ln_price(m) / BigNumber.LN10      # "la inflación te paga": +50 % por cada cero de P
 	return m.base_income.mul_f(k)
-
-
-## "El barrio trabaja solo": si no tocás la empanada por un rato, la producción sube (para quien juega tranquilo).
-static func idle_bonus(m: GameModel) -> bool:
-	return m.combo_idle >= B("idle_after_s") and m.clicks > 0
 
 
 ## Arranque x10: después de cada reforma la moneda nueva trae confianza (`fresh_boost_s`), más lo que sume el árbol.
@@ -293,6 +288,14 @@ static func click_value(m: GameModel) -> BigNumber:
 	return v
 
 
+## Rendimiento decreciente suave para ritmos muy altos (autoclickers): hasta `click_soft_cps` clics/s cada clic vale
+## entero; más arriba cada clic vale √(tope/ritmo), así lo que suman los clics por segundo (√(tope·ritmo)) sigue
+## creciendo: cliquear más nunca rinde menos, solo suma un poco menos por clic.
+static func click_rate_factor(m: GameModel) -> float:
+	var soft: float = B("click_soft_cps")
+	return 1.0 if m.click_rate <= soft else sqrt(soft / m.click_rate)
+
+
 ## Un clic en la empanada. `manual` = del jugador (arma combo); los del autoclicker no.
 ## Devuelve {value: BigNumber, crit: bool, combo: int}.
 static func do_click(m: GameModel, manual: bool = true) -> Dictionary:
@@ -305,7 +308,10 @@ static func do_click(m: GameModel, manual: bool = true) -> Dictionary:
 		m.combo_idle = 0.0
 		m.max_combo = maxi(m.max_combo, m.combo)
 		m.run_manual_clicks += 1
+		m.click_rate += 1.0
 	var v: BigNumber = click_value(m)
+	if manual:
+		v = v.mul_f(click_rate_factor(m))
 	var crit: bool = float(m.mods["crit_chance"]) > 0.0 and m.rng.randf() < float(m.mods["crit_chance"])
 	if crit:
 		v = v.mul_f(float(m.mods["crit_mult"]))
@@ -1051,6 +1057,7 @@ static func tick(m: GameModel, dt: float, offline: bool = false) -> void:
 	m.time_played += dt
 	m.run_time += dt
 	m.combo_idle += dt
+	m.click_rate *= exp(-dt)        # promedio móvil de ~1 s: con N clics/s se estabiliza en N
 	if m.combo_idle > float(m.mods["combo_window"]):
 		m.combo = 0
 	m.remark_cd = maxf(0.0, m.remark_cd - dt)

@@ -57,7 +57,6 @@ k("joke.10", "¡Aumentó la yerba! Esto ya es personal.", "Yerba mate went up! N
 k("joke.11", "Un economista en la tele pide calma. Aumentó la calma.", "An economist on TV asks for calm. Calm went up.")
 k("joke.12", "El chori sale lo mismo que el auto que lo trae.", "The chori costs as much as the car delivering it.")
 k("joke.13", "Los precios suben por la escalera... y por el ascensor.", "Prices take the stairs... and the elevator.")
-k("ui.idle_on", "El barrio trabaja solo: %s", "The neighborhood works on its own: %s")
 k("ui.biz.more", "hay más abajo", "more below")
 k("ui.biz.mystery", "Un negocio nuevo... ¿qué será?", "A new business... what could it be?")
 k("ui.biz.locked_tree", "Se desbloquea en el árbol", "Unlocks in the tree")

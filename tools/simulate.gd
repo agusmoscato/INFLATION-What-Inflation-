@@ -19,8 +19,10 @@ const STEP: float = 0.25
 const FIRST_REFORM_MIN: Array = [4.0, 6.0]
 const FINAL_MIN: Array = [45.0, 60.0]
 const FINAL_CASUAL_MIN: Array = [60.0, 75.0]   ## pasivo y distraído: el juego dura alrededor de una hora también para ellos
+const FINAL_AUTO_MIN: Array = [50.0, 70.0]     ## autoclicker (15–20 clics/s sin parar): llega al final como un jugador activo
 const FULL_MIN: Array = [180.0, 240.0]
 const FIRST_CRED: Array = [5.0, 10.0]
+const FIRST_CRED_AUTO: Array = [5.0, 15.0]   ## el autoclicker junta más plata en la primera vuelta (la reforma la pide el tutorial)
 const MAX_GAP_S: float = 20.0
 const MAX_UPG_GAP_S: float = 20.0   ## en la primera hora, nunca más de 20 s sin una mejora que se pueda pagar ya o juntando 20 s
 const MIN_CRED: int = 5
@@ -36,7 +38,7 @@ var out_path: String = "res://docs/balance_v2.md"
 func _init() -> void:
 	var hours: float = 5.0
 	var seeds: Array = [1]
-	var profiles: Array = ["activo", "pasivo", "distraido"]
+	var profiles: Array = ["activo", "pasivo", "distraido", "autoclicker"]
 	var qa: bool = false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--hours="):
@@ -95,6 +97,7 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 	var click_money: float = 0.0            # plata de clics en el primer minuto de la vuelta 1
 	var total_money: float = 0.0
 	var t: float = 0.0
+	var seal_times: Array = []              # minuto en que se consiguió cada sello
 	for step in range(total_steps):
 		t = float(step) * STEP
 		var n_before: int = TreeLogic.count(m)
@@ -144,6 +147,12 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 		m.notifications.clear()
 		if step % 4 == 0:
 			AchievementTracker.check(m, ach)
+		var seals_now: int = _seals(m)
+		if seals_now > seal_times.size():
+			for k in range(seal_times.size(), seals_now):
+				seal_times.append((t + STEP) / 60.0)
+			if not quiet:
+				print("  sello %d en el min %.1f (vuelta %d)" % [seals_now, (t + STEP) / 60.0, m.run_index])
 		if m.won and final_min < 0.0:
 			final_min = (t + STEP) / 60.0
 		if full_min < 0.0 and TreeLogic.complete(m) and StickerLogic.missing_count(m) == 0 and m.achievements.size() >= GameData.achievements.size():
@@ -187,7 +196,7 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 		"ok": r2 > 0.0 and r1 > 0.0 and r2 * SPEEDUP_2 < r1, "note": ""})
 	checks.append({"name": "Credibilidad mínima en una reforma", "value": float(min_cred), "target": ">= %d" % MIN_CRED,
 		"ok": min_cred >= MIN_CRED, "note": "vuelta %d" % min_cred_n})
-	checks.append(_chk("Credibilidad de la primera reforma", first_cred, FIRST_CRED))
+	checks.append(_chk("Credibilidad de la primera reforma", first_cred, FIRST_CRED_AUTO if profile == "autoclicker" else FIRST_CRED))
 	var share: float = click_money / maxf(1.0, total_money) * 100.0
 	if profile != "pasivo":
 		checks.append({"name": "Plata de clics en el primer minuto (%)", "value": share, "target": ">= 50", "ok": share >= 50.0, "note": ""})
@@ -199,14 +208,22 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 			"ok": r10 > 0.0 and r1 > 0.0 and r10 * SPEEDUP_10 <= r1, "note": ""})
 	else:
 		checks.append({"name": "Primer renacimiento (min)", "value": first_min, "target": "(informativo)", "ok": first_min > 0.0, "note": ""})
-		checks.append(_chk("Final: Estabilizar la economía (min)", final_min, FINAL_CASUAL_MIN))
+		checks.append(_chk("Final: Estabilizar la economía (min)", final_min, FINAL_AUTO_MIN if profile == "autoclicker" else FINAL_CASUAL_MIN))
 	var ok: bool = true
 	for c in checks:
 		ok = ok and bool(c["ok"])
 		print("%-50s %8.1f  objetivo %-20s %s" % [c["name"], float(c["value"]), str(c["target"]), "PASA" if c["ok"] else "FALLA"])
 	return {"seed": seed_value, "profile": profile, "ok": ok, "checks": checks, "reforms": reforms, "final": final_min, "full": full_min,
 		"reach": reach_times, "missing_ach": _missing_ach(m), "nodes": TreeLogic.count(m), "stickers": m.stickers.size(),
-		"ach": m.achievements.size(), "minutes": t / 60.0, "zeros": m.zeros_cut, "runs": m.run_index}
+		"ach": m.achievements.size(), "minutes": t / 60.0, "seals": seal_times, "zeros": m.zeros_cut, "runs": m.run_index}
+
+
+static func _seals(m: GameModel) -> int:
+	var n: int = 0
+	for id in m.tree:
+		if bool(GameData.node(id)["seal"]):
+			n += 1
+	return n
 
 
 func _chk(name: String, v: float, rng: Array) -> Dictionary:

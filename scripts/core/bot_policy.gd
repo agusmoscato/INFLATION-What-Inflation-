@@ -15,6 +15,7 @@ const PROFILES: Dictionary = {
 	"activo": {"cps": 7.0, "catch": 0.9, "react": 1.0, "remark_pct": 4.0, "buy_every": 1.0, "cheap": false, "afk": 0.0},
 	"pasivo": {"cps": 1.0, "catch": 0.3, "react": 3.0, "remark_pct": 25.0, "buy_every": 2.0, "cheap": true, "afk": 0.0},
 	"distraido": {"cps": 4.0, "catch": 0.7, "react": 2.0, "remark_pct": 8.0, "buy_every": 1.5, "cheap": false, "afk": 120.0},
+	"autoclicker": {"cps": 17.0, "catch": 0.9, "react": 1.0, "remark_pct": 4.0, "buy_every": 1.0, "cheap": false, "afk": 0.0},
 }
 const BRANCH_W: Dictionary = {"neg": 1.0, "emp": 1.0, "inf": 1.1, "ren": 1.25, "fig": 1.4, "sue": 1.5, "bridge": 1.3, "final": 0.5}
 
@@ -32,6 +33,7 @@ var lazy: bool = false
 var prev_run_time: float = 300.0        ## duración de la vuelta anterior (para saber cuándo es "la mitad")
 var afk_left: float = 0.0
 var afk_done: bool = false
+var afk_taken: float = 0.0              ## segundos que estuvo afuera en esta vuelta (no cuentan como vuelta "larga")
 ## Callables opcionales para que el QA del juego real pase por la interfaz (señales, efectos): click(), bill(id), reform()
 var on_click: Callable
 var on_bill: Callable
@@ -58,6 +60,7 @@ func step(m: GameModel, dt: float) -> Dictionary:
 		afk_left = float(cfg["afk"])
 	if afk_left > 0.0:
 		afk_left -= dt
+		afk_taken += dt
 		for b in m.bills_active:
 			bill_plan[int(b["id"])] = {"catch": false, "age": 0.0}
 		return {}
@@ -150,7 +153,8 @@ func _reform_policy(m: GameModel, _dt: float) -> Dictionary:
 	if s.is_empty():
 		return {}
 	last_gain = m.credibility - cred_before
-	prev_run_time = t_before
+	prev_run_time = t_before - afk_taken      # lo que jugó de verdad: irse un rato no hace "larga" la vuelta siguiente
+	afk_taken = 0.0
 	afk_done = false
 	bill_plan.clear()
 	buy_nodes(m)

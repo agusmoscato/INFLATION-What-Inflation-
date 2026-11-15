@@ -202,6 +202,39 @@ func run(t) -> void:
 	mc.best_run = BigNumber.from_float(1e5)
 	mc.run_earned = BigNumber.from_float(1e7)
 	t.near(EconomyLogic.reform_gain_f(mc), ck * pow(7.0 - cc, 2.0), "la Credibilidad de la vuelta se cobra completa, sin importar la mejor vuelta")
+	# cliquear nunca rinde menos que no cliquear: la producción no depende de cuándo tocaste la empanada, y con el
+	# rendimiento decreciente lo que suman los clics por segundo igual crece con el ritmo
+	var mcl: GameModel = GameModel.new(23)
+	mcl.owned["kiosco"] = 15
+	mcl.reforms = 2
+	mcl.dirty = true
+	mcl.combo_idle = 0.0
+	var ips_clicking: BigNumber = EconomyLogic.income_per_sec(mcl)
+	mcl.combo_idle = 60.0
+	t.check(EconomyLogic.income_per_sec(mcl).eq(ips_clicking), "la producción es la misma cliqueando o sin tocar la empanada")
+	var prev_total: float = 0.0
+	var mono_c: bool = true
+	for cps in [1.0, 5.0, 10.0, 12.0, 17.0, 20.0, 40.0]:
+		mcl.click_rate = cps
+		var tot: float = cps * EconomyLogic.click_rate_factor(mcl)
+		if tot < prev_total:
+			mono_c = false
+		prev_total = tot
+	t.check(mono_c, "más clics por segundo siempre suman más (aunque cada clic valga un poco menos arriba de 10/s)")
+	# un bot que cliquea 17/s junta más que uno que no toca la empanada, en la misma vuelta
+	var mk1: GameModel = GameModel.new(24)
+	var mk2: GameModel = GameModel.new(24)
+	for gm2 in [mk1, mk2]:
+		gm2.owned["empanadas"] = 10
+		gm2.owned["kiosco"] = 5
+		gm2.reforms = 1
+		gm2.dirty = true
+	for i in range(240):
+		for k in range(4):
+			EconomyLogic.do_click(mk1, true)
+		EconomyLogic.tick(mk1, 0.25)
+		EconomyLogic.tick(mk2, 0.25)
+	t.check(mk1.run_earned.gt(mk2.run_earned), "cliquear sin parar rinde más que no cliquear (%s contra %s)" % [mk1.run_earned.format(), mk2.run_earned.format()])
 	# "te falta $X": baja a medida que se gana en la vuelta y llega a 0 justo cuando se habilita la reforma
 	var mf2: GameModel = GameModel.new(21)
 	mf2.owned["kiosco"] = 20

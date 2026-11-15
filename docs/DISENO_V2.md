@@ -59,7 +59,11 @@ tope 7 / 6 / 4 según la calidad de tiza; la parrilla tira humo). Detrás de la 
 (toldo y sol, casitas, edificios, rascacielos y $, llamas). La empanada evoluciona con el árbol: gorrito de cocinera
 (3 nodos), anteojos de sol (20), corona (los 6 sellos) y brillo dorado con el final.
 
-**El barrio trabaja solo**: si no tocás la empanada por 15 s, la producción va x2,5 (para quien juega tranquilo).
+**El barrio trabaja solo**: desde la primera reforma, la producción va x1,2 para siempre. Antes era un x2,5 que solo
+corría si no tocabas la empanada por 15 s, y eso castigaba a quien cliquea sin parar: con un autoclicker a 17 clics/s, en
+los primeros 15 minutos cliquear rendía menos que no tocar nada. **Regla: cliquear nunca rinde menos que no cliquear.**
+Para ritmos muy altos (autoclickers) hay un rendimiento decreciente suave: hasta 10 clics/s cada clic vale entero; más
+arriba cada clic vale √(10/ritmo), así que lo que suman los clics por segundo (√(10·ritmo)) sigue creciendo.
 
 Los ingresos son la mitad que en la primera versión del clicker: la vuelta 1 va más tranquila y en el primer minuto
 la plata sale sobre todo de los clics (≈ 67 % con un jugador activo).

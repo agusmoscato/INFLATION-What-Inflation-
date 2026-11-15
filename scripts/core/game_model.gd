@@ -21,6 +21,7 @@ var frenzy_left: float = 0.0
 var clickfrenzy_left: float = 0.0
 var combo: int = 0
 var combo_idle: float = 99.0                       ## segundos desde el último clic
+var click_rate: float = 0.0                        ## clics manuales por segundo (promedio móvil de ~1 s; no se guarda)
 var bill_timer: float = 40.0
 var bills_active: Array = []                       ## [{id:int, left:float, total:float}]
 var bill_seq: int = 0

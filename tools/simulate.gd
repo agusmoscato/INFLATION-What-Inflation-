@@ -17,10 +17,13 @@ extends SceneTree
 const STEP: float = 0.25
 
 const FIRST_REFORM_MIN: Array = [4.0, 6.0]
-const FINAL_MIN: Array = [45.0, 60.0]
-const FINAL_CASUAL_MIN: Array = [60.0, 75.0]   ## pasivo y distraído: el juego dura alrededor de una hora también para ellos
-const FINAL_AUTO_MIN: Array = [50.0, 70.0]     ## autoclicker (15–20 clics/s sin parar): llega al final como un jugador activo
-const FULL_MIN: Array = [180.0, 240.0]
+const FINAL_MIN: Array = [50.0, 70.0]
+const FINAL_CASUAL_MAX: float = 80.0           ## pasivo y distraído: el final en 80 minutos como mucho
+const FINAL_FAST: Array = ["activo", "autoclicker", "gastador"]   ## estos llegan al final entre los minutos 50 y 70
+const FULL_MIN: Array = [150.0, 210.0]         ## el 100 % (activo) entre 2,5 y 3,5 h
+const NODES_MEDIAN_MIN: float = 2.0            ## REGLA: cada reforma alcanza para comprar entre 2 y 5 nodos (mediana >= 2)
+const REFORMS_TO_FINAL: Array = [15.0, 20.0]   ## reformas hasta el final (activo, autoclicker y gastador)
+const RUN_MIN: Array = [2.0, 4.0]              ## mediana de la duración de las vueltas (min)
 const FIRST_CRED: Array = [5.0, 10.0]
 const FIRST_CRED_AUTO: Array = [5.0, 15.0]   ## el autoclicker junta más plata en la primera vuelta (la reforma la pide el tutorial)
 const MAX_GAP_S: float = 20.0
@@ -135,7 +138,7 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 				run1_target = earned
 				reach_times[1] = dur
 			reforms.append({"n": idx, "minute": t / 60.0, "dur": dur, "earned": earned, "cred": int(s["cred"]),
-				"nodes_bought": TreeLogic.count(m) - n_before})
+				"tree_before": n_before, "won": m.won})
 			if trace:
 				print("  REFORMA %d min %.1f ganado=%s +%d cred (quedan %d) -> nodos: %s" % [idx, t / 60.0, earned.format(), int(s["cred"]), m.credibility,
 					str(m.tree.keys().slice(n_before))])
@@ -182,6 +185,34 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 			min_cred_n = int(f["n"])
 	if reforms.is_empty():
 		min_cred = 0
+	# nodos comprados con la Credibilidad de cada reforma: los que se compran desde esa reforma hasta la siguiente
+	# (mientras al árbol le falten nodos)
+	var per_reform: Array = []
+	var zero_after_first: int = 0
+	var zero_at: int = -1
+	for i in range(reforms.size()):
+		var nb: int = (int(reforms[i + 1]["tree_before"]) if i + 1 < reforms.size() else TreeLogic.count(m)) - int(reforms[i]["tree_before"])
+		reforms[i]["nodes_bought"] = nb
+		if int(reforms[i]["tree_before"]) >= TreeLogic.total():
+			continue
+		if i + 1 >= reforms.size() and nb == 0:
+			continue          # la última (la simulación cortó antes de gastar)
+		per_reform.append(nb)
+		if nb == 0 and zero_at < 0:
+			zero_at = int(reforms[i]["n"])
+		if nb == 0:
+			zero_after_first += 1
+	var sorted_nb: Array = per_reform.duplicate()
+	sorted_nb.sort()
+	var median_nb: float = float(sorted_nb[sorted_nb.size() / 2]) if not sorted_nb.is_empty() else 0.0
+	var durs: Array = []
+	var reforms_to_final: int = 0
+	for f in reforms:
+		durs.append(float(f["dur"]) / 60.0)
+		if not bool(f["won"]):
+			reforms_to_final += 1
+	durs.sort()
+	var median_run: float = float(durs[durs.size() / 2]) if not durs.is_empty() else 0.0
 	var r1: float = float(reach_times.get(1, -1.0))
 	var r2: float = float(reach_times.get(2, -1.0))
 	var r10: float = float(reach_times.get(10, -1.0))
@@ -196,19 +227,30 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 		"ok": r2 > 0.0 and r1 > 0.0 and r2 * SPEEDUP_2 < r1, "note": ""})
 	checks.append({"name": "Credibilidad mínima en una reforma", "value": float(min_cred), "target": ">= %d" % MIN_CRED,
 		"ok": min_cred >= MIN_CRED, "note": "vuelta %d" % min_cred_n})
-	checks.append(_chk("Credibilidad de la primera reforma", first_cred, FIRST_CRED_AUTO if profile == "autoclicker" else FIRST_CRED))
+	checks.append(_chk("Credibilidad de la primera reforma", first_cred, FIRST_CRED_AUTO if profile in ["autoclicker", "gastador"] else FIRST_CRED))
 	var share: float = click_money / maxf(1.0, total_money) * 100.0
 	if profile != "pasivo":
 		checks.append({"name": "Plata de clics en el primer minuto (%)", "value": share, "target": ">= 50", "ok": share >= 50.0, "note": ""})
+	# la regla nueva: cada reforma compra nodos
+	checks.append({"name": "Nodos comprados por reforma (mediana)", "value": median_nb, "target": ">= %d" % int(NODES_MEDIAN_MIN),
+		"ok": median_nb >= NODES_MEDIAN_MIN, "note": "mín %d, máx %d" % [int(sorted_nb[0]) if not sorted_nb.is_empty() else 0, int(sorted_nb[-1]) if not sorted_nb.is_empty() else 0]})
+	checks.append({"name": "Reformas que no compran ningún nodo", "value": float(zero_after_first), "target": "0",
+		"ok": zero_after_first == 0, "note": ("la primera, vuelta %d" % zero_at) if zero_at >= 0 else ""})
+	checks.append(_chk("Duración de las vueltas, mediana (min)", median_run, RUN_MIN))
 	if profile == "activo":
 		checks.append(_chk("Primer renacimiento (min)", first_min, FIRST_REFORM_MIN))
-		checks.append(_chk("Final: Estabilizar la economía (min)", final_min, FINAL_MIN))
-		checks.append(_chk("100 %: árbol + álbum + logros (min)", full_min, FULL_MIN))
 		checks.append({"name": "Vuelta 10 llega a la plata de la vuelta 1 (s)", "value": r10, "target": "<= %.0f (1/5 de %.0f)" % [r1 / SPEEDUP_10, r1],
 			"ok": r10 > 0.0 and r1 > 0.0 and r10 * SPEEDUP_10 <= r1, "note": ""})
+		checks.append(_chk("100 %: árbol + álbum + logros (min)", full_min, FULL_MIN))
 	else:
 		checks.append({"name": "Primer renacimiento (min)", "value": first_min, "target": "(informativo)", "ok": first_min > 0.0, "note": ""})
-		checks.append(_chk("Final: Estabilizar la economía (min)", final_min, FINAL_AUTO_MIN if profile == "autoclicker" else FINAL_CASUAL_MIN))
+	if FINAL_FAST.has(profile):
+		checks.append(_chk("Final: Estabilizar la economía (min)", final_min, FINAL_MIN))
+		checks.append(_chk("Reformas hasta el final", float(reforms_to_final), REFORMS_TO_FINAL))
+	else:
+		checks.append({"name": "Final: Estabilizar la economía (min)", "value": final_min, "target": "<= %d" % int(FINAL_CASUAL_MAX),
+			"ok": final_min > 0.0 and final_min <= FINAL_CASUAL_MAX, "note": ""})
+		checks.append({"name": "Reformas hasta el final", "value": float(reforms_to_final), "target": "(informativo)", "ok": true, "note": ""})
 	var ok: bool = true
 	for c in checks:
 		ok = ok and bool(c["ok"])
@@ -261,20 +303,18 @@ func _write_report(results: Array) -> void:
 			continue
 		shown[r["profile"]] = true
 		s += "\n## %s, semilla %d\n\n" % [PROFILE_NAME.get(r["profile"], r["profile"]), r["seed"]]
-		s += "| Vuelta | Minuto | Duración | Plata máxima ganada | +Credibilidad | Nodos comprados después | Llega a la plata de la vuelta 1 en |\n"
+		s += "| Reforma | Minuto | Duración de la vuelta | Plata ganada | +Credibilidad | Nodos comprados con ella | Nodos en total |\n"
 		s += "| --- | --- | --- | --- | --- | --- | --- |\n"
-		var reach: Dictionary = r["reach"]
 		var rows: Array = r["reforms"]
+		var total_nodes: int = 0
 		for i in range(rows.size()):
 			var f: Dictionary = rows[i]
-			if i >= 25 and i < rows.size() - 3:
-				if i == 25:
-					s += "| … | | | | | | |\n"
-				continue
-			var n: int = int(f["n"])
-			var rt: String = ("%.0f s" % float(reach[n])) if reach.has(n) else "—"
-			s += "| %d | %.1f | %d:%02d | $%s | %d | %d | %s |\n" % [n, float(f["minute"]), int(f["dur"]) / 60, int(f["dur"]) % 60,
-				(f["earned"] as BigNumber).format(), int(f["cred"]), int(f.get("nodes_bought", 0)), rt]
+			total_nodes = int(f["tree_before"]) + int(f.get("nodes_bought", 0))
+			if int(f["tree_before"]) >= TreeLogic.total():
+				s += "| %d+ | %.1f | | | | (árbol completo) | %d |\n" % [int(f["n"]), float(f["minute"]), TreeLogic.total()]
+				break
+			s += "| %d | %.1f | %d:%02d | $%s | %d | %d | %d |\n" % [int(f["n"]), float(f["minute"]), int(f["dur"]) / 60, int(f["dur"]) % 60,
+				(f["earned"] as BigNumber).format(), int(f["cred"]), int(f.get("nodes_bought", 0)), total_nodes]
 		s += "\n- Final (Estabilizar la economía): minuto **%.1f**\n" % float(r["final"])
 		if float(r["full"]) > 0.0:
 			s += "- 100 %%: minuto **%.1f**\n" % float(r["full"])

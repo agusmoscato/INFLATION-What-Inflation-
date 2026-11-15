@@ -638,6 +638,7 @@ func _refresh_left(m: GameModel) -> void:
 	click_label.text = tr("ui.per_click") % EconomyLogic.click_value(m).format()
 	var cap: int = int(m.mods["combo_cap"])
 	combo_bar.max_value = float(cap)
+	empanada.streak = float(m.combo) / float(maxi(1, cap))
 	combo_bar.value = float(m.combo)
 	combo_label.text = tr("ui.combo") % ("x" + UpgradeIcon._num(EconomyLogic.combo_mult(m))) if m.combo >= 2 else " "
 	var gain: int = EconomyLogic.reform_gain(m)

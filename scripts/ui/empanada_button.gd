@@ -1,9 +1,30 @@
 class_name EmpanadaButton
 extends Control
-## La empanada, personaje del juego: dibujada en tiza con cara expresiva.
-## Squash & stretch al clic; transpira con inflación alta y entra en pánico en la hiperinflación.
+## La empanada, personaje del juego. El cuerpo es una textura (assets/empanada_nueva/empanada_body.png, filtro lineal
+## con mipmaps); todo lo demás se dibuja por código encima: la cara (ojos que siguen el mouse, parpadeo, boca en "o"
+## al clic, pánico, transpiración), los cachetes, el vapor, los accesorios del árbol y el brillo dorado del final.
+## Squash & stretch al clic; transpira con inflación alta o cerca de la pared y entra en pánico en la hiperinflación.
+## Con calidad de tiza Baja se mantiene la textura y se apagan el vapor y el halo.
 
 signal pressed(global_pos: Vector2)
+
+const BODY: Texture2D = preload("res://assets/empanada_nueva/empanada_body.png")
+const INK: Color = Color("#1E1A17")
+const EYE_WHITE: Color = Color("#F4F1E8")
+const CHEEK: Color = Color(0.96, 0.6, 0.71, 0.85)
+## Coordenadas (u, v) dentro de la textura, sacadas de referencia_empanada.png (encuadre 36,22 - 476,462 del SVG).
+const CENTER_UV: Vector2 = Vector2(0.5, 0.70)          ## centro del lado plano
+const EYE_UV: Array = [Vector2(0.3727, 0.5455), Vector2(0.6273, 0.5455)]
+const EYE_R: Vector2 = Vector2(0.0614, 0.0705)
+const PUPIL_OFF: Vector2 = Vector2(0.0136, 0.0136)
+const PUPIL_R: float = 0.0318
+const CHEEK_UV: Array = [Vector2(0.2818, 0.6591), Vector2(0.7182, 0.6591)]
+const CHEEK_R: Vector2 = Vector2(0.0545, 0.0318)
+const MOUTH_A: Vector2 = Vector2(0.4364, 0.6432)
+const MOUTH_C: Vector2 = Vector2(0.5, 0.7136)
+const MOUTH_B: Vector2 = Vector2(0.5636, 0.6432)
+const TOP_UV: Vector2 = Vector2(0.5, 0.20)             ## arriba de la cabeza (para el gorrito y la corona)
+const STEAM_U: Array = [0.3636, 0.5, 0.6364]
 
 ## Tasa de inflación mensual actual (la actualiza GameScreen): define el ánimo.
 var rate: float = 0.03
@@ -15,23 +36,31 @@ var crown: bool = false
 var gold: bool = false
 ## Transpira cuando la vuelta se acerca a la pared (aunque el freno evite la traba).
 var sweat: float = 0.0
+## Racha de clics (0..1): el vapor sube más rápido.
+var streak: float = 0.0
+## Vapor y halo (se apagan con calidad Baja; en el menú se pueden forzar).
+var show_face: bool = true
 
 var _tween: Tween
 var _t: float = 0.0
 var _o_mouth: float = 0.0
 var _blink: float = 0.0
+var _steam_phase: float = 0.0
+var _S: float = 100.0                 # lado de la textura en pantalla
+var _o: Vector2 = Vector2.ZERO        # esquina de la textura en pantalla
 
 
 func _ready() -> void:
 	if custom_minimum_size == Vector2.ZERO:
 		custom_minimum_size = Vector2(280, 220)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_update_pivot()
 	resized.connect(_update_pivot)
 
 
 func _update_pivot() -> void:
-	pivot_offset = Vector2(size.x / 2.0, size.y * 0.92)
+	pivot_offset = Vector2(size.x / 2.0, size.y * 0.88)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -55,6 +84,7 @@ func poke() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_steam_phase += delta * (0.35 + 1.1 * clampf(streak, 0.0, 1.0))
 	_o_mouth = maxf(0.0, _o_mouth - delta)
 	_blink = maxf(0.0, _blink - delta)
 	if _blink <= 0.0 and fmod(_t, 3.6) < delta:
@@ -64,125 +94,162 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+## Punto de la textura (u, v) en coordenadas del control.
+func T(uv: Vector2) -> Vector2:
+	return _o + uv * _S
+
+
+func _layout() -> void:
+	_S = minf(size.x / 0.95, size.y / 0.78)
+	var c: Vector2 = Vector2(size.x / 2.0, size.y * 0.86)
+	_o = c - CENTER_UV * _S
+
+
+func _fancy() -> bool:
+	return Settings.quality < 2
+
+
 func _draw() -> void:
-	var c: Vector2 = Vector2(size.x / 2.0, size.y * 0.68)
-	var r: float = minf(size.x * 0.42, size.y * 0.74)
-	if gold:
-		# brillo dorado del final: halo que respira y rayitos
+	_layout()
+	var c: Vector2 = T(CENTER_UV)
+	if gold and _fancy():
+		# halo dorado que late, detrás del cuerpo
 		var k: float = 0.5 + 0.5 * sin(_t * 2.5)
-		draw_circle(c + Vector2(0, -r * 0.45), r * (1.05 + 0.05 * k), Color(Chalk.YELLOW, 0.10 + 0.06 * k))
-		for i in range(10):
-			var a0: float = PI + PI * (float(i) + 0.5) / 10.0
-			draw_line(c + Vector2(cos(a0), sin(a0)) * r * 1.15, c + Vector2(cos(a0), sin(a0)) * r * (1.3 + 0.06 * k), Color(Chalk.YELLOW, 0.5), 2.0, true)
-	# cuerpo: media luna
-	var body: PackedVector2Array = PackedVector2Array()
-	for i in range(0, 25):
-		var a: float = PI + PI * float(i) / 24.0
-		body.append(c + Vector2(cos(a), sin(a)) * r)
-	Chalk.polygon(self, body, Chalk.ORANGE, 5.0, 11, true, Color(Chalk.YELLOW, 0.32), 11.0, 1.4)
-	var inner: PackedVector2Array = PackedVector2Array()
-	for i in range(3, 22):
-		var a2: float = PI + PI * float(i) / 24.0
-		inner.append(c + Vector2(cos(a2), sin(a2)) * r * 0.82)
-	draw_polyline(inner, Color(Chalk.WHITE, 0.25), 2.0, true)
-	# repulgue a lo largo del lado plano
-	var n: int = 13
-	for i in range(n):
-		var x: float = c.x - r + (2.0 * r) * (float(i) + 0.5) / float(n)
-		Chalk.circle(self, Vector2(x, c.y + 3.0), r * 0.07, Chalk.ORANGE, 2.6, 20 + i, true, 3.0)
-	Chalk.line(self, c + Vector2(-r, 0), c + Vector2(r, 0), Chalk.ORANGE, 4.0, 33, 1.5)
-	_draw_face(c, r)
-	_draw_outfit(c, r)
+		var hc: Vector2 = T(Vector2(0.5, 0.5))
+		for i in range(3):
+			draw_circle(hc, _S * (0.40 + 0.06 * float(i) + 0.03 * k), Color(Chalk.YELLOW, (0.10 - 0.025 * float(i)) * (0.7 + 0.5 * k)))
+		for i in range(12):
+			var a0: float = PI + PI * (float(i) + 0.5) / 12.0
+			draw_line(hc + Vector2(cos(a0), sin(a0)) * _S * 0.5, hc + Vector2(cos(a0), sin(a0)) * _S * (0.56 + 0.04 * k), Color(Chalk.YELLOW, 0.45), 2.0, true)
+	# cuerpo: la textura (dorada con el final)
+	var mod: Color = Color(1.0, 0.86, 0.42) if gold else Color.WHITE
+	draw_texture_rect(BODY, Rect2(_o, Vector2(_S, _S)), false, mod)
+	if _fancy():
+		_draw_steam()
+	if show_face:
+		_draw_face(c)
+	_draw_outfit()
 	if sweat > 0.0 and rate <= 0.15:
 		# gotitas de transpiración cerca de la pared (la cara preocupada ya trae las suyas con inflación alta)
 		for i in range(int(ceil(sweat * 3.0))):
 			var f: float = fmod(_t * (0.8 + 0.25 * float(i)) + float(i) * 0.41, 1.0)
-			var sx: float = c.x + r * (0.55 + 0.12 * float(i)) * (1.0 if i % 2 == 0 else -1.0)
-			_drop(Vector2(sx, c.y - r * 0.85 + f * r * 0.6), r * 0.07, (1.0 - f) * clampf(sweat, 0.3, 1.0))
+			var u: float = 0.16 + 0.05 * float(i) if i % 2 == 0 else 0.84 - 0.05 * float(i)
+			_drop(T(Vector2(u, 0.38 + f * 0.22)), _S * 0.028, (1.0 - f) * clampf(sweat, 0.3, 1.0))
+
+
+## Vapor: 3 líneas onduladas de tiza que suben despacio (más rápido con racha de clics).
+func _draw_steam() -> void:
+	for i in range(3):
+		var f: float = fmod(_steam_phase + float(i) * 0.33, 1.0)
+		var alpha: float = sin(f * PI) * 0.75
+		if alpha <= 0.02:
+			continue
+		var base: Vector2 = T(Vector2(STEAM_U[i], 0.16 - f * 0.06))
+		var pts: PackedVector2Array = PackedVector2Array()
+		for k in range(9):
+			var y: float = -float(k) / 8.0 * _S * 0.13
+			pts.append(base + Vector2(sin(float(k) * 0.9 + _t * 2.0 + float(i)) * _S * 0.018, y))
+		draw_polyline(pts, Color(Chalk.WHITE, alpha), maxf(2.0, _S * 0.014), true)
 
 
 ## Accesorios: gorrito de cocinera (o corona), anteojos de sol.
-func _draw_outfit(c: Vector2, r: float) -> void:
-	var top: Vector2 = c + Vector2(0, -r * 0.98)
+func _draw_outfit() -> void:
+	var top: Vector2 = T(TOP_UV)
+	var r: float = _S * 0.34
 	if crown:
 		var w: float = r * 0.62
 		var pts: PackedVector2Array = PackedVector2Array([top + Vector2(-w / 2.0, 0), top + Vector2(-w / 2.0, -r * 0.3), top + Vector2(-w / 4.0, -r * 0.14),
 			top + Vector2(0, -r * 0.36), top + Vector2(w / 4.0, -r * 0.14), top + Vector2(w / 2.0, -r * 0.3), top + Vector2(w / 2.0, 0)])
-		Chalk.polygon(self, pts, Chalk.YELLOW, 3.0, 201, true, Color(Chalk.YELLOW, 0.45), 6.0)
+		Chalk.polygon(self, pts, Chalk.YELLOW, 3.0, 201, true, Color(Chalk.YELLOW, 0.55), 6.0)
 		for i in range(3):
 			draw_circle(top + Vector2(-w / 2.0 + w * 0.5 * float(i), -r * (0.3 if i != 1 else 0.36)), 3.5, Chalk.PINK)
 	elif hat:
 		var hw: float = r * 0.36
-		Chalk.polygon(self, PackedVector2Array([top + Vector2(-hw, 2), top + Vector2(-hw, -r * 0.12), top + Vector2(hw, -r * 0.12), top + Vector2(hw, 2)]), Chalk.WHITE, 2.6, 211, true, Color(Chalk.WHITE, 0.35), 5.0)
-		Chalk.circle(self, top + Vector2(-hw * 0.45, -r * 0.3), r * 0.2, Chalk.WHITE, 2.4, 212, true, 5.0)
-		Chalk.circle(self, top + Vector2(hw * 0.45, -r * 0.3), r * 0.2, Chalk.WHITE, 2.4, 213, true, 5.0)
-		Chalk.circle(self, top + Vector2(0, -r * 0.42), r * 0.22, Chalk.WHITE, 2.4, 214, true, 5.0)
+		Chalk.polygon(self, PackedVector2Array([top + Vector2(-hw, 2), top + Vector2(-hw, -r * 0.12), top + Vector2(hw, -r * 0.12), top + Vector2(hw, 2)]), Chalk.WHITE, 2.6, 211, true, Color(Chalk.WHITE, 0.6), 5.0)
+		for p in [Vector2(-hw * 0.45, -r * 0.3), Vector2(hw * 0.45, -r * 0.3), Vector2(0, -r * 0.42)]:
+			draw_circle(top + p, r * 0.2, Color(Chalk.WHITE, 0.85))
+			Chalk.circle(self, top + p, r * 0.2, Chalk.WHITE, 2.4, 212 + int(p.x), false)
 	if glasses:
-		var ey: float = c.y - r * 0.42
-		var ex: float = r * 0.30
-		var lw: float = r * 0.2
-		for s in [-1.0, 1.0]:
-			var ec: Vector2 = Vector2(c.x + ex * s, ey)
-			draw_rect(Rect2(ec - Vector2(lw, lw * 0.6), Vector2(lw * 2.0, lw * 1.25)), Color(0.05, 0.05, 0.07, 0.92))
-			draw_line(ec + Vector2(-lw * 0.6, -lw * 0.3), ec + Vector2(-lw * 0.1, -lw * 0.3), Color(Chalk.WHITE, 0.6), 2.0)
-		draw_line(Vector2(c.x - ex + lw, ey - lw * 0.2), Vector2(c.x + ex - lw, ey - lw * 0.2), Color(0.05, 0.05, 0.07), 3.0)
+		var lw: Vector2 = Vector2(EYE_R.x * 1.45, EYE_R.y * 1.0) * _S
+		for e in EYE_UV:
+			var ec: Vector2 = T(e)
+			draw_rect(Rect2(ec - lw, lw * 2.0), Color(0.05, 0.05, 0.07, 0.94))
+			draw_line(ec + Vector2(-lw.x * 0.6, -lw.y * 0.45), ec + Vector2(-lw.x * 0.1, -lw.y * 0.45), Color(Chalk.WHITE, 0.6), 2.0)
+		draw_line(T(EYE_UV[0]) + Vector2(lw.x, -lw.y * 0.3), T(EYE_UV[1]) + Vector2(-lw.x, -lw.y * 0.3), Color(0.05, 0.05, 0.07), 3.0)
 
 
-func _draw_face(c: Vector2, r: float) -> void:
+func _ellipse(center: Vector2, rad: Vector2, col: Color) -> void:
+	var pts: PackedVector2Array = PackedVector2Array()
+	for i in range(24):
+		var a: float = TAU * float(i) / 24.0
+		pts.append(center + Vector2(cos(a) * rad.x, sin(a) * rad.y))
+	draw_colored_polygon(pts, col)
+
+
+func _draw_face(_c: Vector2) -> void:
 	var panic: bool = rate > 0.5
 	var worried: bool = rate > 0.15
+	var mid: Vector2 = (T(EYE_UV[0]) + T(EYE_UV[1])) / 2.0
 	var look: Vector2 = Vector2.ZERO
 	if is_inside_tree():
-		var d: Vector2 = get_local_mouse_position() - (c + Vector2(0, -r * 0.4))
-		look = d.normalized() * minf(d.length() * 0.05, r * 0.05)
-	var ey: float = -r * 0.42
-	var ex: float = r * 0.30
-	var er: float = r * (0.19 if panic else 0.14)
-	for s in [-1.0, 1.0]:
-		var ec: Vector2 = c + Vector2(ex * s, ey)
+		var d: Vector2 = get_local_mouse_position() - mid
+		look = d.normalized() * minf(d.length() * 0.04, _S * 0.018)
+	var er: Vector2 = EYE_R * _S * (1.22 if panic else 1.0)
+	for i in range(2):
+		var ec: Vector2 = T(EYE_UV[i])
+		var s: float = -1.0 if i == 0 else 1.0
 		if _blink > 0.0 and not panic:
-			Chalk.line(self, ec + Vector2(-er, 0), ec + Vector2(er, 0), Chalk.WHITE, 3.0, 50 + int(s))
+			draw_line(ec + Vector2(-er.x, 0), ec + Vector2(er.x, 0), INK, maxf(2.0, _S * 0.012), true)
 		else:
-			Chalk.circle(self, ec, er, Chalk.WHITE, 2.6, 60 + int(s * 3.0), false)
-			draw_circle(ec, er * 0.9, Color(Chalk.WHITE, 0.92))
-			draw_circle(ec + look, er * (0.28 if panic else 0.45), Color("#26302B"))
+			_ellipse(ec, er, EYE_WHITE)
+			var pr: float = PUPIL_R * _S * (0.6 if panic else 1.0)
+			var pc: Vector2 = ec + (Vector2.ZERO if panic else PUPIL_OFF * _S) + look
+			draw_circle(pc, pr, INK)
+			draw_circle(pc + Vector2(pr * 0.35, -pr * 0.42), pr * 0.36, EYE_WHITE)
 		# cejas
-		var brow_y: float = ey - er * 1.7
+		var by: float = ec.y - er.y * 1.5
 		if panic:
-			Chalk.line(self, c + Vector2(ex * s - er, brow_y - 4), c + Vector2(ex * s + er, brow_y + 2 - 6 * (0.5 - s * 0.5)), Chalk.WHITE, 3.0, 70 + int(s))
+			draw_line(Vector2(ec.x - er.x, by - 4 * s), Vector2(ec.x + er.x, by + 4 * s), INK, maxf(2.0, _S * 0.011), true)
 		elif worried:
-			Chalk.line(self, c + Vector2(ex * s - er * s * 0.0 - er, brow_y + 4 * s), c + Vector2(ex * s + er, brow_y - 4 * s), Chalk.WHITE, 3.0, 70 + int(s))
-	# mejillas
-	for s2 in [-1.0, 1.0]:
-		Chalk.circle(self, c + Vector2(r * 0.55 * s2, -r * 0.22), r * 0.09, Chalk.PINK, 2.2, 80 + int(s2 * 2.0), true, 3.5)
+			draw_line(Vector2(ec.x - er.x, by + 4 * s), Vector2(ec.x + er.x, by - 4 * s), INK, maxf(2.0, _S * 0.011), true)
+	# cachetes
+	for cu in CHEEK_UV:
+		_ellipse(T(cu), CHEEK_R * _S, CHEEK)
 	# boca
-	var mc: Vector2 = c + Vector2(0, -r * 0.18)
+	var a: Vector2 = T(MOUTH_A)
+	var b: Vector2 = T(MOUTH_B)
+	var mw: float = maxf(2.5, _S * 0.018)
 	if _o_mouth > 0.0:
-		Chalk.circle(self, mc, r * 0.1, Chalk.WHITE, 3.0, 90, true, 3.5, 0.9)
+		_ellipse(T(Vector2(0.5, 0.665)), Vector2(0.032, 0.036) * _S, INK)
 	elif panic:
-		var big: PackedVector2Array = Chalk.ellipse_pts(mc + Vector2(0, 4), r * 0.2, r * 0.12 + sin(_t * 30.0) * 2.0, 91, 1.0, 1.0)
-		Chalk.polygon(self, big, Chalk.WHITE, 3.0, 91, true, Color(Chalk.PINK, 0.6), 4.0, 0.6)
+		_ellipse(T(Vector2(0.5, 0.67)), Vector2(0.06, 0.04 + sin(_t * 30.0) * 0.004) * _S, INK)
+		_ellipse(T(Vector2(0.5, 0.69)), Vector2(0.035, 0.015) * _S, Color(Chalk.PINK, 0.9))
 	elif worried:
 		var wave: PackedVector2Array = PackedVector2Array()
 		for i in range(7):
-			wave.append(mc + Vector2(-r * 0.2 + r * 0.4 * float(i) / 6.0, sin(float(i) * 2.2) * 4.0))
-		draw_polyline(wave, Chalk.WHITE, 3.0, true)
+			wave.append(a.lerp(b, float(i) / 6.0) + Vector2(0, sin(float(i) * 2.2) * _S * 0.008 + _S * 0.02))
+		draw_polyline(wave, INK, mw, true)
 	else:
-		draw_arc(mc + Vector2(0, -2), r * 0.2, 0.25, PI - 0.25, 14, Chalk.WHITE, 3.2, true)
+		var ctrl: Vector2 = T(MOUTH_C)
+		var pts: PackedVector2Array = PackedVector2Array()
+		for i in range(13):
+			var t: float = float(i) / 12.0
+			pts.append(a.lerp(ctrl, t).lerp(ctrl.lerp(b, t), t))
+		draw_polyline(pts, INK, mw, true)
 	# transpiración
 	if worried:
 		var drops: int = 3 if panic else 1
 		for i in range(drops):
 			var f: float = fmod(_t * (0.9 + 0.3 * float(i)) + float(i) * 0.37, 1.0)
-			var sx: float = c.x + r * (0.62 + 0.1 * float(i)) * (1.0 if i % 2 == 0 else -1.0)
-			var sy: float = c.y - r * 0.8 + f * r * 0.7
-			_drop(Vector2(sx, sy), r * 0.07, 1.0 - f * 0.6)
+			var u: float = 0.2 + 0.04 * float(i) if i % 2 == 0 else 0.8 - 0.04 * float(i)
+			_drop(T(Vector2(u, 0.4 + f * 0.25)), _S * 0.028, 1.0 - f * 0.6)
 	# rayitas de susto alrededor de la cabeza
 	if panic:
+		var hc: Vector2 = T(Vector2(0.5, 0.62))
 		for i in range(5):
-			var a: float = PI + PI * (float(i) + 0.5) / 5.0
-			var p0: Vector2 = c + Vector2(cos(a), sin(a)) * (r * 1.12)
-			var p1: Vector2 = c + Vector2(cos(a), sin(a)) * (r * 1.28 + sin(_t * 20.0 + float(i)) * 4.0)
+			var ang: float = PI + PI * (float(i) + 0.5) / 5.0
+			var p0: Vector2 = hc + Vector2(cos(ang) * 0.5, sin(ang) * 0.48) * _S
+			var p1: Vector2 = hc + Vector2(cos(ang) * 0.58, sin(ang) * 0.56) * _S + Vector2(0, sin(_t * 20.0 + float(i)) * 4.0)
 			draw_line(p0, p1, Color(Chalk.YELLOW, 0.9), 3.0, true)
 
 

@@ -20,7 +20,7 @@
   "brake_soft": 0.7,
   "reach_s": 600.0,
   "reach_cps": 3.0,
-  "reveal_pace_early": 20.0,
+  "reveal_pace_early": 10.0,
   "reveal_pace": 2.0,
   "slow_runs": 3,
   "stuck_s": 15.0,

@@ -379,6 +379,13 @@ static func upgrade_visible(m: GameModel, u: Dictionary) -> bool:
 			return business_available(m, def) and m.owned_count(u["biz"]) >= int(u["req"])
 		"click":
 			return m.run_clicks >= int(u["req"])
+		"clicktotal":
+			return m.clicks >= int(u["req"])
+		"promo":
+			var lvl: int = int(u["level"])
+			if lvl == 1:
+				return m.total_businesses() >= int(u["req"])
+			return m.upgrades.has("promo_%d" % (lvl - 1))
 		"syn":
 			return m.owned_count(u["biz"]) >= int(u["req"]) and m.owned_count(u["other"]) >= int(u["req"])
 		"global":
@@ -386,8 +393,12 @@ static func upgrade_visible(m: GameModel, u: Dictionary) -> bool:
 	return false
 
 
+## Precio × P. Las de precio "en segundos de ingreso" (clic por total de clics, campañas) se ajustan a tu economía.
 static func upgrade_cost(m: GameModel, u: Dictionary) -> BigNumber:
-	return u["cost"].mul(cost_factor(m))
+	var c: BigNumber = u["cost"]
+	if u.has("cost_s"):
+		c = BigNumber.max_of(c, steady_income(m).mul_f(float(u["cost_s"])))
+	return c.mul(cost_factor(m))
 
 
 ## Ingreso "de todos los días": producción sin frenesí ni eventos más unos clics tranquilos por segundo.
@@ -417,15 +428,64 @@ static func visible_upgrades(m: GameModel) -> Array:
 	return out
 
 
+## La condición que falta para que una mejora se desbloquee (para mostrar en "Próximas"). "" si ya está desbloqueada.
+static func upgrade_condition(m: GameModel, u: Dictionary) -> Dictionary:
+	match str(u["kind"]):
+		"biz", "syn":
+			return {"biz": str(u["biz"]), "n": int(u["req"]), "have": m.owned_count(u["biz"])}
+		"click":
+			return {"clicks": int(u["req"]), "have": m.run_clicks}
+		"clicktotal":
+			return {"clicks_total": int(u["req"]), "have": m.clicks}
+	return {}
+
+
+## Mejoras que se desbloquean pronto (falta poco de su condición), para "Próximas".
+static func soon_upgrades(m: GameModel, limit: int) -> Array:
+	var out: Array = []
+	for u in GameData.upgrades:
+		if m.upgrades.has(u["id"]) or upgrade_visible(m, u):
+			continue
+		var c: Dictionary = upgrade_condition(m, u)
+		if c.is_empty():
+			continue
+		var need: int = int(c.get("n", c.get("clicks", c.get("clicks_total", 0))))
+		var have: int = int(c["have"])
+		if str(u["kind"]) == "syn":
+			have = mini(m.owned_count(u["biz"]), m.owned_count(u["other"]))
+		if have >= need * 0.6 and (str(u["kind"]) != "biz" or business_available(m, GameData.businesses[GameData.business_idx[u["biz"]]])):
+			out.append(u)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["cost"].lt(b["cost"]))
+	return out.slice(0, limit)
+
+
 ## "Próximas": desbloqueadas pero todavía lejos (más de `reach_s` de ingreso). Las más baratas primero.
 ## (Las que ya están al alcance esperan su turno sin mostrarse: aparecen de a una, como novedad.)
+## Después vienen las que se desbloquean pronto, con su condición ("a los 150 carritos").
 static func upcoming_upgrades(m: GameModel, limit: int = 4) -> Array:
 	var out: Array = []
 	for u in GameData.upgrades:
 		if upgrade_visible(m, u) and not m.revealed.has(u["id"]) and not upgrade_in_reach(m, u):
 			out.append(u)
-	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["cost"].lt(b["cost"]))
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return upgrade_cost(m, a).lt(upgrade_cost(m, b)))
+	if out.size() < limit:
+		out.append_array(soon_upgrades(m, limit - out.size()))
 	return out.slice(0, limit)
+
+
+## Texto de la condición que falta ("a los 150 carritos", "a los 4.000 clics"); "" si ya está desbloqueada.
+static func upgrade_condition_text(m: GameModel, u: Dictionary) -> String:
+	if upgrade_visible(m, u):
+		return ""
+	var c: Dictionary = upgrade_condition(m, u)
+	if c.has("biz"):
+		var other: String = (" y %d " % int(c["n"]) + TranslationServer.translate("biz.%s.pl" % u["other"]).to_lower()) if str(u["kind"]) == "syn" else ""
+		return TranslationServer.translate("ui.upg.cond_biz") % [int(c["n"]), TranslationServer.translate("biz.%s.pl" % c["biz"]).to_lower() + other]
+	if c.has("clicks"):
+		return TranslationServer.translate("ui.upg.cond_clicks") % int(c["clicks"])
+	if c.has("clicks_total"):
+		return TranslationServer.translate("ui.upg.cond_clicks_total") % int(c["clicks_total"])
+	return ""
 
 
 ## Revela la próxima mejora al alcance (la más barata). Devuelve su id o "".
@@ -549,6 +609,15 @@ static func anything_affordable(m: GameModel) -> bool:
 		if upgrade_shown(m, u) and upgrade_cost(m, u).le(m.money):
 			return true
 	return TreeLogic.any_affordable(m)
+
+
+## ¿Hay alguna mejora de la fila que se pueda comprar ya o juntando como mucho `secs` segundos de ingreso?
+static func any_upgrade_affordable(m: GameModel, secs: float = 0.0) -> bool:
+	var budget: BigNumber = m.money.add(steady_income(m).mul_f(secs))
+	for u in GameData.upgrades:
+		if upgrade_shown(m, u) and upgrade_cost(m, u).le(budget):
+			return true
+	return false
 
 
 static func cheapest_business(m: GameModel) -> BigNumber:

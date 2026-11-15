@@ -12,6 +12,7 @@ var affordable: bool = false
 var locked: bool = false
 var progress: float = 0.0          ## plata / precio (0..1) para la barrita
 var price_text: String = ""
+var cond_text: String = ""           ## "Próximas" que todavía no se desbloquean: la condición en lugar del precio
 var _t: float = 0.0
 
 
@@ -43,6 +44,8 @@ func set_state(can: bool, prog: float, price: String) -> void:
 static func short_name(u: Dictionary) -> String:
 	if str(u["kind"]) == "biz":
 		return TranslationServer.translate("upg.short.biz_" + str(u["id"]).get_slice("_", str(u["id"]).get_slice_count("_") - 1))
+	if str(u["kind"]) == "promo":
+		return GameData.upgrade_title(u)
 	return TranslationServer.translate(u["name_key"])
 
 
@@ -71,7 +74,7 @@ static func describe(u: Dictionary) -> String:
 			return TranslationServer.translate("upg.biz.d") % [TranslationServer.translate("biz." + str(u["biz"])), "x" + _num(float(fx["value"]))]
 		"syn":
 			return TranslationServer.translate("upg.syn.d") % [TranslationServer.translate("biz." + str(u["biz"])), int(round(float(fx["value"]) * 100.0)), TranslationServer.translate("biz." + str(u["other"]))]
-		"global":
+		"global", "promo":
 			return TranslationServer.translate("upg.glob.d") % ("x" + _num(float(fx["value"])))
 	return TranslationServer.translate(u["desc_key"])
 
@@ -101,7 +104,10 @@ func _draw() -> void:
 	draw_string(f, Vector2(x, 21), short_name(upg), HORIZONTAL_ALIGNMENT_LEFT, w, 15, Color(Chalk.WHITE, 0.95 * dim))
 	draw_string(body, Vector2(x, 41), effect(upg), HORIZONTAL_ALIGNMENT_LEFT, w, 16, Color(Chalk.YELLOW, dim))
 	var pc: Color = Chalk.GREEN if affordable and not locked else (Color(Chalk.WHITE, 0.5) if locked else Chalk.RED)
-	draw_string(f, Vector2(x, 61), price_text, HORIZONTAL_ALIGNMENT_LEFT, w, 15, pc)
+	if locked and cond_text != "":
+		draw_string(body, Vector2(x, 61), cond_text, HORIZONTAL_ALIGNMENT_LEFT, w, 14, Color(Chalk.PINK, 0.8))
+	else:
+		draw_string(f, Vector2(x, 61), price_text, HORIZONTAL_ALIGNMENT_LEFT, w, 15, pc)
 	# barrita hacia el precio
 	if not affordable and not locked:
 		var br: Rect2 = Rect2(Vector2(8, size.y - 9), Vector2(size.x - 16, 5))

@@ -20,6 +20,7 @@ const FINAL_MIN: Array = [50.0, 70.0]
 const FULL_MIN: Array = [180.0, 240.0]
 const FIRST_CRED: Array = [5.0, 10.0]
 const MAX_GAP_S: float = 20.0
+const MAX_UPG_GAP_S: float = 20.0   ## en la primera hora, nunca más de 20 s sin una mejora que se pueda pagar ya o juntando 20 s
 const MIN_CRED: int = 5
 const SPEEDUP_10: float = 5.0       ## la vuelta 10 llega a la plata de la vuelta 1 en <= 1/5 del tiempo
 const SPEEDUP_2: float = 2.0        ## la vuelta 2, en menos de la mitad
@@ -82,6 +83,9 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 	var final_min: float = -1.0
 	var full_min: float = -1.0
 	var last_ok_t: float = 0.0
+	var last_upg_t: float = 0.0
+	var max_upg_gap: float = 0.0
+	var upg_gap_at: float = 0.0
 	var max_gap: float = 0.0
 	var gap_at: float = 0.0
 	var run1_target: BigNumber = null
@@ -103,12 +107,20 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 				max_gap = t - last_ok_t
 				gap_at = t
 			last_ok_t = t
+		if t <= 3600.0 and EconomyLogic.any_upgrade_affordable(m, 20.0):
+			if t - last_upg_t > max_upg_gap:
+				max_upg_gap = t - last_upg_t
+				upg_gap_at = t
+			last_upg_t = t
+		var upg_before: int = m.upgrades.size()
 		var bought_before: int = m.total_businesses() + m.upgrades.size() + TreeLogic.count(m)
 		if trace and t - last_ok_t > 20.0 and int(t / STEP) % 20 == 0:
 			print("    ESPERA %.0f s (min %.1f) vuelta %d (%.0f s) plata=%s $/s=%s P=%.2f más barato=%s puede reformar=%s meta=%s ganado=%s" % [t - last_ok_t, t / 60.0,
 				m.run_index, m.run_time, m.money.format(), EconomyLogic.income_per_sec(m).format(), EconomyLogic.price_level(m).to_float(),
 				EconomyLogic.cheapest_business(m).format(), str(EconomyLogic.can_reform(m)), EconomyLogic.reform_target(m).format(), m.run_earned.format()])
 		var s: Dictionary = bot.step(m, STEP)
+		if m.upgrades.size() > upg_before and s.is_empty():
+			last_upg_t = t
 		if m.total_businesses() + m.upgrades.size() + TreeLogic.count(m) > bought_before:
 			last_ok_t = t          # compró algo en este paso (la plata del clic llegó y la gastó enseguida)
 		if first_min_run and s.is_empty():
@@ -164,6 +176,11 @@ func run_sim(seed_value: int, hours: float, profile: String) -> Dictionary:
 	var r10: float = float(reach_times.get(10, -1.0))
 	checks.append({"name": "Máxima espera sin poder comprar ni reformar (s)", "value": max_gap, "target": "<= %d" % int(MAX_GAP_S),
 		"ok": max_gap <= MAX_GAP_S, "note": "en el min %.1f" % (gap_at / 60.0)})
+	if t - last_upg_t > max_upg_gap and last_upg_t < 3600.0:
+		max_upg_gap = minf(t, 3600.0) - last_upg_t
+		upg_gap_at = minf(t, 3600.0)
+	checks.append({"name": "Máxima espera sin mejora a tiro (<= 20 s de ingreso), 1.ª hora (s)", "value": max_upg_gap, "target": "<= %d" % int(MAX_UPG_GAP_S),
+		"ok": max_upg_gap <= MAX_UPG_GAP_S, "note": "en el min %.1f" % (upg_gap_at / 60.0)})
 	checks.append({"name": "Vuelta 2 llega a la plata de la vuelta 1 (s)", "value": r2, "target": "< %.0f (1/2 de %.0f)" % [r1 / SPEEDUP_2, r1],
 		"ok": r2 > 0.0 and r1 > 0.0 and r2 * SPEEDUP_2 < r1, "note": ""})
 	checks.append({"name": "Credibilidad mínima en una reforma", "value": float(min_cred), "target": ">= %d" % MIN_CRED,

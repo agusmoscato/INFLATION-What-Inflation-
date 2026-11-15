@@ -43,6 +43,9 @@ k("ui.tree.recommend", "Comprá esto: tu próxima vuelta va a ser mucho más rá
 k("ui.remark.line", "Congela los precios %d s", "Freezes prices for %d s")
 k("ui.rate_braked", "Inflación frenada (venía a %s %% mensual)", "Inflation held back (was heading to %s%% a month)")
 k("ui.upgrades_next", "Próximas:", "Coming up:")
+k("ui.biz.more", "hay más abajo", "more below")
+k("ui.biz.mystery", "Un negocio nuevo... ¿qué será?", "A new business... what could it be?")
+k("ui.biz.locked_tree", "Se desbloquea en el árbol", "Unlocks in the tree")
 k("ui.upg.locked", "Todavía está lejos: se habilita cuando cueste menos de 10 minutos de lo que ganás.", "Still far away: it unlocks when it costs less than 10 minutes of what you earn.")
 k("ui.upg.missing", "te faltan %s", "%s to go")
 k("ui.toast.fresh", "¡Moneda nueva, confianza nueva! Producción x10 los primeros 30 s.", "New currency, new trust! Production x10 for the first 30 s.")
@@ -171,6 +174,38 @@ for bid, pl, plen, sh, shen in [("empanadas", "Carritos", "Carts", "carrito", "c
 for i, (es, en) in enumerate([("%s con delantal", "%s with an apron"), ("%s con cartel luminoso", "%s with a neon sign"), ("%s con sucursal", "%s with a branch office"), ("%s de franquicia", "%s franchise")], 1):
     k("upg.biz_%d" % i, es, en)
 k("upg.biz.d", "%s produce %s.", "%s produces %s.")
+for i, (es, en, ses, sen) in enumerate([
+        ("%s a la calle", "%s on the high street", "Local a la calle", "Street front"), ("Cadena de %s", "%s chain", "Cadena", "Chain"),
+        ("%s con marca registrada", "Trademarked %s", "Marca registrada", "Trademark"), ("%s de exportación", "Export-grade %s", "Exportación", "Export"),
+        ("%s multinacional", "Multinational %s", "Multinacional", "Multinational"), ("Monopolio de %s", "%s monopoly", "Monopolio", "Monopoly"),
+        ("Imperio de %s", "%s empire", "Imperio", "Empire"), ("%s de leyenda", "Legendary %s", "Leyenda", "Legend")], 5):
+    k("upg.biz_%d" % i, es, en)
+    k("upg.short.biz_%d" % i, ses, sen)
+for cid, es, en, des, den in [
+    ("clickt_1", "Callo en el dedo", "Finger callus", "Clic x2.", "Click x2."),
+    ("clickt_2", "Billetera virtual", "Digital wallet", "Cada clic suma el 1 % de tu producción por segundo.", "Every click adds 1% of your production per second."),
+    ("clickt_3", "Dedo de acero", "Steel finger", "Clic x2.", "Click x2."),
+    ("clickt_4", "Cobro con QR", "QR checkout", "Cada clic suma otro 1 % de tu producción por segundo.", "Every click adds another 1% of your production per second."),
+    ("clickt_5", "Mano biónica", "Bionic hand", "Clic x3.", "Click x3."),
+    ("clickt_6", "Posnet de oro", "Golden card reader", "Cada clic suma un 2 % más de tu producción por segundo.", "Every click adds 2% more of your production per second."),
+    ("clickt_7", "El dedo de Dios", "The finger of God", "Clic x3. Más polémico todavía.", "Click x3. Even more controversial.")]:
+    k("upg." + cid, es, en); k("upg.%s.d" % cid, des, den)
+for sid, es, en in [("syn_6", "El kiosco vende choripán", "The corner shop sells choripán"), ("syn_7", "Empanada y chori", "Empanada and chori"),
+                    ("syn_8", "Chori para los que lavan", "Chori for the car washers"), ("syn_9", "Facturas en el kiosco", "Pastries at the corner shop"),
+                    ("syn_10", "Lavado y mandados", "Wash and errands"), ("syn_11", "Remís al almacén", "Cab to the grocery"),
+                    ("syn_12", "Pan industrial", "Industrial bread"), ("syn_13", "Billetes de fábrica", "Factory-made banknotes"),
+                    ("syn_14", "Remises offshore", "Offshore cabs"), ("syn_15", "Imprenta del holding", "The holding's printing press")]:
+    k("upg." + sid, es, en)
+for i, (es, en) in enumerate([("Volanteada", "Flyers"), ("Aviso en la radio", "Radio ad"), ("Cartel en la ruta", "Highway billboard"),
+                              ("Influencer del barrio", "Neighborhood influencer"), ("Promo 2x1", "2-for-1 deal"), ("Jingle pegadizo", "Catchy jingle"),
+                              ("Spot en el entretiempo", "Halftime commercial"), ("Globo aerostático", "Hot-air balloon")]):
+    k("upg.promo_%d" % i, es, en)
+k("upg.promo.d", "Todos los negocios producen x1,03. Siempre hay otra campaña (cada una cuesta un poco más).", "All businesses produce x1.03. There is always another campaign (each costs a bit more).")
+k("ui.upg.cond_biz", "a los %d %s", "at %d %s")
+k("ui.upg.cond_clicks", "a los %d clics", "at %d clicks")
+k("ui.upg.cond_clicks_total", "a los %d clics en total", "at %d total clicks")
+k("ui.upg.locked_cond", "Se desbloquea %s.", "Unlocks %s.")
+
 k("upg.syn.d", "%s produce +%d %% por cada %s.", "%s produces +%d%% per %s.")
 k("upg.glob.d", "Todos los negocios producen %s.", "All businesses produce %s.")
 for cid, es, en, des, den in [

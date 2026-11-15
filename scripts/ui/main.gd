@@ -480,6 +480,8 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool, profile: String
 	var gap_at: float = 0.0
 	var first_reform: float = -1.0
 	var min_cred: int = 1 << 30
+	var last_upg: float = 0.0
+	var max_upg_gap: float = 0.0
 	var run_start: float = 0.0
 	var run1_time: float = -1.0
 	var run1_money: BigNumber = null
@@ -517,10 +519,16 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool, profile: String
 				max_gap = gt - last_afford
 				gap_at = gt
 			last_afford = gt
+		if gt <= 3600.0 and EconomyLogic.any_upgrade_affordable(m, 20.0):
+			max_upg_gap = maxf(max_upg_gap, gt - last_upg)
+			last_upg = gt
+		var upg_before: int = m.upgrades.size()
 		var bought_before: int = m.total_businesses() + m.upgrades.size() + TreeLogic.count(m)
 		var s: Dictionary = bot.step(m, dt)
 		if m.total_businesses() + m.upgrades.size() + TreeLogic.count(m) > bought_before:
 			last_afford = gt
+		if m.upgrades.size() > upg_before and s.is_empty():
+			last_upg = gt
 		Economy.flush()
 		if not s.is_empty():
 			min_cred = mini(min_cred, int(s["cred"]))
@@ -557,6 +565,8 @@ func _qa_newplayer(failures: Array, seconds: float, shots: bool, profile: String
 		failures.append("NO HUBO NINGUNA REFORMA EN %s" % _fmt_t(gt))
 	if max_gap > 20.0:
 		failures.append("PASARON %.0f s SIN PODER COMPRAR NI REFORMAR (hasta el %s; máximo 20 s)" % [max_gap, _fmt_t(gap_at)])
+	if max_upg_gap > 20.0:
+		failures.append("PASARON %.0f s SIN NINGUNA MEJORA A TIRO (comprable ya o juntando 20 s; máximo 20 s en la primera hora)" % max_upg_gap)
 	if min_cred < 5 and first_reform >= 0.0:
 		failures.append("UNA REFORMA DIO %d DE CREDIBILIDAD (mínimo 5)" % min_cred)
 	if run1_time > 0.0 and run2_reach > 0.0 and run2_reach >= run1_time:

@@ -128,5 +128,142 @@
       "cost": "5e9",
       "value": 2.0
     }
-  ]
+  ],
+  "per_business_levels": {
+    "owned": [
+      75,
+      100,
+      150,
+      200,
+      250,
+      300,
+      400,
+      500
+    ],
+    "units_cost": 50,
+    "mult": 2.0
+  },
+  "click_total": [
+    {
+      "id": "clickt_1",
+      "clicks": 1500,
+      "type": "click_mult",
+      "value": 2.0,
+      "cost_s": 45
+    },
+    {
+      "id": "clickt_2",
+      "clicks": 4000,
+      "type": "click_pct",
+      "value": 0.01,
+      "cost_s": 60
+    },
+    {
+      "id": "clickt_3",
+      "clicks": 8000,
+      "type": "click_mult",
+      "value": 2.0,
+      "cost_s": 75
+    },
+    {
+      "id": "clickt_4",
+      "clicks": 15000,
+      "type": "click_pct",
+      "value": 0.01,
+      "cost_s": 90
+    },
+    {
+      "id": "clickt_5",
+      "clicks": 25000,
+      "type": "click_mult",
+      "value": 3.0,
+      "cost_s": 105
+    },
+    {
+      "id": "clickt_6",
+      "clicks": 40000,
+      "type": "click_pct",
+      "value": 0.02,
+      "cost_s": 120
+    },
+    {
+      "id": "clickt_7",
+      "clicks": 60000,
+      "type": "click_mult",
+      "value": 3.0,
+      "cost_s": 120
+    }
+  ],
+  "synergy_small": [
+    {
+      "id": "syn_6",
+      "a": "kiosco",
+      "b": "choripan",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_7",
+      "a": "empanadas",
+      "b": "choripan",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_8",
+      "a": "choripan",
+      "b": "lavadero",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_9",
+      "a": "kiosco",
+      "b": "panaderia",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_10",
+      "a": "lavadero",
+      "b": "almacen",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_11",
+      "a": "almacen",
+      "b": "remiseria",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_12",
+      "a": "panaderia",
+      "b": "fabrica",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_13",
+      "a": "fabrica",
+      "b": "imprenta",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_14",
+      "a": "remiseria",
+      "b": "holding",
+      "pct": 0.01
+    },
+    {
+      "id": "syn_15",
+      "a": "imprenta",
+      "b": "holding",
+      "pct": 0.01
+    }
+  ],
+  "synergy_small_req": 5,
+  "synergy_small_cost_mult": "20",
+  "promo": {
+    "levels": 80,
+    "value": 1.03,
+    "first_req": 1,
+    "cost_s": 4.0,
+    "cost_growth": 1.08,
+    "names": 8
+  }
 }

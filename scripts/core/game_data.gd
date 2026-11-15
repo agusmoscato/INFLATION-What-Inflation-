@@ -116,12 +116,49 @@ static func _load_upgrades() -> void:
 				"fx": {"type": "biz_mult", "value": float(t["mult"]), "biz": b["id"]},
 				"name_key": "upg.biz_" + str(t["suffix"]), "desc_key": "upg.biz.d", "icon": b["id"],
 			})
+	# niveles altos por negocio: x2 a las 75, 100, 150... unidades; cuestan ~50 unidades de ese nivel
+	var lv: Dictionary = ud["per_business_levels"]
+	for b in businesses:
+		var k: int = 5
+		for n in lv["owned"]:
+			_add_upgrade({
+				"id": "%s_%d" % [b["id"], k], "kind": "biz", "biz": b["id"], "req": int(n),
+				"cost": b["base_cost"].mul(BigNumber.from_float(1.15).pow_f(float(n))).mul_f(float(lv["units_cost"])),
+				"fx": {"type": "biz_mult", "value": float(lv["mult"]), "biz": b["id"]},
+				"name_key": "upg.biz_%d" % k, "desc_key": "upg.biz.d", "icon": b["id"],
+			})
+			k += 1
 	for c in ud["click"]:
 		_add_upgrade({
 			"id": c["id"], "kind": "click", "biz": "", "req": int(c["clicks"]),
 			"cost": BigNumber.from_string(str(c["cost"])),
 			"fx": {"type": str(c["type"]), "value": float(c["value"])},
 			"name_key": "upg." + str(c["id"]), "desc_key": "upg.%s.d" % c["id"], "icon": "empanada",
+		})
+	# de clic por el total de clics (en toda la partida); el precio se ajusta a tu ingreso
+	for c in ud["click_total"]:
+		_add_upgrade({
+			"id": c["id"], "kind": "clicktotal", "biz": "", "req": int(c["clicks"]),
+			"cost": BigNumber.from_float(100.0), "cost_s": float(c["cost_s"]),
+			"fx": {"type": str(c["type"]), "value": float(c["value"])},
+			"name_key": "upg." + str(c["id"]), "desc_key": "upg.%s.d" % c["id"], "icon": "empanada",
+		})
+	for s in ud["synergy_small"]:
+		var o2: Dictionary = businesses[business_idx[s["b"]]]
+		_add_upgrade({
+			"id": s["id"], "kind": "syn", "biz": s["a"], "other": s["b"], "req": int(ud["synergy_small_req"]),
+			"cost": o2["base_cost"].mul(BigNumber.from_string(str(ud["synergy_small_cost_mult"]))),
+			"fx": {"type": "synergy", "value": float(s["pct"]), "biz": s["a"], "other": s["b"]},
+			"name_key": "upg." + str(s["id"]), "desc_key": "upg.syn.d", "icon": s["a"],
+		})
+	# campañas de publicidad: nunca se acaban (todo x1,05; cada una cuesta más segundos de ingreso que la anterior)
+	var pr: Dictionary = ud["promo"]
+	for i in range(int(pr["levels"])):
+		_add_upgrade({
+			"id": "promo_%d" % (i + 1), "kind": "promo", "biz": "", "req": int(pr["first_req"]), "level": i + 1,
+			"cost": BigNumber.from_float(50.0), "cost_s": float(pr["cost_s"]) * pow(float(pr["cost_growth"]), float(i)),
+			"fx": {"type": "all_mult", "value": float(pr["value"])},
+			"name_key": "upg.promo_%d" % (i % int(pr["names"])), "desc_key": "upg.promo.d", "icon": "star",
 		})
 	for s in ud["synergy"]:
 		var other: Dictionary = businesses[business_idx[s["b"]]]
@@ -209,6 +246,8 @@ static func branch_color(branch: String) -> Color:
 static func upgrade_title(u: Dictionary) -> String:
 	if u["kind"] == "biz":
 		return TranslationServer.translate(u["name_key"]) % TranslationServer.translate("biz." + str(u["biz"]))
+	if u["kind"] == "promo":
+		return "%s (%d)" % [TranslationServer.translate(u["name_key"]), int(u["level"])]
 	return TranslationServer.translate(u["name_key"])
 
 

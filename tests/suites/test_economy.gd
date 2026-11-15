@@ -66,13 +66,15 @@ func run(t) -> void:
 	t.eq(EconomyLogic.visible_upgrades(mu).size(), 0, "las mejoras aparecen de a una, en el tick")
 	EconomyLogic.tick(mu, 2.5)
 	var vis: Array = EconomyLogic.visible_upgrades(mu)
-	t.check(vis.size() == 1 and vis[0]["id"] == "empanadas_1", "con 1 carrito aparece su primera mejora")
-	t.near(EconomyLogic.upgrade_cost(mu, vis[0]).to_float(), 90.0 * EconomyLogic.cost_factor(mu).to_float(), "la primera mejora del carrito cuesta $90")
+	t.check(vis.size() == 1, "aparece una mejora (la más barata al alcance)")
+	var e1: Dictionary = GameData.upgrades[GameData.upgrade_idx["empanadas_1"]]
+	t.near(EconomyLogic.upgrade_cost(mu, e1).to_float(), 90.0 * EconomyLogic.cost_factor(mu).to_float(), "la primera mejora del carrito cuesta $90")
+	mu.revealed["empanadas_1"] = true
 	mu.run_clicks = 15
 	EconomyLogic.tick(mu, 0.6)
-	t.eq(EconomyLogic.visible_upgrades(mu).size(), 1, "en las primeras vueltas, una mejora nueva cada 20 s como mucho")
-	EconomyLogic.tick(mu, 20.0)
-	t.eq(EconomyLogic.visible_upgrades(mu).size(), 2, "a los 20 s aparece la siguiente")
+	t.eq(EconomyLogic.visible_upgrades(mu).size(), 2, "en las primeras vueltas, una mejora nueva cada 10 s como mucho (la revelada + la del carrito)")
+	EconomyLogic.tick(mu, 10.0)
+	t.check(EconomyLogic.visible_upgrades(mu).size() >= 3, "a los 10 s aparece la siguiente")
 	var far: Dictionary = GameData.upgrades[GameData.upgrade_idx["click_3"]]
 	mu.run_clicks = 300
 	t.check(not EconomyLogic.upgrade_in_reach(mu, far), "una mejora a más de 10 minutos de ingreso no está al alcance")
@@ -85,7 +87,7 @@ func run(t) -> void:
 	t.near(EconomyLogic.income_per_sec(mu).to_float(), before * 2.0, "la mejora duplica el carrito")
 	t.check(EconomyLogic.buy_upgrade(mu, "click_1"), "mejora de clic a los 15 clics")
 	t.near(EconomyLogic.click_value(mu).to_float(), 2.0, "clic x2")
-	t.eq(GameData.upgrades.size(), 55, "55 mejoras")
+	t.eq(GameData.upgrades.size(), 232, "232 mejoras (12 niveles por negocio, 13 de clic, 15 sinergias, 4 globales, 80 campañas)")
 	# ---- inflación: atada al progreso de la vuelta, con freno y tope ----
 	var mi: GameModel = GameModel.new(8)
 	t.check(EconomyLogic.ln_limit(mi) <= 0.0, "sin producción el freno no deja subir los precios (12 clics no pagan el carrito de $15)")

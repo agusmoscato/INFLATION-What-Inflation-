@@ -102,6 +102,28 @@ func _check_empanada() -> void:
 				failures.append("[%s] LA EMPANADA SE MOVIÓ O CAMBIÓ DE TAMAÑO con %s: %s %s (antes %s %s)" % [tag, c[0], str(got[0]), str(got[1]), str(ref[0]), str(ref[1])])
 			if g.empanada.scale != Vector2.ONE or g.empanada.rotation != 0.0:
 				failures.append("[%s] el control de la empanada tiene escala %s / rotación %f con %s (el squash tiene que ser solo visual)" % [tag, str(g.empanada.scale), g.empanada.rotation, c[0]])
+		# los avisos nunca tapan la empanada ni las tarjetas, y como mucho hay 2 a la vez
+		for i in range(4):
+			g._show_toast("Aviso de prueba con un texto bastante largo para que ocupe dos renglones, número %d" % i, Chalk.YELLOW)
+		await _frames(3)
+		for p in g.toast_overlaps():
+			failures.append("[%s] %s" % [tag, p])
+		print("avisos %s: %d en %s (empanada en %s)" % [tag, g.toast_box.get_child_count(), str(g.toast_box.get_global_rect()), str(g.empanada.get_global_rect())])
+		# varias mejoras nuevas juntas salen en un solo aviso
+		g._toast_queue.clear()
+		for uid in ["click_1", "click_2", "click_3"]:
+			EventBus.upgrade_new.emit(uid)
+		await get_tree().create_timer(0.7).timeout
+		g._pump_toasts()
+		var joined: bool = false
+		for q in g._toast_queue:
+			if str(q[0]) == tr("ui.toast.upgrades_n") % 3:
+				joined = true
+		var last_toast: Node = g.toast_box.get_child(g.toast_box.get_child_count() - 1) if g.toast_box.get_child_count() > 0 else null
+		if last_toast != null and (last_toast.get_child(0) as Label).text == tr("ui.toast.upgrades_n") % 3:
+			joined = true
+		if not joined:
+			failures.append("[%s] 3 mejoras nuevas juntas no salieron en un solo aviso" % tag)
 		# el "+$X" de los clics nunca pisa el gorrito ni la corona (ni al nacer ni al terminar su recorrido)
 		var ko: Rect2 = g.empanada.keep_out_rect()
 		var er: Rect2 = g.empanada.get_global_rect()

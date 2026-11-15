@@ -217,6 +217,12 @@ func _qa_screens(lang: String, failures: Array, tag: String = "") -> void:
 	_qa_setup_rich()
 	await _qa_wait(0.5)
 	_qa_shot("juego_" + suffix, failures)
+	# los avisos nunca tapan la empanada ni las tarjetas (y como mucho 2 a la vez)
+	for i in range(3):
+		_game._show_toast("QA: aviso de prueba bastante largo para que ocupe dos renglones (%d)" % i, Chalk.YELLOW)
+	await _qa_wait(0.4)
+	for b in _game.toast_overlaps():
+		failures.append("[avisos_%s] %s" % [suffix, b])
 	_game._open_tree()
 	await _qa_wait(0.5)
 	_qa_shot("arbol_" + suffix, failures)

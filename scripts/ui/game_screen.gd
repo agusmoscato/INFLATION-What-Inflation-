@@ -13,6 +13,8 @@ signal request_reload              ## rearmar la pantalla (cambió el idioma des
 const QTY: Array = [1, 10, -1]
 const TOAST_SECONDS: float = 3.0
 const TOAST_SECONDS_SLOW: float = 5.5      ## en las primeras vueltas los avisos duran más (da tiempo a leerlos)
+const TOAST_W: float = 340.0
+const TOAST_MAX: int = 2                    ## avisos a la vez
 const UPG_BOX_H: float = 2.0 * 80.0 + 6.0   ## dos filas de tarjetas de mejoras
 const EMPANADA_SIZE: Vector2 = Vector2(300, 182)  ## tamaño fijo de la empanada en su panel
 const LEFT_W: float = 370.0                       ## ancho fijo de la columna de la empanada
@@ -95,6 +97,8 @@ var _joke_p: float = 0.0               # ln P del último chiste de aumento
 var _joke_t: float = -99.0
 var _joke_i: int = 0
 var _toast_queue: Array = []          # [[texto, color]] esperando su turno
+var _new_upgrades: Array = []         # mejoras nuevas que llegaron juntas: salen en un solo aviso
+var _new_upg_t: float = 0.0
 var _pause: PauseMenu                  # menú de pausa abierto (el juego entero está frenado)
 var _last_toast: float = -99.0
 
@@ -138,13 +142,22 @@ func _ready() -> void:
 	fx_layer.set_meta("qa_ignore", true)
 	fx_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(fx_layer)
-	# avisos chicos en la esquina de arriba del panel de la empanada (se van solos en 3 s)
+	# avisos chicos abajo a la derecha, justo arriba del botón de Pausa (crecen hacia arriba; como mucho 2 a la vez):
+	# nunca tapan la empanada ni las tarjetas de mejoras
 	toast_box = VBoxContainer.new()
 	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	toast_box.add_theme_constant_override("separation", 4)
-	toast_box.offset_left = 30.0
-	toast_box.offset_right = 370.0
-	toast_box.offset_top = 140.0
+	toast_box.anchor_left = 1.0
+	toast_box.anchor_right = 1.0
+	toast_box.anchor_top = 1.0
+	toast_box.anchor_bottom = 1.0
+	toast_box.offset_right = -24.0
+	toast_box.offset_left = -24.0 - TOAST_W
+	toast_box.offset_bottom = -82.0
+	toast_box.offset_top = -82.0
+	toast_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	toast_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	toast_box.alignment = BoxContainer.ALIGNMENT_END
 	fx_layer.add_child(toast_box)
 	_build_event_panel()
 	_build_tutorial_note()
@@ -169,8 +182,8 @@ func _connect_bus() -> void:
 	EventBus.milestone.connect(func(id: String, n: int) -> void:
 		_toast(tr("ui.toast.milestone") % [n, tr("biz." + id)], Chalk.GREEN))
 	EventBus.upgrade_new.connect(func(id: String) -> void:
-		var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[id]]
-		_toast(tr("ui.toast.upgrade") % [UpgradeIcon.short_name(u), UpgradeIcon.effect(u)], Chalk.WHITE))
+		_new_upgrades.append(id)
+		_new_upg_t = _clock)
 	EventBus.upgrade_bought.connect(func(_id: String) -> void:
 		_upg_sig = ""
 		_play("buy"))
@@ -1207,6 +1220,14 @@ func _toast(text: String, color: Color) -> void:
 
 
 func _pump_toasts() -> void:
+	# las mejoras nuevas que llegan juntas (medio segundo) salen en un solo aviso: "3 mejoras nuevas"
+	if not _new_upgrades.is_empty() and _clock - _new_upg_t >= 0.5:
+		if _new_upgrades.size() == 1:
+			var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[_new_upgrades[0]]]
+			_toast(tr("ui.toast.upgrade") % [UpgradeIcon.short_name(u), UpgradeIcon.effect(u)], Chalk.WHITE)
+		else:
+			_toast(tr("ui.toast.upgrades_n") % _new_upgrades.size(), Chalk.WHITE)
+		_new_upgrades.clear()
 	if _toast_queue.is_empty():
 		return
 	var gap: float = 2.2 if gm().reforms < int(EconomyLogic.B("slow_runs")) else 0.4
@@ -1228,11 +1249,11 @@ func _show_toast(text: String, color: Color) -> void:
 	p.add_theme_stylebox_override("panel", st)
 	var l: Label = UIKit.label(text, 15, color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(310, 0)
+	l.custom_minimum_size = Vector2(TOAST_W - 20.0, 0)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(l)
 	toast_box.add_child(p)
-	while toast_box.get_child_count() > 3:
+	while toast_box.get_child_count() > TOAST_MAX:
 		var old: Node = toast_box.get_child(0)
 		toast_box.remove_child(old)
 		old.queue_free()
@@ -1244,6 +1265,26 @@ func _show_toast(text: String, color: Color) -> void:
 	tw.tween_property(p, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(p.queue_free)
 	_play("coin", 1.6)
+
+
+## Para el QA: avisos visibles que se pisan con la empanada o con una tarjeta de mejora ([] si ninguno).
+func toast_overlaps() -> Array:
+	var bad: Array = []
+	var shown: int = 0
+	for t in toast_box.get_children():
+		var tc: Control = t
+		if tc.is_queued_for_deletion() or not tc.visible:
+			continue
+		shown += 1
+		var tr_: Rect2 = Rect2(toast_box.get_global_rect().position + tc.position, tc.size)
+		if tr_.intersects(empanada.get_global_rect()):
+			bad.append("UN AVISO TAPA LA EMPANADA: %s" % str(tr_))
+		for ic in _upg_icons:
+			if is_instance_valid(ic) and (ic as Control).is_visible_in_tree() and tr_.intersects((ic as Control).get_global_rect()):
+				bad.append("UN AVISO TAPA UNA TARJETA DE MEJORA: %s" % str(tr_))
+	if shown > TOAST_MAX:
+		bad.append("HAY %d AVISOS A LA VEZ (máximo %d)" % [shown, TOAST_MAX])
+	return bad
 
 
 func _update_ticker(delta: float) -> void:

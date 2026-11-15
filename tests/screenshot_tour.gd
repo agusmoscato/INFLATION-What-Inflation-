@@ -42,6 +42,8 @@ func _ready() -> void:
 		["menu", _menu],
 		["00_tutorial", _tut],
 		["01_juego_vuelta1", _early],
+		["01b_primera_reforma", _first_reform],
+		["01c_arbol_recomendado", _first_tree],
 		["02_juego_avanzado", _mid],
 		["02b_billete_volador", _bill, 30],
 		["02c_noticia", _decision],
@@ -134,8 +136,33 @@ func _early() -> void:
 	m.dirty = true
 
 
+## La primera vez que se abre la reforma: la explicación en tiza.
+func _first_reform() -> void:
+	var m: GameModel = GameState.m
+	m.run_earned = BigNumber.from_float(7.5e4)
+	m.money = BigNumber.from_float(3200.0)
+	m.owned = {"empanadas": 22, "kiosco": 12, "choripan": 6, "lavadero": 2}
+	m.run_time = 255.0
+	m.dirty = true
+	_g()._open_reform_dialog()
+
+
+## Después de la primera reforma: el árbol con la flecha al nodo recomendado.
+func _first_tree() -> void:
+	var m: GameModel = GameState.m
+	m.reforms = 1
+	m.run_index = 2
+	m.credibility = 8
+	m.best_run = BigNumber.from_float(7.5e4)
+	m.run_earned = BigNumber.zero()
+	m.owned = {}
+	m.dirty = true
+	_g()._open_tree()
+
+
 func _mid() -> void:
 	var m: GameModel = GameState.m
+	_g()._close_overlay()
 	for n in GameData.tree:
 		if int(n["ring"]) <= 3 and not bool(n["final"]):
 			m.tree[n["id"]] = true

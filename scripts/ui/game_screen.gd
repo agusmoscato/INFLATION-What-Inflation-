@@ -11,6 +11,7 @@ signal request_demo_end
 
 const QTY: Array = [1, 10, -1]
 const TOAST_SECONDS: float = 3.0
+const TOAST_SECONDS_SLOW: float = 5.5      ## en las primeras vueltas los avisos duran más (da tiempo a leerlos)
 
 var world: MarginContainer
 var body: BoxContainer
@@ -28,6 +29,7 @@ var price_label: Label
 var cred_label: Label
 var remark_btn: Button
 var remark_bar: ChalkBar
+var remark_line: Label
 var empanada: EmpanadaButton
 var combo_bar: ChalkBar
 var combo_label: Label
@@ -36,6 +38,8 @@ var reform_btn: Button
 var reform_hint: Label
 var upg_flow: HFlowContainer
 var upg_title: Label
+var upg_detail: PanelContainer
+var _upg_hover: UpgradeIcon
 var biz_list: VBoxContainer
 var biz_rows: Array = []          # [{def,row,icon,name,info,owned,btn}]
 var qty_buttons: Array = []
@@ -73,6 +77,8 @@ var _tut_step: int = -2
 var _headline_i: int = 0
 var _fps_watch: FpsWatch = FpsWatch.new(45.0, 5.0)
 var _last_era: int = 1
+var _toast_queue: Array = []          # [[texto, color]] esperando su turno
+var _last_toast: float = -99.0
 
 
 func gm() -> GameModel:
@@ -124,6 +130,7 @@ func _ready() -> void:
 	fx_layer.add_child(toast_box)
 	_build_event_panel()
 	_build_tutorial_note()
+	_build_upgrade_detail()
 
 	_connect_bus()
 	for u in EconomyLogic.visible_upgrades(gm()):
@@ -143,6 +150,9 @@ func _connect_bus() -> void:
 	EventBus.business_bought.connect(_on_business_bought)
 	EventBus.milestone.connect(func(id: String, n: int) -> void:
 		_toast(tr("ui.toast.milestone") % [n, tr("biz." + id)], Chalk.GREEN))
+	EventBus.upgrade_new.connect(func(id: String) -> void:
+		var u: Dictionary = GameData.upgrades[GameData.upgrade_idx[id]]
+		_toast(tr("ui.toast.upgrade") % [UpgradeIcon.short_name(u), UpgradeIcon.effect(u)], Chalk.WHITE))
 	EventBus.upgrade_bought.connect(func(_id: String) -> void:
 		_upg_sig = ""
 		_play("buy"))
@@ -233,6 +243,8 @@ func _build_header() -> Control:
 	remark_bar.fill_color = Chalk.BLUE
 	remark_bar.custom_minimum_size = Vector2(0, 12)
 	rv.add_child(remark_bar)
+	remark_line = UIKit.label("", 14, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	rv.add_child(remark_line)
 	# credibilidad
 	var right: VBoxContainer = VBoxContainer.new()
 	right.custom_minimum_size = Vector2(170, 0)
@@ -295,7 +307,7 @@ func _build_right() -> Control:
 	upg_title = UIKit.label(tr("ui.upgrades"), 18, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
 	uv.add_child(upg_title)
 	var usc: ScrollContainer = ScrollContainer.new()
-	usc.custom_minimum_size = Vector2(0, 128)
+	usc.custom_minimum_size = Vector2(0, 158)
 	usc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	uv.add_child(usc)
 	upg_flow = HFlowContainer.new()
@@ -433,6 +445,55 @@ func _build_event_panel() -> void:
 	v.add_child(event_bar)
 
 
+## Detalle de una mejora: aparece al instante al pasar el mouse por la tarjeta (sin la demora del tooltip).
+func _build_upgrade_detail() -> void:
+	upg_detail = PanelContainer.new()
+	upg_detail.add_theme_stylebox_override("panel", UIKit.chalk_box(Chalk.YELLOW, Color(0.08, 0.12, 0.1, 0.97), 2.2))
+	upg_detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	upg_detail.set_meta("qa_ignore", true)
+	upg_detail.visible = false
+	fx_layer.add_child(upg_detail)
+	var v: VBoxContainer = VBoxContainer.new()
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	upg_detail.add_child(v)
+	for i in range(3):
+		var l: Label = UIKit.label("", [18, 15, 16][i], [Chalk.YELLOW, Chalk.WHITE, Chalk.GREEN][i], HORIZONTAL_ALIGNMENT_LEFT, i == 0)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(300, 0)
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(l)
+
+
+func _show_upgrade_detail(ic: UpgradeIcon) -> void:
+	if not is_instance_valid(ic):
+		return
+	_upg_hover = ic
+	var v: Node = upg_detail.get_child(0)
+	var u: Dictionary = ic.upg
+	(v.get_child(0) as Label).text = GameData.upgrade_title(u)
+	(v.get_child(1) as Label).text = UpgradeIcon.describe(u) + ("\n" + tr("ui.upg.locked") if ic.locked else "")
+	var cost: BigNumber = EconomyLogic.upgrade_cost(gm(), u)
+	var line: String = tr("ui.upg.cost") % UIKit.money(cost)
+	if cost.gt(gm().money):
+		line += "  -  " + tr("ui.upg.missing") % UIKit.money(cost.sub(gm().money))
+	(v.get_child(2) as Label).text = line
+	upg_detail.visible = true
+	upg_detail.size = upg_detail.get_combined_minimum_size()
+	var r: Rect2 = ic.get_global_rect()
+	var pos: Vector2 = Vector2(r.position.x, r.end.y + 6.0)
+	var vr: Vector2 = get_viewport_rect().size
+	if pos.y + upg_detail.size.y > vr.y - 8.0:
+		pos.y = r.position.y - upg_detail.size.y - 6.0
+	pos.x = clampf(pos.x, 8.0, vr.x - upg_detail.size.x - 8.0)
+	upg_detail.position = pos
+
+
+func _hide_upgrade_detail(ic: UpgradeIcon) -> void:
+	if _upg_hover == ic:
+		_upg_hover = null
+		upg_detail.visible = false
+
+
 func _build_tutorial_note() -> void:
 	tutorial_note = PanelContainer.new()
 	tutorial_note.add_theme_stylebox_override("panel", UIKit.chalk_box(Chalk.PINK, Color(0.1, 0.06, 0.09, 0.94), 2.6))
@@ -456,6 +517,7 @@ func _process(delta: float) -> void:
 	_refresh_all()
 	_update_juice(delta)
 	_update_ticker(delta)
+	_pump_toasts()
 
 
 func _refresh_all() -> void:
@@ -493,12 +555,16 @@ func _refresh_header(m: GameModel) -> void:
 	else:
 		rate_label.text = tr("ui.rate") % _pct(pct)
 		rate_label.add_theme_color_override("font_color", Chalk.GREEN if pct < 10.0 else (Chalk.YELLOW if pct < 50.0 else Chalk.RED))
+		if EconomyLogic.braked(m) and m.ln_p > 0.05:
+			rate_label.text = tr("ui.rate_braked") % _pct(EconomyLogic.raw_monthly_pct(m))
+			rate_label.add_theme_color_override("font_color", Chalk.BLUE)
 	price_label.text = tr("ui.prices") % EconomyLogic.price_level(m).format()
 	var cd: float = m.remark_cd
 	var total: float = maxf(5.0, float(m.mods["remark_cd"]))
 	remark_btn.disabled = cd > 0.0
 	remark_btn.text = tr("ui.remark") if cd <= 0.0 else tr("ui.remark_cd") % int(ceil(cd))
 	remark_bar.value = 1.0 - cd / total
+	remark_line.text = tr("ui.remark.line") % int(round(float(m.mods["remark_freeze"]) + float(m.mods["album_remark"])))
 	cred_label.text = "%d" % m.credibility
 
 
@@ -517,16 +583,29 @@ func _refresh_left(m: GameModel) -> void:
 	combo_label.text = tr("ui.combo") % ("x" + UpgradeIcon._num(EconomyLogic.combo_mult(m))) if m.combo >= 2 else " "
 	var gain: int = EconomyLogic.reform_gain(m)
 	var can: bool = EconomyLogic.can_reform(m)
+	var demo_over: bool = m.demo_mode and m.reforms >= int(EconomyLogic.B("demo_max_reforms"))
 	reform_btn.disabled = not can
-	reform_btn.text = tr("ui.reform.btn") % gain if can else tr("ui.reform.btn_off")
-	if m.demo_mode and m.reforms >= int(EconomyLogic.B("demo_max_reforms")):
-		reform_hint.text = tr("ui.reform.demo")
-	elif not can:
-		reform_hint.text = tr("ui.reform.need")
-	elif EconomyLogic.best_factor(m) < 1.0:
-		reform_hint.text = tr("ui.reform.best") % UIKit.money(m.best_run)
+	if can:
+		reform_btn.text = tr("ui.reform.btn") % gain
+	elif demo_over:
+		reform_btn.text = tr("ui.reform.btn_off")
 	else:
+		var target: BigNumber = EconomyLogic.reform_target(m)
+		var left: BigNumber = target.sub(m.run_earned) if target.gt(m.run_earned) else BigNumber.zero()
+		reform_btn.text = tr("ui.reform.btn_at") % [UIKit.money(target), UIKit.money(left)]
+	reform_hint.add_theme_color_override("font_color", UIKit.C_DIM)
+	if demo_over:
+		reform_hint.text = tr("ui.reform.demo")
+	elif can and EconomyLogic.stuck(m):
+		reform_hint.text = tr("ui.reform.stuck")
+		reform_hint.add_theme_color_override("font_color", Chalk.YELLOW)
+	elif EconomyLogic.reform_advised(m):
+		reform_hint.text = tr("ui.reform.advice")
+		reform_hint.add_theme_color_override("font_color", Chalk.YELLOW)
+	elif can:
 		reform_hint.text = tr("ui.reform.hint")
+	else:
+		reform_hint.text = tr("ui.reform.need")
 
 
 func _refresh_biz(m: GameModel) -> void:
@@ -580,31 +659,56 @@ func _refresh_qty_buttons() -> void:
 
 func _refresh_upgrades(m: GameModel) -> void:
 	var vis: Array = EconomyLogic.visible_upgrades(m)
+	var next: Array = EconomyLogic.upcoming_upgrades(m, 4)
 	var sig: String = ""
 	for u in vis:
 		sig += str(u["id"]) + ","
+	sig += "|"
+	for u in next:
+		sig += str(u["id"]) + ","
 	if sig != _upg_sig:
 		_upg_sig = sig
+		_upg_hover = null
+		upg_detail.visible = false
 		UIKit.clear_children(upg_flow)
 		_upg_icons.clear()
 		for u in vis:
 			var ic: UpgradeIcon = UpgradeIcon.new(u)
-			ic.tooltip_text = GameData.upgrade_title(u)
 			var uid: String = u["id"]
 			ic.pressed.connect(func() -> void:
 				if Economy.buy_upgrade(uid):
 					_burst(ic.get_global_rect().get_center(), Chalk.YELLOW, 14)
 				else:
 					_play("error"))
-			upg_flow.add_child(ic)
-			_upg_icons.append(ic)
+			_add_upgrade_card(ic)
 			if not _seen_upgrades.has(uid):
 				_seen_upgrades[uid] = true
-				Chalk.pop(ic, 1.4, 0.5)
-				_toast(tr("ui.toast.upgrade") % GameData.upgrade_title(u), Chalk.WHITE)
+				Chalk.pop(ic, 1.25, 0.5)
+		if not next.is_empty():
+			var nl: Label = UIKit.label(tr("ui.upgrades_next"), 15, UIKit.C_DIM)
+			nl.custom_minimum_size = Vector2(0, UpgradeIcon.CARD.y)
+			nl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			upg_flow.add_child(nl)
+			for u in next:
+				_add_upgrade_card(UpgradeIcon.new(u, true))
 	for ic in _upg_icons:
-		(ic as UpgradeIcon).set_affordable(EconomyLogic.upgrade_cost(m, ic.upg).le(m.money))
-	upg_title.text = tr("ui.upgrades") if not vis.is_empty() else tr("ui.upgrades_none")
+		var card: UpgradeIcon = ic
+		var cost: BigNumber = EconomyLogic.upgrade_cost(m, card.upg)
+		var can: bool = cost.le(m.money)
+		var prog: float = 1.0
+		if not can:
+			prog = clampf(pow(10.0, m.money.log10() - cost.log10()), 0.0, 1.0) if not m.money.is_zero() else 0.0
+		card.set_state(can, prog, UIKit.money(cost))
+	if _upg_hover != null and is_instance_valid(_upg_hover):
+		_show_upgrade_detail(_upg_hover)
+	upg_title.text = tr("ui.upgrades") if not (vis.is_empty() and next.is_empty()) else tr("ui.upgrades_none")
+
+
+func _add_upgrade_card(ic: UpgradeIcon) -> void:
+	ic.mouse_entered.connect(_show_upgrade_detail.bind(ic))
+	ic.mouse_exited.connect(_hide_upgrade_detail.bind(ic))
+	upg_flow.add_child(ic)
+	_upg_icons.append(ic)
 
 
 func _refresh_nav(m: GameModel) -> void:
@@ -710,9 +814,8 @@ func _on_remarked(seconds: float, manual: bool) -> void:
 func _on_collapse() -> void:
 	_play("raise")
 	_shake(10.0, 0.4)
-	_stamp(tr("ui.collapse"), get_viewport_rect().size / 2.0, Chalk.RED, 40)
+	_stamp(tr("ui.collapse"), get_viewport_rect().size / 2.0, Chalk.YELLOW, 34)
 	_reform_pulse = 6.0
-	_toast(tr("ui.collapse"), Chalk.RED)
 
 
 func _spawn_bill(id: int) -> void:
@@ -784,12 +887,15 @@ func _update_juice(delta: float) -> void:
 		money_label.rotation = 0.0
 	var target: float = clampf((pct - EconomyLogic.B("hyper_month_pct")) / 400.0, 0.0, 0.28)
 	tint.color.a = target * (0.75 + 0.25 * sin(_clock * 5.0))
-	if _reform_pulse > 0.0 or (EconomyLogic.can_reform(gm()) and gm().collapse_shown):
+	var nudge: bool = EconomyLogic.reform_advised(gm())
+	if _reform_pulse > 0.0 or nudge:
 		_reform_pulse = maxf(0.0, _reform_pulse - delta)
 		reform_btn.pivot_offset = reform_btn.size / 2.0
-		reform_btn.scale = Vector2.ONE * (1.0 + 0.04 * sin(_clock * 8.0))
+		reform_btn.scale = Vector2.ONE * (1.0 + 0.05 * sin(_clock * 8.0))
+		reform_btn.modulate = Color.WHITE.lerp(Chalk.YELLOW, 0.5 + 0.5 * sin(_clock * 8.0))
 	else:
 		reform_btn.scale = Vector2.ONE
+		reform_btn.modulate = Color.WHITE
 
 
 func _shake(amp: float, duration: float) -> void:
@@ -852,7 +958,23 @@ func _stamp(text: String, center: Vector2, color: Color = Chalk.YELLOW, fs: int 
 
 
 ## Aviso chico arriba a la derecha: entra con un pop y se va solo a los 3 s.
+## Aviso chico: en las primeras vueltas salen de a uno (con pausa), así da tiempo a leerlos.
 func _toast(text: String, color: Color) -> void:
+	_toast_queue.append([text, color])
+
+
+func _pump_toasts() -> void:
+	if _toast_queue.is_empty():
+		return
+	var gap: float = 2.2 if gm().reforms < int(EconomyLogic.B("slow_runs")) else 0.4
+	if _clock - _last_toast < gap:
+		return
+	_last_toast = _clock
+	var t: Array = _toast_queue.pop_front()
+	_show_toast(str(t[0]), t[1])
+
+
+func _show_toast(text: String, color: Color) -> void:
 	var p: PanelContainer = PanelContainer.new()
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var st: ChalkStyle = UIKit.chalk_box(Chalk.nearest(color), Color(0.05, 0.08, 0.06, 0.9), 2.0)
@@ -875,7 +997,7 @@ func _toast(text: String, color: Color) -> void:
 	p.scale = Vector2(0.6, 0.6)
 	var tw: Tween = create_tween()
 	tw.tween_property(p, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(TOAST_SECONDS - 0.7)
+	tw.tween_interval((TOAST_SECONDS_SLOW if gm().reforms < int(EconomyLogic.B("slow_runs")) else TOAST_SECONDS) - 0.7)
 	tw.tween_property(p, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(p.queue_free)
 	_play("coin", 1.6)
@@ -1014,6 +1136,12 @@ func _open_tree() -> void:
 			best = int(n["cost"])
 			pick = n["id"]
 	_tree_view.selected = pick
+	# en las primeras vueltas, una flecha señala el nodo recomendado
+	var rec: String = BotPolicy.recommended_node(gm())
+	if gm().reforms <= 3 and rec != "" and TreeLogic.can_buy(gm(), rec):
+		_tree_view.selected = rec
+		_tree_view.hint_id = rec
+		_tree_view.hint_text = tr("ui.tree.recommend")
 	_tree_view.focus("")
 	_refresh_tree_info()
 
@@ -1154,6 +1282,20 @@ func _open_reform_dialog() -> void:
 	var pv: VBoxContainer = VBoxContainer.new()
 	pv.add_theme_constant_override("separation", 12)
 	p.add_child(pv)
+	if m.reforms == 0:
+		# la primera vez: qué es la reforma, en cuatro líneas de tiza
+		var ex: PanelContainer = PanelContainer.new()
+		ex.add_theme_stylebox_override("panel", UIKit.chalk_box(Chalk.PINK, Color(0.1, 0.07, 0.09, 0.9), 2.4))
+		pv.add_child(ex)
+		var ev: VBoxContainer = VBoxContainer.new()
+		ev.add_theme_constant_override("separation", 4)
+		ex.add_child(ev)
+		ev.add_child(UIKit.label(tr("ui.reform.what"), 22, Chalk.PINK, HORIZONTAL_ALIGNMENT_CENTER, true))
+		for i in range(1, 5):
+			var el: Label = UIKit.label(tr("ui.reform.what.%d" % i), 18, Chalk.WHITE)
+			el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			el.custom_minimum_size = Vector2(580, 0)
+			ev.add_child(el)
 	pv.add_child(UIKit.label(tr("ui.reform.gain") % EconomyLogic.reform_gain(m), 36, Chalk.BLUE, HORIZONTAL_ALIGNMENT_CENTER, true))
 	var d: Label = UIKit.label(tr("ui.reform.desc") % [UIKit.money(m.run_earned), _mmss(m.run_time)], 18, Chalk.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1292,6 +1434,14 @@ func _show_run_summary(ov: Control, s: Dictionary) -> void:
 		_busy_overlay = null
 		_open_tree())
 	row.add_child(go)
+	var first: bool = gm().reforms == 1 and gm().credibility > 0
+	if first:
+		# la primera vez el juego te lleva al árbol: ahí está lo que hace la próxima vuelta mucho más rápida
+		var hint: Label = UIKit.label(tr("ui.summary.first"), 18, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_CENTER)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hint.custom_minimum_size = Vector2(620, 0)
+		v.add_child(hint)
+		v.move_child(hint, row.get_index())
 	var keep: Button = Button.new()
 	keep.text = tr("ui.summary.play")
 	keep.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1301,6 +1451,7 @@ func _show_run_summary(ov: Control, s: Dictionary) -> void:
 		ov.queue_free()
 		_busy_overlay = null)
 	row.add_child(keep)
+	keep.visible = not first
 	Chalk.pop(p, 1.1, 0.4)
 	_play("win")
 

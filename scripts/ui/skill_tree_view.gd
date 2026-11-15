@@ -15,6 +15,8 @@ const BRANCH_ICON: Dictionary = {"emp": "empanadas", "neg": "kiosco", "inf": "ce
 var offset: Vector2 = Vector2.ZERO
 var zoom: float = 0.62
 var selected: String = ""
+var hint_id: String = ""              ## nodo recomendado: se dibuja una flecha de tiza que lo señala
+var hint_text: String = ""
 var _drag: bool = false
 var _drag_moved: float = 0.0
 var _t: float = 0.0
@@ -202,6 +204,21 @@ func _draw() -> void:
 			draw_string(body, c + Vector2(-90.0, r + 17.0), name, HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(15.0 * zoom, 11.0, 20.0)), Color(Chalk.WHITE, 0.85 * alpha))
 			if not owned:
 				draw_string(body, c + Vector2(-90.0, r + 34.0 * clampf(zoom, 0.8, 1.2)), tr("ui.tree.cost") % TreeLogic.cost(id), HORIZONTAL_ALIGNMENT_CENTER, 180.0, int(clampf(14.0 * zoom, 11.0, 18.0)), Color(Chalk.YELLOW if can else Chalk.WHITE, 0.8 * alpha))
+	# flecha al nodo recomendado (después de las primeras reformas)
+	if hint_id != "" and GameData.tree_idx.has(hint_id) and not gm.tree.has(hint_id):
+		var hc: Vector2 = to_screen(GameData.node(hint_id)["pos"])
+		var bob: float = sin(_t * 5.0) * 6.0
+		var tip: Vector2 = hc + Vector2(0, -(NODE_R * zoom + 14.0) + bob)
+		var tail: Vector2 = tip + Vector2(0, -70.0)
+		draw_line(tail, tip, Chalk.YELLOW, 5.0, true)
+		draw_colored_polygon(PackedVector2Array([tip + Vector2(0, 4), tip + Vector2(-14, -16), tip + Vector2(14, -16)]), Chalk.YELLOW)
+		if hint_text != "":
+			var tw: float = 300.0
+			var tp: Vector2 = tail + Vector2(-tw / 2.0, -12.0)
+			tp.x = clampf(tp.x, 6.0, maxf(6.0, size.x - tw - 6.0))
+			tp.y = maxf(tp.y, 40.0)
+			draw_rect(Rect2(tp + Vector2(-6, -26), Vector2(tw + 12, 60)), Color(0.04, 0.07, 0.05, 0.9))
+			draw_multiline_string(body, tp, hint_text, HORIZONTAL_ALIGNMENT_CENTER, tw, 17, 2, Chalk.YELLOW)
 	# chispazos de compra
 	for s in _sparks:
 		var k: float = float(s["t"]) / 0.8

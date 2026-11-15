@@ -46,6 +46,9 @@ var upg_flow: HFlowContainer
 var upg_title: Label
 var upg_scroll: ScrollContainer
 var upg_detail: PanelContainer
+var road: RoadView                 ## "Camino al final" (compacto) entre las mejoras y los negocios
+var _tree_road: RoadView            ## el mismo, completo, en el árbol
+var _last_seals: int = -1
 var _upg_hover: UpgradeIcon
 var biz_list: VBoxContainer
 var biz_scroll: ScrollContainer
@@ -344,6 +347,10 @@ func _build_right() -> Control:
 	upg_flow.add_theme_constant_override("h_separation", 6)
 	upg_flow.add_theme_constant_override("v_separation", 6)
 	usc.add_child(upg_flow)
+	# camino al final: los 6 sellos y lo que falta (tocarlo abre el árbol)
+	road = RoadView.new(false)
+	road.open_tree.connect(_open_tree)
+	col.add_child(road)
 	# negocios
 	var bp: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	bp.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -890,6 +897,9 @@ func _refresh_nav(m: GameModel) -> void:
 	else:
 		nav_tree.modulate = Color.WHITE
 	nav_tree.visible = m.reforms > 0 or m.credibility > 0 or not m.tree.is_empty()
+	road.visible = nav_tree.visible and not m.won
+	if road.visible:
+		road.refresh(m)
 	nav_album.visible = bool(m.mods["album"])
 	nav_album.text = tr("ui.nav.album") + (" (%d)" % m.free_packs_pending if m.free_packs_pending > 0 else "")
 	nav_scratch.visible = bool(m.mods["scratch"])
@@ -1031,6 +1041,25 @@ func _on_node_bought(id: String) -> void:
 	if _tree_view != null and is_instance_valid(_tree_view):
 		_tree_view.spark(id)
 	_toast(tr("ui.toast.node") % tr(GameData.node(id)["name_key"]), Chalk.BLUE)
+	if bool(GameData.node(id)["seal"]):
+		_celebrate_seal(id)
+
+
+## Festejo de un sello: cartel grande, chispazos y sonido. Con los 6, el aviso de que ya se puede estabilizar la economía.
+func _celebrate_seal(id: String) -> void:
+	var n: int = TreeLogic.seals_owned(gm())
+	var vs: Vector2 = get_viewport_rect().size
+	_play("jackpot")
+	_shake(8.0, 0.3)
+	for k in range(5):
+		_burst(vs * Vector2(0.2 + 0.15 * float(k), 0.35 + 0.1 * float(k % 2)), [Chalk.YELLOW, Chalk.PINK, Chalk.GREEN, Chalk.BLUE, Chalk.ORANGE][k], 24)
+	_stamp(tr("ui.road.seal_won") % [n, tr(GameData.node(id)["name_key"])], vs * Vector2(0.5, 0.36), Chalk.YELLOW, 40)
+	if n >= TreeLogic.seal_ids().size():
+		get_tree().create_timer(1.6, false).timeout.connect(func() -> void:
+			if not is_instance_valid(self):
+				return
+			_stamp(tr("ui.road.all_seals") % TreeLogic.cost("final"), vs * Vector2(0.5, 0.5), Chalk.GREEN, 36)
+			_play("win"))
 
 
 func _on_victory() -> void:
@@ -1268,6 +1297,7 @@ func _close_overlay() -> void:
 	_overlay = null
 	world.visible = true
 	_tree_view = null
+	_tree_road = null
 	_album_page = null
 
 
@@ -1279,6 +1309,9 @@ func _open_tree() -> void:
 	cl.custom_minimum_size = Vector2(200, 0)
 	top.add_child(cl)
 	top.move_child(cl, 1)
+	var loop_l: Label = UIKit.label(tr("ui.road.loop"), 17, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_CENTER, true)
+	loop_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(loop_l)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 12)
@@ -1293,7 +1326,7 @@ func _open_tree() -> void:
 	side.custom_minimum_size = Vector2(330, 0)
 	row.add_child(side)
 	var sv: VBoxContainer = VBoxContainer.new()
-	sv.add_theme_constant_override("separation", 10)
+	sv.add_theme_constant_override("separation", 7)
 	side.add_child(sv)
 	var name_l: Label = UIKit.label("", 24, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1318,13 +1351,12 @@ func _open_tree() -> void:
 		else:
 			_play("error"))
 	sv.add_child(buy)
+	_tree_road = RoadView.new(true)
+	sv.add_child(_tree_road)
 	var sp: Control = Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sv.add_child(sp)
-	var help: Label = UIKit.label(tr("ui.tree.help"), 15, UIKit.C_DIM)
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help.custom_minimum_size = Vector2(300, 0)
-	sv.add_child(help)
+	board.tooltip_text = tr("ui.tree.help")      # arrastrar y zoom: en el tooltip (el costado queda para el camino al final)
 	var zr: HBoxContainer = HBoxContainer.new()
 	zr.add_theme_constant_override("separation", 6)
 	sv.add_child(zr)
@@ -1356,6 +1388,12 @@ func _open_tree() -> void:
 		_tree_view.selected = rec
 		_tree_view.hint_id = rec
 		_tree_view.hint_text = tr("ui.tree.recommend")
+	# con los 6 sellos, la flecha señala el centro
+	var rd: Dictionary = TreeLogic.road(gm())
+	if bool(rd["ready"]):
+		_tree_view.selected = "final"
+		_tree_view.hint_id = "final"
+		_tree_view.hint_text = tr("ui.road.ready") % int(rd["final_cost"])
 	_tree_view.focus("")
 	_refresh_tree_info()
 
@@ -1364,6 +1402,8 @@ func _refresh_tree_info() -> void:
 	if _tree_info.is_empty() or _tree_view == null:
 		return
 	var m: GameModel = gm()
+	if _tree_road != null and is_instance_valid(_tree_road):
+		_tree_road.refresh(m)
 	(_tree_info["cred"] as Label).text = tr("ui.tree.cred") % m.credibility
 	var id: String = _tree_view.selected
 	if id == "" or not GameData.tree_idx.has(id):

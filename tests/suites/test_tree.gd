@@ -53,6 +53,39 @@ func run(t) -> void:
 	t.check(TreeLogic.visible(mv, "emp_2") and TreeLogic.visible(mv, "emp_2a"), "comprar revela los vecinos")
 	t.check(not TreeLogic.buy(mv, "emp_3"), "no se puede saltear el camino")
 	t.check(not TreeLogic.buy(mv, "final"), "el final pide los sellos")
+	# camino al final: 6 sellos, uno por rama; lo que falta baja al comprar y llega a 0 con el centro comprado
+	t.eq(TreeLogic.seal_ids().size(), 6, "6 sellos")
+	var mr: GameModel = GameModel.new(31)
+	var r0: Dictionary = TreeLogic.road(mr)
+	t.eq(int(r0["have"]), 0, "al empezar no hay sellos")
+	t.check(not bool(r0["ready"]), "todavía no se puede estabilizar")
+	var s0: Dictionary = r0["seals"][0]
+	t.eq(int(s0["nodes"]), 4, "el sello de la rama empanada está a 4 nodos")
+	t.eq(str(s0["next"]), "emp_1", "y el próximo nodo es la raíz de su rama")
+	var need0: int = int(r0["need"])
+	var sum_paths: int = TreeLogic.cost("final")
+	for row in r0["seals"]:
+		sum_paths += int(row["cost"])
+	t.eq(need0, sum_paths, "lo que falta = los 6 caminos + el centro (%d)" % need0)
+	mr.credibility = 100000
+	var prev_have: int = 0
+	var mono: bool = true
+	for sid in TreeLogic.seal_ids():
+		for q in TreeLogic.path_to(mr, sid):
+			TreeLogic.buy(mr, q)
+		var have: int = int(TreeLogic.road(mr)["have"])
+		if have != prev_have + 1:
+			mono = false
+		prev_have = have
+	t.check(mono, "cada camino comprado suma exactamente un sello")
+	var r6: Dictionary = TreeLogic.road(mr)
+	t.eq(int(r6["have"]), 6, "con los 6 caminos comprados están los 6 sellos")
+	t.check(bool(r6["ready"]), "y se puede estabilizar la economía")
+	mr.credibility = 10
+	t.eq(int(TreeLogic.road(mr)["need"]), TreeLogic.cost("final") - 10, "solo falta juntar lo del centro")
+	mr.credibility = 100000
+	TreeLogic.buy(mr, "final")
+	t.check(bool(TreeLogic.road(mr)["final_owned"]) and int(TreeLogic.road(mr)["need"]) == 0, "con el centro comprado no falta nada")
 	# efectos
 	var me: GameModel = GameModel.new(3)
 	me.credibility = 1000

@@ -313,7 +313,7 @@ func _mix() -> void:
 
 ## El árbol con nodos que se pueden comprar ya (latiendo), otros que no alcanzan (apagados con su costo) y comprados.
 func _mix_tree() -> void:
-	GameState.m.credibility = 40
+	GameState.m.credibility = 27      # alcanza para los de 25, no para los de 29
 	_g()._open_tree()
 	_g()._tree_view.zoom = 0.8
 	_g()._tree_view.focus("")

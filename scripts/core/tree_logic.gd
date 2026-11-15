@@ -164,6 +164,98 @@ static func any_affordable(m: GameModel) -> bool:
 	return false
 
 
+# =====================================================================
+#  Camino al final: los 6 sellos y el centro
+# =====================================================================
+const SEAL_BRANCHES: Array = ["emp", "neg", "inf", "sue", "fig", "ren"]
+
+
+## Los 6 sellos, en el orden de las ramas.
+static func seal_ids() -> Array:
+	var out: Array = []
+	for br in SEAL_BRANCHES:
+		for n in GameData.tree:
+			if bool(n["seal"]) and str(n["branch"]) == br:
+				out.append(n["id"])
+	return out
+
+
+static func seals_owned(m: GameModel) -> int:
+	var k: int = 0
+	for id in seal_ids():
+		if m.tree.has(id):
+			k += 1
+	return k
+
+
+## Los nodos que faltan comprar para llegar a `id` (él incluido), siguiendo sus padres. Vacío si ya está comprado.
+static func path_to(m: GameModel, id: String) -> Array:
+	var out: Array = []
+	_path(m, id, out)
+	return out
+
+
+static func _path(m: GameModel, id: String, out: Array) -> void:
+	if m.tree.has(id) or out.has(id):
+		return
+	var n: Dictionary = GameData.node(id)
+	var parents: Array = n["parents"]
+	if bool(n["req_all"]) or parents.size() <= 1:
+		for p in parents:
+			_path(m, p, out)
+	else:
+		# alcanza con uno: el camino más barato
+		var best: Array = []
+		var best_c: int = 1 << 30
+		for p in parents:
+			var cand: Array = path_to(m, p)
+			var c: int = 0
+			for q in cand:
+				c += cost(q)
+			if c < best_c:
+				best_c = c
+				best = cand
+		for q in best:
+			if not out.has(q):
+				out.append(q)
+	out.append(id)
+
+
+static func _cost_of(ids: Array) -> int:
+	var c: int = 0
+	for id in ids:
+		c += cost(id)
+	return c
+
+
+## El camino al final, para el panel "Camino al final":
+## {seals: [{id, branch, owned, cost (Credibilidad para llegar), nodes (cuántos nodos faltan), next (el próximo nodo a
+##  comprar en ese camino)}], have, final_cost, final_owned, ready (6 sellos y falta el centro), need (Credibilidad que
+##  falta juntar en total, aproximada: los caminos de los sellos que faltan + el centro, menos la que ya tenés), next_seal}
+static func road(m: GameModel) -> Dictionary:
+	var seals: Array = []
+	var all_needed: Array = []
+	var have: int = 0
+	var next_seal: Dictionary = {}
+	for id in seal_ids():
+		var path: Array = path_to(m, id)
+		var owned: bool = path.is_empty()
+		if owned:
+			have += 1
+		for q in path:
+			if not all_needed.has(q):
+				all_needed.append(q)
+		var row: Dictionary = {"id": id, "branch": str(GameData.node(id)["branch"]), "owned": owned, "cost": _cost_of(path),
+			"nodes": path.size(), "next": str(path[0]) if not path.is_empty() else ""}
+		seals.append(row)
+		if not owned and (next_seal.is_empty() or int(row["cost"]) < int(next_seal["cost"])):
+			next_seal = row
+	var final_owned: bool = m.tree.has("final")
+	var total: int = _cost_of(all_needed) + (0 if final_owned else cost("final"))
+	return {"seals": seals, "have": have, "final_cost": cost("final"), "final_owned": final_owned,
+		"ready": have == seal_ids().size() and not final_owned, "need": maxi(0, total - m.credibility), "next_seal": next_seal}
+
+
 ## Cuántos nodos se pueden comprar ya mismo.
 static func affordable_count(m: GameModel) -> int:
 	var n: int = 0

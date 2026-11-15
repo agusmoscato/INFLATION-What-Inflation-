@@ -22,6 +22,10 @@ func _init() -> void:
 		if not ResourceLoader.exists(path):
 			continue
 		var script: GDScript = load(path)
+		if script == null or not script.can_instantiate():
+			failed += 1          # una suite que no compila es un fallo (antes se salteaba en silencio)
+			printerr("  FALLA: la suite %s no compila" % path)
+			continue
 		var suite: RefCounted = script.new()
 		current_suite = path.get_file().get_basename()
 		print("== ", current_suite)

@@ -456,22 +456,40 @@ static func upgrade_condition(m: GameModel, u: Dictionary) -> Dictionary:
 	return {}
 
 
-## Mejoras que se desbloquean pronto (falta poco de su condición), para "Próximas".
-static func soon_upgrades(m: GameModel, limit: int) -> Array:
+## Cuánto falta para la condición de una mejora todavía bloqueada: 0 (nada) a 1 (desbloqueada). -1 si no tiene condición.
+static func upgrade_condition_progress(m: GameModel, u: Dictionary) -> float:
+	var c: Dictionary = upgrade_condition(m, u)
+	if c.is_empty():
+		return -1.0
+	var need: int = int(c.get("n", c.get("clicks", c.get("clicks_total", 0))))
+	var have: int = int(c["have"])
+	if str(u["kind"]) == "syn":
+		have = mini(m.owned_count(u["biz"]), m.owned_count(u["other"]))
+	return clampf(float(have) / float(maxi(1, need)), 0.0, 1.0)
+
+
+## Mejoras que se desbloquean pronto (falta poco de su condición), para "Próximas". Con `at_least_one`, si ninguna
+## está cerca devuelve igual la más avanzada (así la caja de mejoras nunca queda vacía, ni en el primer segundo).
+static func soon_upgrades(m: GameModel, limit: int, at_least_one: bool = false) -> Array:
 	var out: Array = []
+	var best: Dictionary = {}
+	var best_p: float = -1.0
 	for u in GameData.upgrades:
 		if m.upgrades.has(u["id"]) or upgrade_visible(m, u):
 			continue
-		var c: Dictionary = upgrade_condition(m, u)
-		if c.is_empty():
+		if str(u["kind"]) == "biz" and not business_available(m, GameData.businesses[GameData.business_idx[u["biz"]]]):
 			continue
-		var need: int = int(c.get("n", c.get("clicks", c.get("clicks_total", 0))))
-		var have: int = int(c["have"])
-		if str(u["kind"]) == "syn":
-			have = mini(m.owned_count(u["biz"]), m.owned_count(u["other"]))
-		if have >= need * 0.6 and (str(u["kind"]) != "biz" or business_available(m, GameData.businesses[GameData.business_idx[u["biz"]]])):
+		var prog: float = upgrade_condition_progress(m, u)
+		if prog < 0.0:
+			continue
+		if prog >= 0.6:
 			out.append(u)
+		if prog > best_p or (prog == best_p and not best.is_empty() and (u["cost"] as BigNumber).lt(best["cost"])):
+			best_p = prog
+			best = u
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["cost"].lt(b["cost"]))
+	if out.is_empty() and at_least_one and not best.is_empty():
+		out.append(best)
 	return out.slice(0, limit)
 
 
@@ -485,7 +503,7 @@ static func upcoming_upgrades(m: GameModel, limit: int = 4) -> Array:
 			out.append(u)
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return upgrade_cost(m, a).lt(upgrade_cost(m, b)))
 	if out.size() < limit:
-		out.append_array(soon_upgrades(m, limit - out.size()))
+		out.append_array(soon_upgrades(m, limit - out.size(), out.is_empty() and visible_upgrades(m).is_empty()))
 	return out.slice(0, limit)
 
 

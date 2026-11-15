@@ -13,6 +13,7 @@ var locked: bool = false
 var progress: float = 0.0          ## plata / precio (0..1) para la barrita
 var price_text: String = ""
 var cond_text: String = ""           ## "Próximas" que todavía no se desbloquean: la condición en lugar del precio
+var cond_progress: float = 0.0
 var _t: float = 0.0
 
 
@@ -29,6 +30,13 @@ func _init(u: Dictionary = {}, is_locked: bool = false) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	if affordable and not locked:
+		queue_redraw()
+
+
+func set_cond(text: String, prog: float) -> void:
+	if text != cond_text or absf(prog - cond_progress) > 0.005:
+		cond_text = text
+		cond_progress = prog
 		queue_redraw()
 
 
@@ -106,6 +114,10 @@ func _draw() -> void:
 	var pc: Color = Chalk.GREEN if affordable and not locked else (Color(Chalk.WHITE, 0.5) if locked else Chalk.RED)
 	if locked and cond_text != "":
 		draw_string(body, Vector2(x, 61), cond_text, HORIZONTAL_ALIGNMENT_LEFT, w, 14, Color(Chalk.PINK, 0.8))
+		# barra de progreso hacia la condición
+		var cb: Rect2 = Rect2(Vector2(8, size.y - 9), Vector2(size.x - 16, 5))
+		draw_rect(cb, Color(1, 1, 1, 0.12))
+		draw_rect(Rect2(cb.position, Vector2(cb.size.x * clampf(cond_progress, 0.0, 1.0), cb.size.y)), Color(Chalk.PINK, 0.75))
 	else:
 		draw_string(f, Vector2(x, 61), price_text, HORIZONTAL_ALIGNMENT_LEFT, w, 15, pc)
 	# barrita hacia el precio

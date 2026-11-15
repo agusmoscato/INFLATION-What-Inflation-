@@ -40,6 +40,7 @@ var reform_btn: Button
 var reform_hint: Label
 var upg_flow: HFlowContainer
 var upg_title: Label
+var upg_scroll: ScrollContainer
 var upg_detail: PanelContainer
 var _upg_hover: UpgradeIcon
 var biz_list: VBoxContainer
@@ -321,6 +322,7 @@ func _build_right() -> Control:
 	uv.add_child(upg_title)
 	var usc: ScrollContainer = ScrollContainer.new()
 	usc.custom_minimum_size = Vector2(0, 158)
+	upg_scroll = usc
 	usc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	uv.add_child(usc)
 	upg_flow = HFlowContainer.new()
@@ -810,10 +812,12 @@ func _refresh_upgrades(m: GameModel) -> void:
 			upg_flow.add_child(nl)
 			for u in next:
 				var lk: UpgradeIcon = UpgradeIcon.new(u, true)
-				lk.cond_text = EconomyLogic.upgrade_condition_text(m, u)
+				lk.set_cond(EconomyLogic.upgrade_condition_text(m, u), maxf(0.0, EconomyLogic.upgrade_condition_progress(m, u)))
 				_add_upgrade_card(lk)
 	for ic in _upg_icons:
 		var card: UpgradeIcon = ic
+		if card.locked and card.cond_text != "":
+			card.set_cond(EconomyLogic.upgrade_condition_text(m, card.upg), maxf(0.0, EconomyLogic.upgrade_condition_progress(m, card.upg)))
 		var cost: BigNumber = EconomyLogic.upgrade_cost(m, card.upg)
 		var can: bool = cost.le(m.money)
 		var prog: float = 1.0
@@ -822,7 +826,11 @@ func _refresh_upgrades(m: GameModel) -> void:
 		card.set_state(can, prog, UIKit.money(cost))
 	if _upg_hover != null and is_instance_valid(_upg_hover):
 		_show_upgrade_detail(_upg_hover)
-	upg_title.text = tr("ui.upgrades") if not (vis.is_empty() and next.is_empty()) else tr("ui.upgrades_none")
+	var empty: bool = vis.is_empty() and next.is_empty()
+	upg_title.text = tr("ui.upgrades") if not empty else tr("ui.upgrades_none")
+	# si no hay nada para mostrar, la caja se achica y ese espacio va a los negocios
+	upg_scroll.visible = not empty
+	upg_scroll.custom_minimum_size.y = 0.0 if empty else 158.0
 
 
 func _add_upgrade_card(ic: UpgradeIcon) -> void:

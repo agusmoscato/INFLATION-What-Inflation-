@@ -105,6 +105,14 @@ func _layout() -> void:
 	_o = c - CENTER_UV * _S
 
 
+## Zona prohibida para los "+$X" de los clics (global): arriba de la cabeza, donde van el gorrito, la corona y el vapor.
+func keep_out_rect() -> Rect2:
+	_layout()
+	var gr: Rect2 = get_global_rect()
+	var bottom: float = T(TOP_UV).y + 6.0
+	return Rect2(gr.position, Vector2(gr.size.x, bottom * get_global_transform().get_scale().y))
+
+
 func _fancy() -> bool:
 	return Settings.quality < 2
 

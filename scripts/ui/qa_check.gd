@@ -97,3 +97,39 @@ static func _collect(n: Node, out: Array, in_scroll: bool, sr: Rect2, bad: Array
 					bad.append("CORTADO EN LA LISTA: %s %s (lista %s)" % [c.get_path(), _fmt(r), _fmt(sr)])
 	for k in n.get_children():
 		_collect(k, out, in_scroll, sr, bad)
+
+
+## Textos de tarjetas que no entran: las tarjetas de mejoras (cada texto con su letra más chica tiene que entrar) y los
+## textos con recorte (clip_text) que se cortan (por ejemplo, los nombres e info de los negocios). También tarjetas
+## que se pisan entre sí. Devuelve la lista de problemas ([] si está todo bien).
+static func card_texts(root: Node) -> Array:
+	var bad: Array = []
+	var cards: Array = []
+	_cards(root, bad, cards)
+	for i in range(cards.size()):
+		var ra: Rect2 = (cards[i] as Control).get_global_rect()
+		for j in range(i + 1, cards.size()):
+			var inter: Rect2 = ra.intersection((cards[j] as Control).get_global_rect())
+			if inter.size.x > 1.0 and inter.size.y > 1.0:
+				bad.append("TARJETAS ENCIMADAS: %s y %s" % [(cards[i] as Node).get_path(), (cards[j] as Node).get_path()])
+	return bad
+
+
+static func _cards(n: Node, bad: Array, cards: Array) -> void:
+	if n is Control:
+		var c: Control = n as Control
+		if c.is_inside_tree() and not c.is_visible_in_tree():
+			return
+		if c is UpgradeIcon:
+			cards.append(c)
+			for p in (c as UpgradeIcon).text_layout()["problems"]:
+				bad.append("TEXTO CORTADO EN TARJETA %s: %s" % [str((c as UpgradeIcon).upg.get("id", "?")), p])
+		elif c is Label and (c as Label).clip_text and (c as Label).autowrap_mode == TextServer.AUTOWRAP_OFF:
+			var l: Label = c as Label
+			var font: Font = l.get_theme_font("font")
+			var w: float = font.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.get_theme_font_size("font_size")).x
+			if l.text.strip_edges() != "" and w > l.size.x + 1.0:
+				bad.append("TEXTO CORTADO: %s \"%s\" (%d px en %d px)" % [l.get_path(), l.text, int(w), int(l.size.x)])
+	for k in n.get_children():
+		_cards(k, bad, cards)
+

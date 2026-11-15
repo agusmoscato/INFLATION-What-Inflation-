@@ -5,7 +5,12 @@ extends Button
 ## una barrita que muestra cuánto te falta. Las "Próximas" (todavía lejos) se ven apagadas y con candado.
 ## Tocarla la compra; el detalle aparece al instante al pasar el mouse (lo dibuja GameScreen).
 
-const CARD: Vector2 = Vector2(186, 74)
+const CARD: Vector2 = Vector2(200, 80)
+const TEXT_X: float = 58.0
+## Tamaños de letra: se achica hasta que entra (nunca se corta); el nombre puede ir en dos líneas.
+const NAME_FS: Array = [15, 12]
+const EFFECT_FS: Array = [16, 11]
+const LOW_FS: Array = [15, 11]
 
 var upg: Dictionary = {}
 var affordable: bool = false
@@ -87,8 +92,9 @@ static func describe(u: Dictionary) -> String:
 	return TranslationServer.translate(u["desc_key"])
 
 
+## "2", "1,5", "1,03": los decimales que hagan falta (con uno solo, la promo x1,03 se leía "x1" y parecía no hacer nada).
 static func _num(v: float) -> String:
-	return ("%.1f" % v).rstrip("0").rstrip(".").replace(".", ",")
+	return ("%.2f" % v).rstrip("0").rstrip(".").replace(".", ",")
 
 
 func _draw() -> void:
@@ -96,7 +102,7 @@ func _draw() -> void:
 	var body: Font = Chalk.hand_font if Chalk.hand_font != null else ThemeDB.fallback_font
 	var dim: float = 0.45 if locked else 1.0
 	# ícono
-	var ir: Rect2 = Rect2(Vector2(7, 9), Vector2(44, 44))
+	var ir: Rect2 = Rect2(Vector2(7, 12), Vector2(44, 44))
 	var icon: String = str(upg.get("icon", "empanadas"))
 	if icon == "empanada":
 		icon = "empanadas"
@@ -106,20 +112,25 @@ func _draw() -> void:
 		ChalkIcons.draw(self, icon, ir, 5 + str(upg.get("id", "")).length(), Color(Chalk.WHITE, 0.55) if locked else Color(0, 0, 0, 0))
 	if locked:
 		_padlock(Vector2(ir.end.x - 6, ir.end.y - 4))
-	# textos
-	var x: float = 58.0
-	var w: float = size.x - x - 6.0
-	draw_string(f, Vector2(x, 21), short_name(upg), HORIZONTAL_ALIGNMENT_LEFT, w, 15, Color(Chalk.WHITE, 0.95 * dim))
-	draw_string(body, Vector2(x, 41), effect(upg), HORIZONTAL_ALIGNMENT_LEFT, w, 16, Color(Chalk.YELLOW, dim))
+	# textos (cada uno con la letra más grande que entra: nunca se cortan)
+	var x: float = TEXT_X
+	var lay: Dictionary = text_layout()
+	var names: Array = lay["name"]
+	var y0: float = 22.0 if names.size() == 1 else 17.0
+	for i in range(names.size()):
+		draw_string(f, Vector2(x, y0 + 14.0 * float(i)), str(names[i]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(lay["name_fs"]), Color(Chalk.WHITE, 0.95 * dim))
+	var ye: float = 44.0 if names.size() == 1 else 49.0
+	var yl: float = 64.0 if names.size() == 1 else 66.0
+	draw_string(body, Vector2(x, ye), effect(upg), HORIZONTAL_ALIGNMENT_LEFT, -1, int(lay["effect_fs"]), Color(Chalk.YELLOW, dim))
 	var pc: Color = Chalk.GREEN if affordable and not locked else (Color(Chalk.WHITE, 0.5) if locked else Chalk.RED)
 	if locked and cond_text != "":
-		draw_string(body, Vector2(x, 61), cond_text, HORIZONTAL_ALIGNMENT_LEFT, w, 14, Color(Chalk.PINK, 0.8))
+		draw_string(body, Vector2(x, yl), cond_text, HORIZONTAL_ALIGNMENT_LEFT, -1, int(lay["low_fs"]), Color(Chalk.PINK, 0.8))
 		# barra de progreso hacia la condición
 		var cb: Rect2 = Rect2(Vector2(8, size.y - 9), Vector2(size.x - 16, 5))
 		draw_rect(cb, Color(1, 1, 1, 0.12))
 		draw_rect(Rect2(cb.position, Vector2(cb.size.x * clampf(cond_progress, 0.0, 1.0), cb.size.y)), Color(Chalk.PINK, 0.75))
 	else:
-		draw_string(f, Vector2(x, 61), price_text, HORIZONTAL_ALIGNMENT_LEFT, w, 15, pc)
+		draw_string(f, Vector2(x, yl), price_text, HORIZONTAL_ALIGNMENT_LEFT, -1, int(lay["low_fs"]), pc)
 	# barrita hacia el precio
 	if not affordable and not locked:
 		var br: Rect2 = Rect2(Vector2(8, size.y - 9), Vector2(size.x - 16, 5))
@@ -129,6 +140,57 @@ func _draw() -> void:
 	if affordable and not locked:
 		var a: float = 0.55 + 0.4 * sin(_t * 5.0)
 		draw_rect(Rect2(Vector2(2, 2), size - Vector2(4, 4)), Color(Chalk.GREEN, a), false, 3.0)
+
+
+static func _fonts() -> Array:
+	return [Chalk.title_font if Chalk.title_font != null else ThemeDB.fallback_font, Chalk.hand_font if Chalk.hand_font != null else ThemeDB.fallback_font]
+
+
+## El tamaño más grande (de `fs[0]` a `fs[1]`) con el que `text` entra en `w`; -1 si ni con el más chico.
+static func fit_size(font: Font, text: String, w: float, fs: Array) -> int:
+	for size_i in range(int(fs[0]), int(fs[1]) - 1, -1):
+		if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_i).x <= w:
+			return size_i
+	return -1
+
+
+## Cómo entran los textos en la tarjeta: {name: [1 o 2 líneas], name_fs, effect_fs, low_fs, problems: [...]}. Si algo no
+## entra ni con la letra más chica, queda en `problems` (el QA falla) y se dibuja igual con la letra mínima.
+func text_layout() -> Dictionary:
+	var fonts: Array = _fonts()
+	var w: float = maxf(size.x, CARD.x) - TEXT_X - 6.0
+	var problems: Array = []
+	var nm: String = short_name(upg)
+	var lines: Array = [nm]
+	var nfs: int = fit_size(fonts[0], nm, w, NAME_FS)
+	if nfs < 0:
+		# en dos líneas, cortando entre palabras donde quede más parejo
+		var words: PackedStringArray = nm.split(" ")
+		var best: Array = []
+		var best_fs: int = -1
+		for cut in range(1, words.size()):
+			var a: String = " ".join(words.slice(0, cut))
+			var b: String = " ".join(words.slice(cut))
+			var fs2: int = mini(fit_size(fonts[0], a, w, [14, NAME_FS[1]]), fit_size(fonts[0], b, w, [14, NAME_FS[1]]))
+			if fs2 > best_fs:
+				best_fs = fs2
+				best = [a, b]
+		if best_fs > 0:
+			lines = best
+			nfs = best_fs
+		else:
+			nfs = int(NAME_FS[1])
+			problems.append("nombre cortado: " + nm)
+	var efs: int = fit_size(fonts[1], effect(upg), w, EFFECT_FS)
+	if efs < 0:
+		efs = int(EFFECT_FS[1])
+		problems.append("efecto cortado: " + effect(upg))
+	var low: String = cond_text if locked and cond_text != "" else price_text
+	var lfs: int = fit_size(fonts[1] if locked and cond_text != "" else fonts[0], low, w, LOW_FS)
+	if lfs < 0:
+		lfs = int(LOW_FS[1])
+		problems.append("precio o condición cortados: " + low)
+	return {"name": lines, "name_fs": nfs, "effect_fs": efs, "low_fs": lfs, "problems": problems}
 
 
 func _padlock(c: Vector2) -> void:

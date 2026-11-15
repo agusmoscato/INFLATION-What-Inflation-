@@ -351,6 +351,7 @@ const QA_WINDOW_SIZES: Array = [Vector2i(1280, 720), Vector2i(1366, 768), Vector
 
 func _qa_win_check(name: String, failures: Array) -> void:
 	var bad: Array = QaCheck.layout(self, get_viewport().get_visible_rect())
+	bad.append_array(QaCheck.card_texts(self))
 	for b in bad:
 		failures.append("[%s] %s" % [name, b])
 	if DisplayServer.get_name() != "headless" and not OS.has_feature("web"):

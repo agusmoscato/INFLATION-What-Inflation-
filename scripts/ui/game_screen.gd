@@ -12,6 +12,7 @@ signal request_demo_end
 const QTY: Array = [1, 10, -1]
 const TOAST_SECONDS: float = 3.0
 const TOAST_SECONDS_SLOW: float = 5.5      ## en las primeras vueltas los avisos duran más (da tiempo a leerlos)
+const UPG_BOX_H: float = 2.0 * 80.0 + 6.0   ## dos filas de tarjetas de mejoras
 
 var world: MarginContainer
 var body: BoxContainer
@@ -321,7 +322,7 @@ func _build_right() -> Control:
 	upg_title = UIKit.label(tr("ui.upgrades"), 18, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
 	uv.add_child(upg_title)
 	var usc: ScrollContainer = ScrollContainer.new()
-	usc.custom_minimum_size = Vector2(0, 158)
+	usc.custom_minimum_size = Vector2(0, UPG_BOX_H)
 	upg_scroll = usc
 	usc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	uv.add_child(usc)
@@ -353,7 +354,7 @@ func _build_right() -> Control:
 			_refresh_qty_buttons())
 		top.add_child(b)
 		qty_buttons.append({"btn": b, "q": q})
-	# lista compacta con scroll; si hay más abajo, una flecha de tiza lo avisa
+	# lista compacta con scroll; si hay más abajo, una flecha de tiza lo avisa debajo de la lista (fuera de ella)
 	var holder: Control = Control.new()
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	bv.add_child(holder)
@@ -361,19 +362,20 @@ func _build_right() -> Control:
 	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	holder.add_child(sc)
+	bv.add_theme_constant_override("separation", 2)
 	biz_scroll = sc
 	biz_list = VBoxContainer.new()
 	biz_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	biz_list.add_theme_constant_override("separation", 3)
 	sc.add_child(biz_list)
-	biz_more = UIKit.label(tr("ui.biz.more"), 15, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_CENTER, true)
-	biz_more.add_theme_color_override("font_outline_color", Color.BLACK)
-	biz_more.add_theme_constant_override("outline_size", 6)
-	biz_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	biz_more.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	biz_more.offset_top = -24.0
-	biz_more.set_meta("qa_ignore", true)
-	holder.add_child(biz_more)
+	biz_more = UIKit.label("▼  " + tr("ui.biz.more") + "  ▼", 15, Chalk.YELLOW, HORIZONTAL_ALIGNMENT_CENTER, true)
+	biz_more.custom_minimum_size = Vector2(0, 20)
+	biz_more.mouse_filter = Control.MOUSE_FILTER_STOP
+	biz_more.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	biz_more.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			biz_scroll.scroll_vertical += int(biz_scroll.size.y * 0.8))
+	bv.add_child(biz_more)
 	for def in GameData.businesses:
 		var row: PanelContainer = UIKit.panel(UIKit.C_PANEL2, 5)
 		var h: HBoxContainer = HBoxContainer.new()
@@ -725,10 +727,11 @@ func _refresh_biz(m: GameModel) -> void:
 			btn.text = UIKit.money(cost) if q == 1 else "x%d  %s" % [q, UIKit.money(cost)]
 		btn.disabled = cost.gt(m.money)
 		_price_bump(r, n, cost)
+	# la fila de la flecha siempre ocupa su lugar (así la lista no salta); solo se ve si hay más abajo
 	var vb: VScrollBar = biz_scroll.get_v_scroll_bar()
-	biz_more.visible = vb.max_value - vb.page > float(biz_scroll.scroll_vertical) + 6.0
-	if biz_more.visible:
-		biz_more.position.y = biz_more.get_parent().size.y - 24.0 + sin(_clock * 4.0) * 3.0
+	var more: bool = vb.max_value - vb.page > float(biz_scroll.scroll_vertical) + 6.0
+	biz_more.modulate.a = (0.75 + 0.25 * sin(_clock * 4.0)) if more else 0.0
+	biz_more.mouse_filter = Control.MOUSE_FILTER_STOP if more else Control.MOUSE_FILTER_IGNORE
 
 
 ## Si el precio de un negocio subió por la inflación (sin comprar), el viejo se tacha con tiza y cae, y el nuevo salta.
@@ -827,7 +830,7 @@ func _refresh_upgrades(m: GameModel) -> void:
 	upg_title.text = tr("ui.upgrades") if not empty else tr("ui.upgrades_none")
 	# si no hay nada para mostrar, la caja se achica y ese espacio va a los negocios
 	upg_scroll.visible = not empty
-	upg_scroll.custom_minimum_size.y = 0.0 if empty else 158.0
+	upg_scroll.custom_minimum_size.y = 0.0 if empty else UPG_BOX_H
 
 
 func _add_upgrade_card(ic: UpgradeIcon) -> void:
@@ -922,9 +925,9 @@ func _on_clicked(res: Dictionary) -> void:
 	var pos: Vector2 = get_global_mouse_position()
 	var er: Rect2 = empanada.get_global_rect()
 	if not er.has_point(pos):
-		pos = er.get_center() + Vector2(randf_range(-60, 60), randf_range(-40, 10))
+		pos = er.get_center() + Vector2(randf_range(-60, 60), randf_range(-10, 30))
 	empanada.poke()
-	_floating_text(("¡%s! " % tr("ui.crit") if crit else "") + "+" + UIKit.money(v), pos, Chalk.YELLOW if crit else Chalk.WHITE, 30 if crit else 22)
+	_click_float(("¡%s! " % tr("ui.crit") if crit else "") + "+" + UIKit.money(v), pos, Chalk.YELLOW if crit else Chalk.WHITE, 30 if crit else 22)
 	_burst(pos, Chalk.ORANGE if crit else Chalk.YELLOW, 10 if crit else 5)
 	_play("click", 1.0 + minf(float(res["combo"]), 30.0) * 0.012)
 	if crit:
@@ -1052,6 +1055,39 @@ func _floating_text(text: String, pos: Vector2, color: Color, fs: int = 22) -> v
 	tw.tween_property(l, "position:y", l.position.y - 80.0, 0.8).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.8).set_delay(0.2)
 	tw.tween_callback(l.queue_free)
+
+
+## El "+$X" de un clic: nace donde tocaste pero nunca arriba del gorrito o la corona (zona prohibida de la empanada) y
+## se va en diagonal hacia el costado, así no tapa los accesorios ni la cara.
+func _click_float(text: String, pos: Vector2, color: Color, fs: int) -> void:
+	if fx_layer.get_child_count() > 60:
+		return
+	var l: Label = UIKit.label(text, fs, color, HORIZONTAL_ALIGNMENT_LEFT, true)
+	l.add_theme_color_override("font_outline_color", Color.BLACK)
+	l.add_theme_constant_override("outline_size", 6)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx_layer.add_child(l)
+	l.size = l.get_combined_minimum_size()
+	var path: Array = click_float_path(empanada, pos, l.size)
+	l.position = path[0]
+	var tw: Tween = create_tween()
+	tw.tween_property(l, "position", path[1], 0.75).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.6).set_delay(0.2)
+	tw.tween_callback(l.queue_free)
+
+
+## Recorrido [inicio, fin] (esquina del texto, global) del "+$X": arranca debajo de la zona prohibida (gorrito, corona,
+## vapor) y se aleja hacia el costado más cercano y un poco hacia arriba, sin volver a subir a esa zona.
+static func click_float_path(emp: EmpanadaButton, pos: Vector2, sz: Vector2) -> Array:
+	var keep_out: Rect2 = emp.keep_out_rect()
+	var er: Rect2 = emp.get_global_rect()
+	var start: Vector2 = pos - Vector2(sz.x / 2.0, sz.y / 2.0)
+	start.y = maxf(start.y, keep_out.end.y + 4.0)
+	start.y = minf(start.y, er.end.y - sz.y)
+	var dir: float = -1.0 if pos.x < er.get_center().x else 1.0
+	var end: Vector2 = start + Vector2(dir * 95.0, -24.0)
+	end.y = maxf(end.y, keep_out.end.y + 4.0)
+	return [start, end]
 
 
 func _burst(pos: Vector2, color: Color, amount: int) -> void:

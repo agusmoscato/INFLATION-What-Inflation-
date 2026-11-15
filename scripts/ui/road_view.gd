@@ -1,8 +1,9 @@
 class_name RoadView
 extends PanelContainer
 ## "Camino al final": los 6 sellos (uno por rama) y el centro del árbol.
-##  - compacto (en el juego): título, los 6 sellos (rellenos con tilde si los tenés) y una línea con lo próximo o, con
-##    los 6, el aviso grande de que ya se puede estabilizar la economía. Tocarlo abre el árbol.
+##  - compacto (en el juego): una sola línea junto al botón de Reformar: los 6 circulitos (rellenos con tilde si los
+##    tenés) y "Próximo: Empanada de oro" (con los 6, "¡Estabilizá la economía!"). El detalle va en el tooltip y tocarlo
+##    abre el árbol. Se dibuja a mano: el texto usa la letra más grande que entra (nunca se corta ni ensancha la columna).
 ##  - completo (en el árbol): una fila por sello con qué nodo de qué rama lo da y cuánta Credibilidad falta, el centro y
 ##    el total aproximado.
 
@@ -11,16 +12,23 @@ signal open_tree
 var full: bool = false
 var _sig: String = ""
 var _medals: Array = []
-var _line: Label
 var _rows: Array = []                 # completo: [Label] uno por sello
 var _final_l: Label
 var _total_l: Label
 var _t: float = 0.0
+var _compact_text: String = ""
+var _owned: Array = []
+const LINE_H: float = 24.0
+const MEDAL: float = 18.0
 
 
 func _init(full_mode: bool = false) -> void:
 	full = full_mode
-	add_theme_stylebox_override("panel", UIKit.chalk_box(Chalk.YELLOW, Color(0.06, 0.1, 0.08, 0.92), 2.2))
+	if full:
+		add_theme_stylebox_override("panel", UIKit.chalk_box(Chalk.YELLOW, Color(0.06, 0.1, 0.08, 0.92), 2.2))
+	else:
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		custom_minimum_size = Vector2(0, LINE_H)
 	mouse_filter = Control.MOUSE_FILTER_STOP if not full else Control.MOUSE_FILTER_PASS
 	if not full:
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -31,6 +39,8 @@ func _init(full_mode: bool = false) -> void:
 
 
 func _build() -> void:
+	if not full:
+		return                  # el compacto se dibuja en _draw
 	var title: Label = UIKit.label(tr("ui.road.title"), 17, UIKit.C_GOLD, HORIZONTAL_ALIGNMENT_LEFT, true)
 	var medals: HBoxContainer = HBoxContainer.new()
 	medals.add_theme_constant_override("separation", 4)
@@ -38,20 +48,6 @@ func _build() -> void:
 		var md: _Medal = _Medal.new(str(TreeLogic.SEAL_BRANCHES[i]))
 		medals.add_child(md)
 		_medals.append(md)
-	if not full:
-		var h: HBoxContainer = HBoxContainer.new()
-		h.add_theme_constant_override("separation", 10)
-		add_child(h)
-		h.add_child(title)
-		h.add_child(medals)
-		_line = UIKit.label("", 15, Chalk.WHITE)
-		_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_line.custom_minimum_size = Vector2(240, 0)
-		_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		h.add_child(_line)
-		return
 	var v: VBoxContainer = VBoxContainer.new()
 	v.add_theme_constant_override("separation", 3)
 	add_child(v)
@@ -78,12 +74,8 @@ func _build() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if not full and _line != null:
-		var r: Dictionary = TreeLogic.road(GameState.m)
-		if bool(r["ready"]):
-			_line.modulate = Color.WHITE.lerp(Chalk.YELLOW, 0.5 + 0.5 * sin(_t * 5.0))     # el aviso late
-		else:
-			_line.modulate = Color.WHITE
+	if not full and _compact_text != "" and bool(TreeLogic.road(GameState.m)["ready"]):
+		queue_redraw()          # el aviso late
 
 
 ## Lo llama quien lo muestra (cada frame): solo rearma los textos si cambió algo.
@@ -96,15 +88,23 @@ func refresh(m: GameModel) -> void:
 		return
 	_sig = sig
 	var seals: Array = r["seals"]
+	if not full:
+		_owned = []
+		var tip: PackedStringArray = PackedStringArray([tr("ui.road.title")])
+		for row in seals:
+			_owned.append(bool(row["owned"]))
+			tip.append(_seal_text(row))
+		tip.append(_summary(r, m))
+		tooltip_text = "\n".join(tip)
+		_compact_text = _compact(r, m)
+		queue_redraw()
+		return
 	for i in range(seals.size()):
 		var row: Dictionary = seals[i]
 		var md: _Medal = _medals[i]
 		md.owned = bool(row["owned"])
 		md.tooltip_text = _seal_text(row)
 		md.queue_redraw()
-	if not full:
-		_line.text = _summary(r, m)
-		return
 	for i in range(seals.size()):
 		var row2: Dictionary = seals[i]
 		(_rows[i] as Label).text = _seal_text(row2)
@@ -126,6 +126,46 @@ static func _seal_text(row: Dictionary) -> String:
 	if bool(row["owned"]):
 		return TranslationServer.translate("ui.road.seal_owned") % [br, name]
 	return TranslationServer.translate("ui.road.seal_missing") % [br, name, int(row["cost"])]
+
+
+## La línea compacta: "Próximo: Empanada de oro", "¡Estabilizá la economía! Faltan 1200" o "Economía estabilizada".
+static func _compact(r: Dictionary, m: GameModel) -> String:
+	if bool(r["final_owned"]):
+		return TranslationServer.translate("ui.road.done")
+	if bool(r["ready"]):
+		var left: int = maxi(0, int(r["final_cost"]) - m.credibility)
+		return TranslationServer.translate("ui.road.c_ready_now") if left == 0 else TranslationServer.translate("ui.road.c_ready") % left
+	return TranslationServer.translate("ui.road.c_next") % TranslationServer.translate(GameData.node(str(r["next_seal"]["id"]))["name_key"])
+
+
+## El tamaño de letra de la línea compacta y si entra (para el QA).
+func compact_fit() -> int:
+	var w: float = size.x - (MEDAL + 3.0) * 6.0 - 8.0
+	return UpgradeIcon.fit_size(UpgradeIcon._fonts()[1], _compact_text, w, [16, 11])
+
+
+func _draw() -> void:
+	if full or _compact_text == "":
+		return
+	var y: float = size.y / 2.0
+	for i in range(_owned.size()):
+		var c: Vector2 = Vector2(MEDAL / 2.0 + 1.0 + float(i) * (MEDAL + 3.0), y)
+		var col: Color = GameData.branch_color(str(TreeLogic.SEAL_BRANCHES[i]))
+		var rr: float = MEDAL / 2.0 - 1.0
+		if bool(_owned[i]):
+			draw_circle(c, rr, Color(col, 0.9))
+			draw_polyline(PackedVector2Array([c + Vector2(-rr * 0.45, 0), c + Vector2(-rr * 0.1, rr * 0.4), c + Vector2(rr * 0.5, -rr * 0.4)]), Chalk.BOARD.darkened(0.5), 2.5, true)
+		else:
+			draw_arc(c, rr, 0.0, TAU, 20, Color(col, 0.8), 2.0, true)
+	var x0: float = (MEDAL + 3.0) * 6.0 + 6.0
+	var fs: int = compact_fit()
+	if fs < 0:
+		fs = 11
+	var col2: Color = Chalk.WHITE
+	if bool(TreeLogic.road(GameState.m)["ready"]):
+		col2 = Chalk.WHITE.lerp(Chalk.YELLOW, 0.5 + 0.5 * sin(_t * 5.0))
+	var font: Font = UpgradeIcon._fonts()[1]
+	draw_string(font, Vector2(x0, y + float(fs) * 0.35), _compact_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col2)
 
 
 static func _summary(r: Dictionary, m: GameModel) -> String:

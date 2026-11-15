@@ -70,6 +70,9 @@ func _check_empanada() -> void:
 		var ref: Array = _measure(g)
 		sizes_seen[tag] = ref[1]
 		var cases: Array = [
+			["con la línea del camino al final", func() -> void:
+				m.reforms = 2
+				m.credibility = 30],
 			["accesorios (gorrito, anteojos, corona, dorada)", func() -> void:
 				for n in GameData.tree:
 					if not bool(n["final"]) and (bool(n["seal"]) or int(n["ring"]) <= 3):
@@ -102,6 +105,21 @@ func _check_empanada() -> void:
 				failures.append("[%s] LA EMPANADA SE MOVIÓ O CAMBIÓ DE TAMAÑO con %s: %s %s (antes %s %s)" % [tag, c[0], str(got[0]), str(got[1]), str(ref[0]), str(ref[1])])
 			if g.empanada.scale != Vector2.ONE or g.empanada.rotation != 0.0:
 				failures.append("[%s] el control de la empanada tiene escala %s / rotación %f con %s (el squash tiene que ser solo visual)" % [tag, str(g.empanada.scale), g.empanada.rotation, c[0]])
+		# la línea del camino al final entra con cualquier sello próximo, en los dos idiomas
+		m.won = false
+		m.reforms = maxi(m.reforms, 1)
+		await _frames(3)
+		if not g.road.visible or g.road.size.x < 100.0:
+			failures.append("[%s] no se ve la línea del camino al final (%s)" % [tag, str(g.road.size)])
+		for lang in ["es", "en"]:
+			TranslationServer.set_locale(lang)
+			for sid in TreeLogic.seal_ids():
+				for txt in [tr("ui.road.c_next") % tr(GameData.node(sid)["name_key"]), tr("ui.road.c_ready") % 4200, tr("ui.road.c_ready_now"), tr("ui.road.done")]:
+					g.road._compact_text = txt
+					if g.road.compact_fit() < 0:
+						failures.append("[%s] la línea del camino al final no entra: %s" % [tag, txt])
+		TranslationServer.set_locale("es")
+		g.road._sig = ""
 		# los avisos nunca tapan la empanada ni las tarjetas, y como mucho hay 2 a la vez
 		for i in range(4):
 			g._show_toast("Aviso de prueba con un texto bastante largo para que ocupe dos renglones, número %d" % i, Chalk.YELLOW)

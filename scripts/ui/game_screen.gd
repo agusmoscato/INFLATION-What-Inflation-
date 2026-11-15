@@ -289,7 +289,7 @@ func _build_header() -> Control:
 func _build_left() -> Control:
 	var col: VBoxContainer = VBoxContainer.new()
 	col.custom_minimum_size = Vector2(LEFT_W, 0)
-	col.add_theme_constant_override("separation", 8)
+	col.add_theme_constant_override("separation", 5)
 	var p: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	p.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(p)
@@ -307,10 +307,14 @@ func _build_left() -> Control:
 	empanada.custom_minimum_size = EMPANADA_SIZE
 	empanada.pressed.connect(func(_pos: Vector2) -> void: Economy.click())
 	v.add_child(empanada)
+	var cl_row: HBoxContainer = HBoxContainer.new()
+	cl_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	cl_row.add_theme_constant_override("separation", 14)
+	v.add_child(cl_row)
 	click_label = UIKit.label("", 17, Chalk.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	v.add_child(click_label)
+	cl_row.add_child(click_label)
 	combo_label = UIKit.label("", 17, Chalk.ORANGE, HORIZONTAL_ALIGNMENT_CENTER, true)
-	v.add_child(combo_label)
+	cl_row.add_child(combo_label)
 	combo_bar = ChalkBar.new()
 	combo_bar.fill_color = Chalk.ORANGE
 	combo_bar.custom_minimum_size = Vector2(220, 12)
@@ -323,10 +327,14 @@ func _build_left() -> Control:
 	rest.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(rest)
 	reform_btn = Button.new()
-	reform_btn.custom_minimum_size = Vector2(0, 62)
+	reform_btn.custom_minimum_size = Vector2(0, 54)
 	reform_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # el texto largo va en dos renglones: no ensancha la columna
 	UIKit.style_button(reform_btn, UIKit.C_GOLD, 19)
 	reform_btn.pressed.connect(_open_reform_dialog)
+	# camino al final, en una línea junto a Reformar: los 6 sellos y el próximo (detalle en el tooltip; tocarlo abre el árbol)
+	road = RoadView.new(false)
+	road.open_tree.connect(_open_tree)
+	col.add_child(road)
 	col.add_child(reform_btn)
 	reform_hint = UIKit.label("", 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	reform_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -360,10 +368,6 @@ func _build_right() -> Control:
 	upg_flow.add_theme_constant_override("h_separation", 6)
 	upg_flow.add_theme_constant_override("v_separation", 6)
 	usc.add_child(upg_flow)
-	# camino al final: los 6 sellos y lo que falta (tocarlo abre el árbol)
-	road = RoadView.new(false)
-	road.open_tree.connect(_open_tree)
-	col.add_child(road)
 	# negocios
 	var bp: PanelContainer = UIKit.panel(UIKit.C_PANEL, 10)
 	bp.size_flags_vertical = Control.SIZE_EXPAND_FILL

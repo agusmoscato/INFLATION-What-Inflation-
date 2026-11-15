@@ -130,6 +130,8 @@ static func _cards(n: Node, bad: Array, cards: Array) -> void:
 		var c: Control = n as Control
 		if c.is_inside_tree() and not c.is_visible_in_tree():
 			return
+		if c is RoadView and not (c as RoadView).full and (c as RoadView).compact_fit() < 0:
+			bad.append("TEXTO CORTADO EN EL CAMINO AL FINAL: %s" % (c as RoadView)._compact_text)
 		if c is UpgradeIcon:
 			cards.append(c)
 			for p in (c as UpgradeIcon).text_layout()["problems"]:

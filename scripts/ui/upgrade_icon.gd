@@ -24,6 +24,7 @@ var cond_progress: float = 0.0
 var _t: float = 0.0
 var _spark_t: float = -9.0
 var _spark_at: float = 0.0
+var pulse: bool = false              ## late (solo la que elige la pantalla: como mucho 2 cosas laten a la vez)
 
 
 func _init(u: Dictionary = {}, is_locked: bool = false) -> void:
@@ -38,7 +39,7 @@ func _init(u: Dictionary = {}, is_locked: bool = false) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if affordable and not locked:
+	if affordable and not locked and pulse:
 		if _t - _spark_t > 1.3 + fmod(float(get_instance_id() % 97) * 0.013 + _t * 0.37, 0.8):
 			_spark_t = _t
 			_spark_at = fmod(_t * 0.618 + float(get_instance_id() % 13) * 0.1, 1.0)
@@ -61,6 +62,12 @@ func set_cond(text: String, prog: float) -> void:
 	if text != cond_text or absf(prog - cond_progress) > 0.005:
 		cond_text = text
 		cond_progress = prog
+		queue_redraw()
+
+
+func set_pulse(p: bool) -> void:
+	if p != pulse:
+		pulse = p
 		queue_redraw()
 
 
@@ -165,12 +172,15 @@ func _draw() -> void:
 		for i in range(0, int(r.size.x), 10):
 			draw_line(r.position + Vector2(i, 0), r.position + Vector2(mini(i + 5, int(r.size.x)), 0), Color(Chalk.WHITE, 0.18), 1.5)
 			draw_line(Vector2(r.position.x + i, r.end.y), Vector2(r.position.x + mini(i + 5, int(r.size.x)), r.end.y), Color(Chalk.WHITE, 0.18), 1.5)
-	# te alcanza: borde grueso verde que late y una chispa de tiza cada tanto
+	# te alcanza: borde grueso verde (fijo); si es la elegida para latir, late y tira una chispa de tiza cada tanto
 	if affordable and not locked:
-		BuyGlow.draw_pulse_border(self, Rect2(Vector2.ZERO, size), _t)
-		var k: float = (_t - _spark_t) / 0.5
-		if k >= 0.0 and k <= 1.0:
-			BuyGlow.draw_spark(self, BuyGlow.border_point(Rect2(Vector2.ZERO, size), _spark_at), k)
+		if pulse:
+			BuyGlow.draw_pulse_border(self, Rect2(Vector2.ZERO, size), _t)
+			var k: float = (_t - _spark_t) / 0.5
+			if k >= 0.0 and k <= 1.0:
+				BuyGlow.draw_spark(self, BuyGlow.border_point(Rect2(Vector2.ZERO, size), _spark_at), k)
+		else:
+			BuyGlow.draw_static_border(self, Rect2(Vector2.ZERO, size))
 
 
 static func _fonts() -> Array:

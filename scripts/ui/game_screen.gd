@@ -101,6 +101,10 @@ var _new_upgrades: Array = []         # mejoras nuevas que llegaron juntas: sale
 var _new_upg_t: float = 0.0
 var _pause: PauseMenu                  # menú de pausa abierto (el juego entero está frenado)
 var _debug: DebugMenu                  # menú de prueba (F10 con debug.txt)
+var _pulses: Array = []                # lo que late ahora (como mucho PULSE_MAX cosas a la vez)
+const PULSE_MAX: int = 2
+const EXPLAIN_RUNS: int = 2            ## los textos explicativos permanentes, solo en las primeras vueltas
+var remark_box: Control
 var _last_toast: float = -99.0
 
 
@@ -258,6 +262,7 @@ func _build_header() -> Control:
 	price_label = UIKit.label("", 15, UIKit.C_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	mid.add_child(price_label)
 	var rv: VBoxContainer = VBoxContainer.new()
+	remark_box = rv
 	rv.custom_minimum_size = Vector2(190, 0)
 	rv.add_theme_constant_override("separation", 2)
 	h.add_child(rv)
@@ -588,6 +593,7 @@ func _process(delta: float) -> void:
 	if Settings.quality < 2 and _fps_watch.update(Engine.get_frames_per_second(), delta):
 		_toast(tr("ui.fps_hint"), Chalk.PINK)
 	_refresh_all()
+	_update_pulses()
 	_update_juice(delta)
 	_update_ticker(delta)
 	_pump_toasts()
@@ -642,7 +648,9 @@ func _refresh_header(m: GameModel) -> void:
 	remark_btn.disabled = cd > 0.0
 	remark_btn.text = tr("ui.remark") if cd <= 0.0 else tr("ui.remark_cd") % int(ceil(cd))
 	remark_bar.value = 1.0 - cd / total
-	remark_line.text = tr("ui.remark.line") % int(round(float(m.mods["remark_freeze"]) + float(m.mods["album_remark"])))
+	remark_line.text = tr("ui.remark.line") % int(round(float(m.mods["remark_freeze"]) + float(m.mods["album_remark"]))) if m.reforms < EXPLAIN_RUNS else ""
+	# Remarcar aparece recién cuando hace falta (el tutorial lo presenta cuando sube la inflación) y queda desde ahí
+	remark_box.visible = m.reforms > 0 or m.remarks > 0 or m.tutorial_done or EconomyLogic.tutorial_step(m) == 2
 	cred_label.text = "%d" % m.credibility
 
 
@@ -705,6 +713,8 @@ func _refresh_left(m: GameModel) -> void:
 	elif EconomyLogic.reform_advised(m):
 		reform_hint.text = tr("ui.reform.advice")
 		reform_hint.add_theme_color_override("font_color", Chalk.YELLOW)
+	elif m.reforms >= EXPLAIN_RUNS:
+		reform_hint.text = ""            # la explicación permanente solo en las primeras vueltas
 	elif can:
 		reform_hint.text = tr("ui.reform.hint")
 	else:
@@ -775,7 +785,7 @@ func _refresh_biz(m: GameModel) -> void:
 	# la fila de la flecha siempre ocupa su lugar (así la lista no salta); solo se ve si hay más abajo
 	var vb: VScrollBar = biz_scroll.get_v_scroll_bar()
 	var more: bool = vb.max_value - vb.page > float(biz_scroll.scroll_vertical) + 6.0
-	biz_more.modulate.a = (0.75 + 0.25 * sin(_clock * 4.0)) if more else 0.0
+	biz_more.modulate.a = 0.9 if more else 0.0
 	biz_more.mouse_filter = Control.MOUSE_FILTER_STOP if more else Control.MOUSE_FILTER_IGNORE
 
 
@@ -910,8 +920,10 @@ func _refresh_nav(m: GameModel) -> void:
 	if can_n > 0:
 		nav_tree.text += "  ·  " + (tr("ui.nav.tree_can1") if can_n == 1 else tr("ui.nav.tree_can") % can_n)
 	var affordable: bool = can_n > 0
-	if affordable:
+	if affordable and _pulses.has("tree"):
 		nav_tree.modulate = Color(1, 1, 1).lerp(Chalk.YELLOW, 0.5 + 0.5 * sin(_clock * 5.0))
+	elif affordable:
+		nav_tree.modulate = Color(1, 1, 1).lerp(Chalk.YELLOW, 0.35)
 	else:
 		nav_tree.modulate = Color.WHITE
 	nav_tree.visible = m.reforms > 0 or m.credibility > 0 or not m.tree.is_empty()
@@ -920,8 +932,7 @@ func _refresh_nav(m: GameModel) -> void:
 		road.refresh(m)
 	nav_album.visible = bool(m.mods["album"])
 	nav_album.text = tr("ui.nav.album") + (" (%d)" % m.free_packs_pending if m.free_packs_pending > 0 else "")
-	nav_scratch.visible = bool(m.mods["scratch"])
-	nav_scratch.disabled = GambleLogic.price(m).is_zero()
+	nav_scratch.visible = bool(m.mods["scratch"]) and not GambleLogic.price(m).is_zero()    # oculta (no deshabilitada) hasta que se puede usar
 	nav_ach.text = tr("ui.nav.ach") + " %d/%d" % [m.achievements.size(), GameData.achievements.size()]
 
 
@@ -1108,15 +1119,14 @@ func _update_juice(delta: float) -> void:
 	var wall: float = EconomyLogic.wall_closeness(gm())
 	target = maxf(target, wall * 0.2)
 	empanada.sweat = wall
-	tint.color.a = target * (0.75 + 0.25 * sin(_clock * 5.0))
+	tint.color.a = target * 0.85       # fija (no titila: lo que late lo decide _update_pulses)
 	if _rate_shake > 0.0:
 		_rate_shake = maxf(0.0, _rate_shake - delta)
 		rate_label.pivot_offset = rate_label.size / 2.0
 		rate_label.rotation = randf_range(-0.04, 0.04) * (_rate_shake / 0.35) * Settings.fx_scale()
 	else:
 		rate_label.rotation = 0.0
-	var nudge: bool = EconomyLogic.reform_advised(gm())
-	if _reform_pulse > 0.0 or nudge:
+	if _pulses.has("reform"):
 		_reform_pulse = maxf(0.0, _reform_pulse - delta)
 		reform_btn.pivot_offset = reform_btn.size / 2.0
 		reform_btn.scale = Vector2.ONE * (1.0 + 0.05 * sin(_clock * 8.0))
@@ -1124,6 +1134,60 @@ func _update_juice(delta: float) -> void:
 	else:
 		reform_btn.scale = Vector2.ONE
 		reform_btn.modulate = Color.WHITE
+
+
+## Como mucho 2 cosas laten o titilan a la vez, por prioridad: la nota del tutorial, el botón de reforma (cuando el juego
+## aconseja reformar), el aviso de "ya podés estabilizar la economía", el botón del árbol (si hay nodos para comprar),
+## la mejor mejora comprable y el negocio comprable más barato. Lo demás comprable queda con el borde verde fijo.
+func _update_pulses() -> void:
+	var m: GameModel = gm()
+	var cands: Array = []
+	if tutorial_note.visible:
+		cands.append("tut")
+	if _reform_pulse > 0.0 or EconomyLogic.reform_advised(m):
+		cands.append("reform")
+	if road.visible and bool(TreeLogic.road(m)["ready"]):
+		cands.append("road")
+	if nav_tree.visible and TreeLogic.any_affordable(m):
+		cands.append("tree")
+	var upg_pick: UpgradeIcon = null
+	for ic in _upg_icons:
+		var card: UpgradeIcon = ic
+		if is_instance_valid(card) and card.affordable and not card.locked:
+			upg_pick = card
+			break
+	if upg_pick != null:
+		cands.append("upg")
+	var biz_pick: BuyGlow = null
+	for r in biz_rows:
+		var gl: BuyGlow = r["glow"]
+		if gl.on and (r["row"] as Control).visible:
+			biz_pick = gl
+			break
+	if biz_pick != null:
+		cands.append("biz")
+	_pulses = cands.slice(0, PULSE_MAX)
+	for ic in _upg_icons:
+		if is_instance_valid(ic):
+			(ic as UpgradeIcon).set_pulse(ic == upg_pick and _pulses.has("upg"))
+	for r in biz_rows:
+		(r["glow"] as BuyGlow).set_pulse(r["glow"] == biz_pick and _pulses.has("biz"))
+	road.allow_pulse = _pulses.has("road")
+
+
+## Para el QA: cuántas cosas laten ahora.
+func pulsing_count() -> int:
+	var n: int = 0
+	for ic in _upg_icons:
+		if is_instance_valid(ic) and (ic as UpgradeIcon).pulse and (ic as UpgradeIcon).affordable:
+			n += 1
+	for r in biz_rows:
+		if (r["glow"] as BuyGlow).pulse and (r["glow"] as BuyGlow).on:
+			n += 1
+	for k in ["tut", "reform", "road", "tree"]:
+		if _pulses.has(k):
+			n += 1
+	return n
 
 
 func _shake(amp: float, duration: float) -> void:

@@ -18,6 +18,7 @@ var _total_l: Label
 var _t: float = 0.0
 var _compact_text: String = ""
 var _ready_now: bool = false          # los 6 sellos y falta el centro (el aviso late)
+var allow_pulse: bool = true          ## la pantalla decide si puede latir (como mucho 2 cosas a la vez)
 var _owned: Array = []
 const LINE_H: float = 24.0
 const MEDAL: float = 18.0
@@ -75,7 +76,7 @@ func _build() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if not full and _compact_text != "" and _ready_now:
+	if not full and _compact_text != "" and _ready_now and allow_pulse:
 		queue_redraw()          # el aviso late
 
 
@@ -164,7 +165,7 @@ func _draw() -> void:
 	if fs < 0:
 		fs = 11
 	var col2: Color = Chalk.WHITE
-	if _ready_now:
+	if _ready_now and allow_pulse:
 		col2 = Chalk.WHITE.lerp(Chalk.YELLOW, 0.5 + 0.5 * sin(_t * 5.0))
 	var font: Font = UpgradeIcon._fonts()[1]
 	draw_string(font, Vector2(x0, y + float(fs) * 0.35), _compact_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col2)

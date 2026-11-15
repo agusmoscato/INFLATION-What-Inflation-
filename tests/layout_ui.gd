@@ -68,6 +68,10 @@ func _check_empanada() -> void:
 		m.tutorial_done = true
 		var tag: String = "%dx%d" % [ws.x, ws.y]
 		var ref: Array = _measure(g)
+		# al empezar, lo que todavía no se usa está oculto (no deshabilitado)
+		for pair in [["Álbum", g.nav_album], ["Raspadita", g.nav_scratch], ["Remarcar", g.remark_box], ["Camino al final", g.road], ["Árbol", g.nav_tree]]:
+			if (pair[1] as Control).visible:
+				failures.append("[%s] al empezar se ve %s (tiene que aparecer recién al desbloquearse)" % [tag, pair[0]])
 		sizes_seen[tag] = ref[1]
 		var cases: Array = [
 			["con la línea del camino al final", func() -> void:
@@ -105,6 +109,15 @@ func _check_empanada() -> void:
 				failures.append("[%s] LA EMPANADA SE MOVIÓ O CAMBIÓ DE TAMAÑO con %s: %s %s (antes %s %s)" % [tag, c[0], str(got[0]), str(got[1]), str(ref[0]), str(ref[1])])
 			if g.empanada.scale != Vector2.ONE or g.empanada.rotation != 0.0:
 				failures.append("[%s] el control de la empanada tiene escala %s / rotación %f con %s (el squash tiene que ser solo visual)" % [tag, str(g.empanada.scale), g.empanada.rotation, c[0]])
+		# como mucho 2 cosas laten a la vez (aunque haya mucho comprable, reforma aconsejada y nodos para comprar)
+		m.money = BigNumber.from_string("1e40")
+		m.credibility = 5000
+		m.reforms = maxi(m.reforms, 1)
+		m.stuck_t = 99.0
+		await _frames(4)
+		if g.pulsing_count() > 2:
+			failures.append("[%s] laten %d cosas a la vez (máximo 2): %s" % [tag, g.pulsing_count(), str(g._pulses)])
+		m.stuck_t = 0.0
 		# la línea del camino al final entra con cualquier sello próximo, en los dos idiomas
 		m.won = false
 		m.reforms = maxi(m.reforms, 1)

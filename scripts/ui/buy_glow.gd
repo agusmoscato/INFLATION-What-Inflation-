@@ -6,6 +6,7 @@ extends Control
 ## No recibe el mouse ni cuenta para el QA de layout (es un adorno encima de la fila).
 
 var on: bool = false                  ## se puede comprar ya
+var pulse: bool = false               ## late (solo la fila elegida: como mucho 2 cosas laten a la vez)
 var progress: float = -1.0            ## 0..1 hacia el precio (-1: sin barrita)
 var bar_rect: Rect2 = Rect2()         ## dónde va la barrita (coordenadas locales), la calcula quien la usa
 var _t: float = 0.0
@@ -29,8 +30,14 @@ func set_state(can: bool, prog: float, bar: Rect2) -> void:
 		queue_redraw()
 
 
+func set_pulse(p: bool) -> void:
+	if p != pulse:
+		pulse = p
+		queue_redraw()
+
+
 func _process(delta: float) -> void:
-	if not on:
+	if not on or not pulse:
 		return
 	_t += delta
 	if _t - _spark_t > 1.4 + _rng.randf() * 0.8:
@@ -40,7 +47,9 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	if on:
+	if on and not pulse:
+		draw_static_border(self, Rect2(Vector2.ZERO, size))
+	elif on:
 		draw_pulse_border(self, Rect2(Vector2.ZERO, size), _t)
 		var k: float = (_t - _spark_t) / 0.5
 		if k >= 0.0 and k <= 1.0:
@@ -55,6 +64,11 @@ static func draw_pulse_border(ci: CanvasItem, r: Rect2, t: float) -> void:
 	var a: float = 0.6 + 0.4 * sin(t * 5.0)
 	ci.draw_rect(r.grow(-2.0), Color(Chalk.GREEN, a), false, 4.0)
 	ci.draw_rect(r.grow(-6.0), Color(Chalk.GREEN, a * 0.25), false, 2.0)
+
+
+## Borde verde fijo (comprable, pero no es lo que late ahora).
+static func draw_static_border(ci: CanvasItem, r: Rect2) -> void:
+	ci.draw_rect(r.grow(-2.0), Color(Chalk.GREEN, 0.85), false, 3.0)
 
 
 ## Un punto del borde del rectángulo: f en 0..1 recorre el perímetro.

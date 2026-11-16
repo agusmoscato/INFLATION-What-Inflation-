@@ -67,6 +67,8 @@ foreach ($c in $Clips) {
       else { Write-Host "  intento ${try}: solo ${frames} cuadros, reintento"; $out | Set-Content (Join-Path $env:TEMP "clip_fail_${c}_${lang}_${try}.log") }
     }
     if (-not $ok) { Write-Error "No se pudo grabar $c [$lang] completo"; exit 1 }
+    # log de la toma (las sesiones largas imprimen "BEAT <segundo> <qué>" para elegir los tramos del montaje)
+    $out | Set-Content -Encoding utf8 (Join-Path $outDir "${c}_$lang$tag.log")
     $ErrorActionPreference = "Continue"
     & $ff -y -loglevel error -i $avi -c:v libx264 -preset veryfast -crf 16 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart $mp4
     $ErrorActionPreference = "Stop"

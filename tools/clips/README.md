@@ -49,6 +49,20 @@ adelantar el tiempo; grabar con `-Size 1920x1080`):
 | `noticias` | turistas, corrida y tarifazo, con elección |
 | `compras` | compra todo de a 10: precios tachados, hitos x2 y logros |
 
+Sesiones largas para montar (clips que atrapan; el bot del juego, `BotPolicy`, juega de verdad con la interfaz;
+cada momento se registra como `BEAT <segundo> <qué>` en `export/clips_crudos/<sesión>_es_1920x1080.log`):
+
+| sesión | qué graba |
+|---|---|
+| `sesion_vuelta1` | la vuelta 1 real desde $0 (290 s) |
+| `sesion_casi_pierdo` | vuelta 4 (partida jugada sin pantalla hasta ahí): tarifazo → "colgarse del poste" y corrida → "aguantar" (opciones reales que suben la inflación) → hiperinflación 23–26 % → remarca y agarra billetes (300 s) |
+| `sesion_progresion` | vuelta ~36 con la imprenta y el holding desbloqueados (el bot prioriza la rama de negocios del árbol): de 3 a 10 negocios en 11 s |
+| `sesion_imprenta` | la misma altura de partida, comprando imprentas sin parar: 500 imprentas en 146 s |
+
+Datos medidos (para saber qué se puede mostrar): la imprenta y el holding se desbloquean recién en la vuelta ~36
+(~2 h de juego, árbol con 105 de 115 nodos); el remarcar automático aparece en la vuelta 14 (desde ahí no hay
+hiperinflación); en la vuelta 1 el bot "activo" solo compra carrito y kiosco en los primeros 5 minutos.
+
 Para un momento nuevo, se suma un `_clip_<nombre>()` al director (y a su `match`).
 
 ## Recomendaciones para editar

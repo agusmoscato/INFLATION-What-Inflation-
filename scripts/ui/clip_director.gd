@@ -63,6 +63,11 @@ func _ready() -> void:
 		"diez_negocios": _clip_diez_negocios()
 		"noticias": _clip_noticias()
 		"compras": _clip_compras()
+		# sesiones largas reales para montar (el bot del juego juega en vivo; ver _sesion_*)
+		"sesion_casi_pierdo": _sesion_casi_pierdo()
+		"sesion_progresion": _sesion_progresion()
+		"sesion_imprenta": _sesion_imprenta()
+		"sesion_vuelta1": _sesion_vuelta1()
 		_:
 			push_error("Clip desconocido: " + clip)
 			get_tree().quit(1)
@@ -76,7 +81,9 @@ func _process(delta: float) -> void:
 		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 			DisplayServer.window_move_to_foreground()
-	if _movie and delta > 0.1 and _t > 1.0:
+	if _bot != null:
+		_sesion_paso()
+	if _movie and delta > 0.1 and _t > 1.0 and _bot == null:
 		# la PC se trabo: el motor avanzo las animaciones de golpe y el video no queda parejo -> se descarta (el script reintenta)
 		print("clip: cuadro lento (delta %.2f s), se descarta esta toma" % delta)
 		get_tree().quit(3)
@@ -494,3 +501,228 @@ func _clip_compras() -> void:
 	for i in range(48):
 		var id: String = ids[i % ids.size()]
 		at(0.3 + 0.47 * float(i), func() -> void: _comprar(id, 10, true))
+
+
+# =====================================================================
+#  Sesiones largas para montar (clips "que atrapan"): primero el bot del juego juega SIN pantalla hasta la vuelta
+#  pedida (estado real de una partida avanzada, igual que tools/simulate.gd) y después sigue jugando EN VIVO con la
+#  interfaz mientras se graba. Todo lo que pasa es juego real: el bot usa las mismas acciones que un jugador.
+#  Cada momento importante se imprime como "BEAT <segundo> <qué>" para elegir los tramos del montaje.
+# =====================================================================
+var _bot: BotPolicy = null
+var _bot_reforma: bool = true          ## si el bot puede reformar en vivo
+var _overlay_t: float = -1.0
+var _beat_prev: Dictionary = {}
+var _sesion_extra: Callable            ## lógica propia de cada sesión (se llama en cada cuadro)
+var _noticia_manual: bool = false       ## hay una noticia que elige el guion (no el bot)
+
+
+## Una noticia real del juego que aparece y, `espera` segundos después, se elige la opción `idx` (como un jugador).
+func _noticia(t0: float, id: String, idx: int, espera: float = 3.5) -> void:
+	at(t0, func() -> void:
+		_noticia_manual = true
+		EconomyLogic.start_event(_m(), id)
+		_flush()
+		_beat("NOTICIA: %s" % id))
+	at(t0 + espera, func() -> void:
+		Economy.choose_event(idx)
+		_noticia_manual = false
+		_beat("ELIGE opción %d en %s" % [idx, id]))
+
+
+func _juice_al_maximo() -> void:
+	Settings.quality = 0                # calidad de tiza alta: todas las partículas y efectos
+	Settings.volume = 1.0               # efectos al máximo
+	Settings.apply()
+
+
+const ESPINA_NEGOCIOS: Array = ["neg_1", "neg_2", "neg_3", "neg_4", "neg_5", "neg_6", "neg_7"]
+
+
+## Juega sin pantalla con el bot hasta tener `reformas` reformas y vuelve con la vuelta nueva recién empezada.
+## Con `hasta_imprenta`, además prioriza la rama central de negocios del árbol (lo que haría un jugador que va por
+## la imprenta) y sigue hasta que la imprenta y el holding estén desbloqueados (en la simulación: vuelta ~36).
+func _jugar_offline(reformas: int, perfil: String = "activo", seed_value: int = 11, hasta_imprenta: bool = false) -> void:
+	var m: GameModel = _m()
+	m.reforms = 0
+	var bot: BotPolicy = BotPolicy.new(seed_value, perfil)
+	var paso: float = 0.25
+	var guard: int = 0
+	var reformas_al_desbloquear: int = -1
+	while guard < 2000000:
+		if hasta_imprenta:
+			for id in ESPINA_NEGOCIOS:
+				if not m.tree.has(id) and TreeLogic.can_buy(m, id):
+					TreeLogic.buy(m, id)
+			if reformas_al_desbloquear < 0 and bool(m.mods["excl_biz"]):
+				reformas_al_desbloquear = m.reforms
+		var listo: bool = m.reforms >= reformas
+		if hasta_imprenta:
+			listo = listo and reformas_al_desbloquear >= 0 and m.reforms > reformas_al_desbloquear
+		if listo:
+			break
+		bot.step(m, paso)
+		EconomyLogic.tick(m, paso)
+		guard += 1
+	m.notifications.clear()
+	m.dirty = true
+	_flush()
+	print("BEAT 0.00 estado: reforma %d, nodos %d, figuritas %d (offline %d pasos)" % [m.reforms, TreeLogic.count(m), m.stickers.size(), guard])
+
+
+## Arranca al bot en vivo (clics, billetes, compras, remarcar, noticias, árbol y reformas como un jugador).
+func _bot_en_vivo(perfil: String, cambios: Dictionary = {}) -> void:
+	_bot = BotPolicy.new(23, perfil)
+	_bot.cfg = _bot.cfg.duplicate()       # los perfiles son constantes: se copia antes de cambiarlos
+	for k in cambios:
+		_bot.cfg[k] = cambios[k]
+	_bot.on_click = func() -> void: Economy.click()
+	_bot.on_bill = func(id: int) -> void:
+		var o: Variant = _g()._bills.get(id, null)
+		if o != null and is_instance_valid(o):
+			var fb: FlyingBill = o as FlyingBill
+			fb.caught.emit(id)
+			fb.vanish(true)
+		else:
+			Economy.click_bill(id)
+		_beat("billete agarrado")
+	_bot.on_reform = func() -> Dictionary:
+		if not _bot_reforma:
+			return {}
+		_g()._close_overlay()
+		_beat("REFORMA (tijera)")
+		return Economy.reform()
+
+
+func _beat(que: String) -> void:
+	print("BEAT %.2f %s" % [_t, que])
+
+
+func _sesion_paso() -> void:
+	var m: GameModel = _m()
+	# un jugador cierra enseguida lo que tapa el juego (resumen de la reforma, árbol)
+	if _g()._overlay != null:
+		if _overlay_t < 0.0:
+			_overlay_t = _t
+		elif _t - _overlay_t > 2.5:
+			_g()._close_overlay()
+			_overlay_t = -1.0
+	else:
+		_overlay_t = -1.0
+	# mientras hay una noticia elegida "a mano" en pantalla, el bot no la contesta (se ve el panel unos segundos)
+	if not (_noticia_manual and not m.pending_choice.is_empty()):
+		_bot.step(m, 1.0 / 30.0)
+	if _sesion_extra.is_valid():
+		_sesion_extra.call()
+	# beats: negocio nuevo, la plata pasa otro cero, hiperinflación, congelado, frenesí, logros
+	var d: Dictionary = {
+		"tier": m.max_tier, "ceros": int(floor(m.money.log10())) if not m.money.is_zero() else 0,
+		"hiper": EconomyLogic.era_of(m) == 5, "congelado": EconomyLogic.frozen(m), "frenesi": m.frenzy_left > 0.0,
+		"logros": m.achievements.size(), "reformas": m.reforms, "imprentas": m.owned_count("imprenta"),
+		"tipos": GameData.businesses.filter(func(b: Dictionary) -> bool: return m.owned_count(b["id"]) > 0).size(),
+		"holding": m.owned_count("holding")}
+	if not _beat_prev.is_empty():
+		if d["tipos"] > _beat_prev["tipos"]:
+			_beat("negocio nuevo en la vuelta (%d de 10)" % d["tipos"])
+			# como un jugador: baja la lista hasta el negocio nuevo (si no, del 5.º en adelante quedan abajo del scroll)
+			_mostrar_negocio(mini(int(d["tipos"]), 10) - 1)
+		if d["ceros"] > _beat_prev["ceros"]:
+			_beat("plata pasa 1e%d ($%s)" % [d["ceros"], m.money.format()])
+		if d["hiper"] != _beat_prev["hiper"]:
+			_beat("HIPERINFLACIÓN %s (%.0f %% mensual)" % ["empieza" if d["hiper"] else "termina", EconomyLogic.monthly_pct(m)])
+		if d["congelado"] and not _beat_prev["congelado"]:
+			_beat("REMARCA: precios congelados")
+		if d["frenesi"] and not _beat_prev["frenesi"]:
+			_beat("FRENESÍ")
+		if d["logros"] > _beat_prev["logros"]:
+			_beat("logro")
+		if d["imprentas"] > _beat_prev["imprentas"]:
+			_beat("imprenta #%d" % d["imprentas"])
+		if d["holding"] > _beat_prev["holding"]:
+			_beat("holding #%d" % d["holding"])
+	if int(_t) % 15 == 0 and int(_t) != int(_beat_prev.get("t", -1)):
+		print("ESTADO %.0f plata=%s ingreso=%s/s inflacion=%.1f%% P=x%s tier=%d" % [_t, m.money.format(),
+			EconomyLogic.income_per_sec(m).format(), EconomyLogic.monthly_pct(m), EconomyLogic.price_level(m).format(), m.max_tier])
+	d["t"] = int(_t)
+	_beat_prev = d
+
+
+func _mostrar_negocio(i: int) -> void:
+	var rows: Array = _g().biz_rows
+	if i >= 0 and i < rows.size():
+		_g().biz_scroll.ensure_control_visible(rows[mini(i + 1, rows.size() - 1)]["row"])
+
+
+# ---- vuelta 1 real, de $0: el bot "activo" juega la primera vuelta entera y reforma (base de A y de C) ----
+func _sesion_vuelta1() -> void:
+	_duration = 290.0
+	_juice_al_maximo()
+	_m().reforms = 0
+	_m().dirty = true
+	_bot_en_vivo("activo")
+
+
+# ---- B · casi pierdo: no remarca y deja pasar billetes hasta que la inflación lo come; después se salva ----
+## El bot juega sin remarcar (remark_pct altísimo) y agarrando pocos billetes; cuando lleva 40 s en hiperinflación,
+## "se avivó": remarca y empieza a agarrar todos los billetes (lo mismo que haría un jugador que se da cuenta).
+var _hiper_desde: float = -1.0
+var _salvado: bool = false
+
+
+func _sesion_casi_pierdo() -> void:
+	_duration = 300.0
+	_juice_al_maximo()
+	_jugar_offline(3, "activo", 11)          # la vuelta 4 es la de más hiperinflación (simulación: 40 %, 87 s)
+	_bot_reforma = false
+	_bot_en_vivo("activo", {"remark_pct": 1.0e9, "catch": 0.25})
+	# las decisiones que disparan la inflación (opciones reales de las noticias del juego):
+	# tarifazo → "colgarse del poste" (inflación x1,5 por 40 s) y corrida → "aguantar" (inflación x2 por 20 s)
+	_noticia(110.0, "tarifazo", 1)
+	_noticia(125.0, "corrida", 1)
+	_sesion_extra = func() -> void:
+		var m: GameModel = _m()
+		if _salvado:
+			return
+		if EconomyLogic.era_of(m) == 5:
+			if _hiper_desde < 0.0:
+				_hiper_desde = _t
+			elif _t - _hiper_desde > 10.0:
+				_salvado = true
+				_bot.cfg["remark_pct"] = 4.0
+				_bot.cfg["catch"] = 1.0
+				_bot.cfg["react"] = 0.5
+				Economy.remark()
+				_beat("SE SALVA: remarca y agarra todos los billetes")
+		else:
+			_hiper_desde = -1.0
+
+
+# ---- A · progresión: una vuelta avanzada entera, del carrito al holding ----
+func _sesion_progresion() -> void:
+	_duration = 150.0
+	_juice_al_maximo()
+	_jugar_offline(0, "activo", 17, true)
+	_bot_reforma = false
+	_bot_en_vivo("gastador")
+	var m: GameModel = _m()
+	print("BEAT 0.00 imprenta disponible: %s, holding disponible: %s" % [
+		str(EconomyLogic.business_available(m, GameData.businesses[8])), str(EconomyLogic.business_available(m, GameData.businesses[9]))])
+	_sesion_extra = func() -> void:
+		# termina 60 s después de comprar el holding (para que el final sea lo más grande)
+		if _m().owned_count("holding") > 0 and _duration > _t + 60.0:
+			_duration = _t + 60.0
+
+
+# ---- J · imprenta: vuelta avanzada; cada vez que puede, compra otra imprenta de billetes ----
+func _sesion_imprenta() -> void:
+	_duration = 150.0
+	_juice_al_maximo()
+	_jugar_offline(0, "activo", 29, true)
+	_bot_reforma = false
+	_bot_en_vivo("gastador")
+	_sesion_extra = func() -> void:
+		var m: GameModel = _m()
+		# cada medio segundo intenta comprar otra imprenta (como un jugador que va a fondo con la imprenta)
+		if EconomyLogic.business_available(m, GameData.businesses[8]) and int(_t * 30.0) % 15 == 0:
+			Economy.buy_business("imprenta", 1)
+			_mostrar_negocio(7)

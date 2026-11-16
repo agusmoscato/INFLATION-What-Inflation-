@@ -112,6 +112,8 @@ static func fog(m: GameModel, id: String) -> bool:
 
 static func requirements_met(m: GameModel, id: String) -> bool:
 	var n: Dictionary = GameData.node(id)
+	if bool(n["final"]) and nodes_owned(m) < final_nodes():
+		return false            # el centro pide los 6 sellos y además haber comprado `final_min_nodes` nodos
 	if n["parents"].is_empty():
 		return true
 	if bool(n["req_all"]):
@@ -252,8 +254,32 @@ static func road(m: GameModel) -> Dictionary:
 			next_seal = row
 	var final_owned: bool = m.tree.has("final")
 	var total: int = _cost_of(all_needed) + (0 if final_owned else cost("final"))
+	# además de los sellos, el centro pide `final_min_nodes` nodos: suman los más baratos que falten
+	var owned_n: int = nodes_owned(m)
+	var extra: int = maxi(0, final_nodes() - owned_n - all_needed.size())
+	if extra > 0 and not final_owned:
+		var costs: Array = []
+		for nd in GameData.tree:
+			if not bool(nd["final"]) and not m.tree.has(nd["id"]) and not all_needed.has(nd["id"]) and int(nd["ring"]) <= 4:
+				costs.append(int(nd["cost"]))
+		costs.sort()
+		for i in range(mini(extra, costs.size())):
+			total += int(costs[i])
+	var seals_done: bool = have == seal_ids().size()
 	return {"seals": seals, "have": have, "final_cost": cost("final"), "final_owned": final_owned,
-		"ready": have == seal_ids().size() and not final_owned, "need": maxi(0, total - m.credibility), "next_seal": next_seal}
+		"nodes_have": owned_n, "nodes_need": final_nodes(),
+		"ready": seals_done and owned_n >= final_nodes() and not final_owned,
+		"seals_done": seals_done, "need": maxi(0, total - m.credibility), "next_seal": next_seal}
+
+
+## Nodos que pide el centro, además de los 6 sellos.
+static func final_nodes() -> int:
+	return int(GameData.B("final_min_nodes"))
+
+
+## Nodos comprados (sin contar el centro).
+static func nodes_owned(m: GameModel) -> int:
+	return m.tree.size() - (1 if m.tree.has("final") else 0)
 
 
 ## Cuántos nodos se pueden comprar ya mismo.

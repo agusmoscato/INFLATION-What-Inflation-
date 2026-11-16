@@ -170,7 +170,8 @@ func run(t) -> void:
 	t.check(not EconomyLogic.can_reform(mc), "sin plata no hay reforma")
 	var ck: float = EconomyLogic.B("cred_k")
 	var cc: float = EconomyLogic.B("cred_c")
-	t.near(EconomyLogic.cred_curve(5.0), ck * pow(5.0 - cc, 2.0), "Credibilidad = k (log10(ganado) - c)^2")
+	var cp: float = EconomyLogic.B("cred_p")
+	t.near(EconomyLogic.cred_curve(5.0), ck * pow(5.0 - cc, cp), "Credibilidad = k (log10(ganado) - c)^p")
 	var tg: BigNumber = EconomyLogic.reform_target(mc)
 	t.near(EconomyLogic.cred_curve(tg.log10()), 5.0, "la reforma se habilita cuando da 5 (%s)" % tg.format(), 0.001)
 	t.check(tg.log10() < 4.5, "en la vuelta 1 el mínimo es bajo: menos de $32 K (%s)" % tg.format())
@@ -180,11 +181,11 @@ func run(t) -> void:
 	t.check(EconomyLogic.can_reform(mc), "desde ahí se puede reformar (sin esperar ningún colapso)")
 	t.eq(EconomyLogic.reform_gain(mc), 5, "y da 5 de Credibilidad")
 	mc.run_earned = BigNumber.from_float(1e5)
-	t.near(EconomyLogic.reform_gain_f(mc), ck * pow(5.0 - cc, 2.0), "$100 K dan k (5 - c)^2")
+	t.near(EconomyLogic.reform_gain_f(mc), ck * pow(5.0 - cc, cp), "$100 K dan k (5 - c)^p")
 	mc.owned["kiosco"] = 3
 	mc.money = BigNumber.from_float(5e4)
 	var s: Dictionary = EconomyLogic.do_reform(mc)
-	var c100: int = int(floor(ck * pow(5.0 - cc, 2.0)))
+	var c100: int = int(floor(ck * pow(5.0 - cc, cp)))
 	t.check(c100 >= 5 and c100 <= 10, "$100 K (unos 4-5 min de la primera vuelta) dan entre 5 y 10 (%d)" % c100)
 	t.eq(int(s["cred"]), c100, "la reforma dio eso")
 	t.eq(mc.credibility, c100, "Credibilidad acumulada")
@@ -201,7 +202,7 @@ func run(t) -> void:
 	mc.run_time = 0.0
 	mc.best_run = BigNumber.from_float(1e5)
 	mc.run_earned = BigNumber.from_float(1e7)
-	t.near(EconomyLogic.reform_gain_f(mc), ck * pow(7.0 - cc, 2.0), "la Credibilidad de la vuelta se cobra completa, sin importar la mejor vuelta")
+	t.near(EconomyLogic.reform_gain_f(mc), ck * pow(7.0 - cc, cp), "la Credibilidad de la vuelta se cobra completa, sin importar la mejor vuelta")
 	# cliquear nunca rinde menos que no cliquear: la producción no depende de cuándo tocaste la empanada, y con el
 	# rendimiento decreciente lo que suman los clics por segundo igual crece con el ritmo
 	var mcl: GameModel = GameModel.new(23)

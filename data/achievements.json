@@ -28,7 +28,7 @@
   {"id": "first_reform",   "cond": [["reforms", ">=", 1]]},
   {"id": "reforms_10",     "cond": [["reforms", ">=", 10]]},
   {"id": "reforms_25",     "cond": [["reforms", ">=", 25]]},
-  {"id": "fast_run",       "cond": [["fastest_run", "<=", 90]], "secret": true},
+  {"id": "fast_run",       "cond": [["fastest_run", "<=", 150]], "secret": true},
   {"id": "no_hands",       "cond": [["lazy_run", ">=", 1]], "secret": true},
   {"id": "zeros_100",      "cond": [["zeros_cut", ">=", 100]]},
   {"id": "cred_100",       "cond": [["cred_total", ">=", 100]]},

@@ -66,7 +66,8 @@ func run(t) -> void:
 	var sum_paths: int = TreeLogic.cost("final")
 	for row in r0["seals"]:
 		sum_paths += int(row["cost"])
-	t.eq(need0, sum_paths, "lo que falta = los 6 caminos + el centro (%d)" % need0)
+	t.check(need0 > sum_paths, "lo que falta = los 6 caminos + el centro + los nodos que pide de más (%d > %d)" % [need0, sum_paths])
+	t.eq(int(r0["nodes_need"]), TreeLogic.final_nodes(), "el centro pide %d nodos" % TreeLogic.final_nodes())
 	mr.credibility = 100000
 	var prev_have: int = 0
 	var mono: bool = true
@@ -80,7 +81,13 @@ func run(t) -> void:
 	t.check(mono, "cada camino comprado suma exactamente un sello")
 	var r6: Dictionary = TreeLogic.road(mr)
 	t.eq(int(r6["have"]), 6, "con los 6 caminos comprados están los 6 sellos")
-	t.check(bool(r6["ready"]), "y se puede estabilizar la economía")
+	t.check(not bool(r6["ready"]) and not TreeLogic.can_buy(mr, "final"), "pero con 24 nodos todavía no se puede estabilizar")
+	# completar los nodos que pide el centro, de los más baratos
+	var guard_n: int = 0
+	while TreeLogic.nodes_owned(mr) < TreeLogic.final_nodes() and guard_n < 200:
+		guard_n += 1
+		BotPolicy.spend_cheapest_one(mr)
+	t.check(bool(TreeLogic.road(mr)["ready"]), "con los sellos y %d nodos se puede estabilizar la economía" % TreeLogic.final_nodes())
 	mr.credibility = 10
 	t.eq(int(TreeLogic.road(mr)["need"]), TreeLogic.cost("final") - 10, "solo falta juntar lo del centro")
 	mr.credibility = 100000
@@ -94,7 +101,7 @@ func run(t) -> void:
 	TreeLogic.buy(me, "neg_1")
 	me.owned["kiosco"] = 1
 	me.dirty = true
-	t.near(EconomyLogic.income_per_sec(me).to_float(), 2.0 * 2.0, "Socio del barrio: producción x2")
+	t.near(EconomyLogic.income_per_sec(me).to_float(), 2.0 * 2.0 * pow(1.1, me.tree.size()), "Socio del barrio: producción x2 (y cada nodo comprado suma x1,1)")
 	t.eq(int((me.mods["start_biz"] as Dictionary).get("empanadas", 0)), 5, "Socio del barrio: empezás con 5 carritos")
 	TreeLogic.buy(me, "inf_1")
 	t.near(EconomyLogic.infl_speed(me), 0.8, "Precios cuidados: inflación -20 %")
@@ -121,4 +128,5 @@ func run(t) -> void:
 	t.check(not EconomyLogic.can_reform(md), "la demo tiene 3 reformas")
 	# costos: con la Credibilidad de una reforma típica se compran 2 a 5 nodos (anillos 1 a 3)
 	t.check(TreeLogic.cost("emp_1") <= 4, "las raíces son baratas")
-	t.check(TreeLogic.cost("final") > TreeLogic.cost("emp_4") * 10, "el final es caro")
+	t.check(TreeLogic.final_nodes() >= 50, "el centro pide muchos nodos comprados (%d)" % TreeLogic.final_nodes())
+	t.check(TreeLogic.cost("final") < TreeLogic.cost("emp_4a"), "y cuesta menos que los nodos de al lado de los sellos (el que gasta en lo más barato también llega)")

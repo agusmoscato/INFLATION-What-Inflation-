@@ -79,7 +79,7 @@ func run(t) -> void:
 	t.near(float(mp.mods["album_income"]), 0.10, "Negocios: +10 % producción")
 	mp.owned["empanadas"] = 1
 	mp.dirty = true
-	t.near(EconomyLogic.income_per_sec(mp).to_float(), 0.25 * 1.10, "el bonus se aplica a la producción")
+	t.near(EconomyLogic.income_per_sec(mp).to_float(), 0.25 * 1.10 * float(mp.mods["prod_mult"]), "el bonus se aplica a la producción (y los nodos comprados suman su x1,1)")
 	for id in StickerLogic.page_ids(1):
 		StickerLogic.give(mp, id)
 	t.near(EconomyLogic.infl_speed(mp), 0.95, "Personajes: inflación 5 % más lenta")

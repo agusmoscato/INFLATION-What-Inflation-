@@ -1542,7 +1542,10 @@ func _refresh_tree_info() -> void:
 	(_tree_info["name"] as Label).text = tr(n["name_key"]) if known else "???"
 	var br: String = str(n["branch"])
 	(_tree_info["branch"] as Label).text = tr("ui.branch." + br) + ("  ·  " + tr("ui.tree.seal") if bool(n["seal"]) else "") + ("  ·  " + tr("ui.tree.cap") if bool(n["cap"]) else "")
-	(_tree_info["desc"] as Label).text = tr(n["desc_key"]) if known else tr("ui.tree.fog")
+	var desc: String = tr(n["desc_key"]) if known else tr("ui.tree.fog")
+	if known and float(n.get("ring_prod", 1.0)) > 1.0:
+		desc += " " + tr("ui.tree.ring_prod") % UpgradeIcon._num(float(n["ring_prod"]))     # cada nodo se nota
+	(_tree_info["desc"] as Label).text = desc
 	var buy: Button = _tree_info["buy"]
 	var state: Label = _tree_info["state"]
 	if m.tree.has(id):
@@ -1561,6 +1564,8 @@ func _refresh_tree_info() -> void:
 		for p in n["parents"]:
 			if not m.tree.has(p):
 				names.append(tr(GameData.node(p)["name_key"]) if TreeLogic.visible(m, p) else "???")
+		if bool(n["final"]) and TreeLogic.nodes_owned(m) < TreeLogic.final_nodes():
+			names.append(tr("ui.tree.more_nodes") % (TreeLogic.final_nodes() - TreeLogic.nodes_owned(m)))
 		state.text = tr("ui.tree.needs") % ", ".join(names)
 	elif m.credibility < TreeLogic.cost(id):
 		state.text = tr("ui.tree.missing") % (TreeLogic.cost(id) - m.credibility)

@@ -79,6 +79,9 @@ func _process(delta: float) -> void:
 
 ## Cartel garabateado grande arriba (se dibuja rápido y se borra).
 func caption(text: String, color: Color = Chalk.YELLOW, hold: float = 2.0, y_frac: float = 0.12) -> void:
+	# --clip-sin-carteles: los clips del estudio llevan su propia caja de gancho (_estudio/tools/clip_tool.py)
+	if OS.get_cmdline_user_args().has("--clip-sin-carteles"):
+		return
 	var vp: Vector2 = get_viewport().get_visible_rect().size
 	var s: ScribbleText = ScribbleText.new()
 	s.color = color

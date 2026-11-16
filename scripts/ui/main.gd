@@ -162,9 +162,10 @@ func _start_clip(clip_name: String) -> void:
 	SaveSystem.ignore_close = true
 	get_window().always_on_top = true      # una ventana tapada por otras se queda sin dibujar y el video sale salteado
 	Settings.path = "user://clip_settings.cfg"
-	Settings.language = "es"
-	Settings.apply()
 	var ua: PackedStringArray = OS.get_cmdline_user_args()
+	# --clip-lang en: interfaz en inglés para la versión EN de los clips del estudio (por defecto, español)
+	Settings.language = ua[ua.find("--clip-lang") + 1] if ua.has("--clip-lang") and ua.find("--clip-lang") + 1 < ua.size() else "es"
+	Settings.apply()
 	if ua.has("--clip-size"):
 		var wh: PackedStringArray = ua[ua.find("--clip-size") + 1].split("x")
 		get_window().size = Vector2i(int(wh[0]), int(wh[1]))

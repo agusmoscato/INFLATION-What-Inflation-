@@ -149,8 +149,8 @@ static func cheap_buy(m: GameModel) -> bool:
 ## Reforma cuando el juego lo aconseja (el botón late: trabado, el tutorial de la primera vuelta o "seguir rinde cada vez
 ## menos").
 func _reform_policy(m: GameModel, _dt: float) -> Dictionary:
-	# el activo, con el árbol completo, va por el logro de la vuelta relámpago (reformar antes de los 90 s con 10+)
-	var lightning: bool = profile == "activo" and TreeLogic.complete(m) and not m.achievements.has("fast_run") 		and m.run_time <= 90.0 and EconomyLogic.can_reform(m) and EconomyLogic.reform_gain(m) >= 10
+	# el activo, con el árbol completo, va por el logro de la vuelta relámpago (reformar antes de los 150 s con 10+)
+	var lightning: bool = profile == "activo" and TreeLogic.complete(m) and not m.achievements.has("fast_run") 		and m.run_time <= 148.0 and EconomyLogic.can_reform(m) and EconomyLogic.reform_gain(m) >= 10
 	if not EconomyLogic.reform_advised(m) and not lightning:
 		return {}
 	var cred_before: int = m.credibility

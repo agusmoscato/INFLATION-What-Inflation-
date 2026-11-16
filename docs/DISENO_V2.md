@@ -12,9 +12,11 @@
 | Hito | Objetivo | Quién |
 | --- | --- | --- |
 | Primer renacimiento (reforma) | minuto 4–6, entre 5 y 10 de Credibilidad | jugador activo |
-| Final: nodo "Estabilizar la economía" | minuto 45–60 | jugador activo |
-| Final para quien juega tranquilo | minuto 60–75 | pasivo y distraído |
-| 100 % (árbol + álbum + logros) | 3 h – 4 h, nunca más | jugador activo |
+| **Cada reforma compra nodos** | mediana de nodos comprados por reforma ≥ 2 y ninguna reforma compra 0 (durante todo el juego, mientras falten nodos) | los cinco |
+| Vueltas | de 2 a 4 minutos (mediana) | los cinco |
+| Final: nodo "Estabilizar la economía" | minuto 50–70, con 15–20 reformas | activo, autoclicker y gastador |
+| Final para quien juega tranquilo | minuto 80 como mucho | pasivo y distraído |
+| 100 % (árbol + álbum + logros) | 2,5 h – 3,5 h | jugador activo |
 | Aceleración | la vuelta 10 llega a la plata máxima de la vuelta 1 en ≤ 1/5 del tiempo | jugador activo |
 | Cada vuelta mejor | la vuelta 2 llega a la plata de la vuelta 1 en menos de la mitad del tiempo | los tres |
 | Nunca trabado | nunca más de 20 s sin poder comprar nada ni reformar | los tres |
@@ -22,7 +24,7 @@
 | Reformas que valen la pena | ninguna reforma da menos de 5 de Credibilidad | los tres |
 | Los clics importan | en el primer minuto de la vuelta 1, los clics son la fuente principal de plata | activo y distraído |
 
-Los tres jugadores de prueba están en la sección 9.
+Los cinco jugadores de prueba están en la sección 9.
 
 ## 2. El loop de una vuelta (2–6 minutos)
 
@@ -117,21 +119,23 @@ Total: 232 mejoras.
 ## 3. Renacer: Reforma monetaria (siempre disponible y explicada)
 - **Botón siempre visible**: "Reformar ahora: +X Credibilidad" (en vivo) o "Reforma: disponible al llegar a $Y (te
   falta $Z)". Debajo, una línea que explica qué conviene.
-- **Credibilidad = ⌊ 0,9 × (log10(plata máxima ganada en la vuelta) − 1,9)² × multiplicadores + extras ⌋**, cobrada
-  **completa** (no hace falta igualar la mejor vuelta). $10 K → 3, $20 K → 5, $100 K → 8, $1 M → 15, $1 B → 45,
-  $1 T → 91, $1 Qa → 154.
+- **Credibilidad = ⌊ 1,6 × (log10(plata máxima ganada en la vuelta) − 1,9)^1,5 × multiplicadores + extras ⌋**, cobrada
+  **completa** (no hace falta igualar la mejor vuelta). $100 K → 8, $1 M → 13, $1 B → 30, $1 T → 51, $1 Qa → 75.
+  El exponente 1,5 (antes 2) hace que la Credibilidad dependa menos de cuánto rinde tu árbol: el que compra lo más
+  barato (gastador) no queda tan atrás del que va directo a los sellos.
 - **Cuándo se habilita**: cuando da 5 o más (≈ $20 K en la vuelta 1). Desde la vuelta 2, durante los primeros 2 minutos
   también hay que llegar a medio cero de tu mejor vuelta (así no conviene reformar a los 5 segundos una y otra vez);
   pasados esos 2 minutos esa regla nunca bloquea.
 - **El juego aconseja** (el botón late en amarillo y aparece "Buen momento para reformar…"): en la vuelta 1, a los
   ~4 min (tutorial); después, cuando lo que sumás por minuto cae debajo del promedio de la vuelta y ya duplicaste tu
-  mejor vuelta (o la vuelta pasa los 2,5 min).
+  mejor vuelta (o la vuelta pasa los 3:50). Nunca antes de los 3 minutos (4 después del final): así cada vuelta dura
+  lo suficiente para que el árbol se note y para juntar Credibilidad para varios nodos.
 - **Detector de traba**: si pasan 15 s sin poder comprar nada (comprar algo reinicia la cuenta), el botón late y
   aparece "Los precios se te escaparon. ¡Hacé la reforma y empezá más fuerte!". Con el freno casi nunca pasa.
 - **La primera vez**: el diálogo explica en tiza qué es la reforma (cortás ceros, empezás de nuevo, ganás Credibilidad
   para el árbol, la próxima vuelta va más rápido). Después de la primera reforma, el resumen lleva al árbol y una
-  **flecha** señala el nodo recomendado: "Comprá esto: tu próxima vuelta va a ser mucho más rápida" (primeras 3
-  reformas).
+  **flecha** señala el nodo recomendado: "Comprá esto: tu próxima vuelta va a ser mucho más rápida" (solo en esa
+  primera visita).
 - **Moneda nueva, confianza nueva**: cada vuelta después de una reforma arranca con producción **x10 durante 30 s**.
 - Se reinicia la vuelta (plata, negocios, mejoras, P) y se conserva el resto. La tijera corta tantos ceros como ceros
   tenía la plata ganada menos 3.
@@ -145,9 +149,15 @@ Total: 232 mejoras.
   Alrededor nacen 6 ramas, una cada 60°. Anillo r a 150 px × r del centro.
 - Un nodo se ve cuando su padre está comprado; los vecinos del borde se ven como niebla con "?"; el resto no se dibuja.
 - Se compran con Credibilidad, en cualquier momento (también a mitad de vuelta).
-- **Costos por anillo**: **2, 6**, 25, 110, 260, 1.100, 4.000, 9.000 (×1,15 si es lateral; puentes 3.500). Final:
-  **3.300** y requiere los 6 **sellos** (el nodo del anillo 4 de cada rama). En la primera hora cada reforma alcanza
-  para 2–6 nodos; los anillos 6 a 8 son el "después del final" (del minuto ~60 al 100 %).
+- **Regla: cada reforma, durante todo el juego, alcanza para comprar entre 2 y 5 nodos** y cada nodo se nota en la
+  vuelta siguiente. Antes (anillos de 2 a 9.000, final 4.200) a mitad del juego cada reforma daba ~400 y compraba 0 o
+  1 nodo: 9 reformas seguidas sin nada nuevo antes del final (simulador, bot autoclicker).
+- **Costos por anillo**: **2, 10, 35, 90**, 170, 550, 1.600, 3.800 (×1,15 si es lateral; puentes 280).
+- **Cada nodo se nota**: además de su efecto, los anillos 1–4 dan producción **x1,1** y los de afuera **x2, x3, x4 y
+  x5** (anillos 5 a 8; se ve en la descripción: "Además: producción x3").
+- **El centro (ESTABILIZAR LA ECONOMÍA)** pide los 6 **sellos** (el nodo del anillo 4 de cada rama) **y 60 nodos
+  comprados**, y cuesta **80** (menos que los nodos de al lado de los sellos: así también llega el que compra siempre
+  lo más barato). Los anillos 5 a 8 y los puentes son el "después del final" (del minuto ~55 al 100 %).
 - **Los primeros nodos se notan enseguida** (cuestan 2): Empanada de horno **clic x2**, Socio del barrio **empezás con
   5 carritos y producís x2**, Precios cuidados **inflación −20 %**, Memoria colectiva **+25 % de Credibilidad**,
   Billetes al viento y Álbum de figuritas.
@@ -166,7 +176,7 @@ Total: 232 mejoras.
   NEGOCIOS, anillo 6), Remarcado automático (INFLACIÓN, anillo 4).
 - **6 puentes** (anillo 5, entre dos ramas vecinas; requieren el nodo de anillo 4 de ambas): mezclan identidades
   (p. ej. "Empanada S.A.": +1 % de clic por cada negocio).
-- **Anillo 8** (6 nodos, 22.000): para después del final; completan el árbol.
+- **Anillo 8** (6 nodos, 3.800): para después del final; completan el árbol.
 - Detalle de los 115 nodos: `data/tree.json` (efectos) e `i18n/v2.txt` (nombres y descripciones); costos en
   `data/balance.json`.
 
@@ -202,14 +212,18 @@ Total: 232 mejoras.
   (nodos + figuritas + logros) / (115 + 60 + 53).
 
 ## 9. Simulador y QA
-- Tres jugadores de prueba (`scripts/core/bot_policy.gd`, los mismos en el simulador y en el QA del juego real):
+- Cinco jugadores de prueba (`scripts/core/bot_policy.gd`, los mismos en el simulador y en el QA del juego real):
   - **activo**: 7 clics/s con combo, toca el 90 % de los billetes al segundo, remarca con la inflación arriba del 4 %
     y compra lo de mejor repago (entre lo que puede pagar en 45 s) una vez por segundo;
   - **pasivo**: 1 clic/s, toca el 30 % de los billetes (tarde), casi no remarca y compra siempre lo más barato;
-  - **distraído**: 4 clics/s y en las vueltas largas deja de jugar 2 minutos a mitad de la vuelta.
-  Los tres reforman cuando el juego lo aconseja (sección 3), juntan para el final apenas tienen los 6 sellos y compran
+  - **distraído**: 4 clics/s y en las vueltas largas deja de jugar 2 minutos a mitad de la vuelta;
+  - **autoclicker**: 17 clics/s sin parar y compra lo de mejor repago;
+  - **gastador**: como un jugador real con autoclicker (17 clics/s) que en el árbol compra apenas puede el nodo más
+    barato, sin ahorrar para nada.
+  Todos reforman cuando el juego lo aconseja (sección 3) y nunca ahorran para el centro. Salvo el gastador, compran
   el nodo que el juego recomienda (sellos y final primero; después el más barato, con preferencia NEGOCIOS = EMPANADA > INFLACIÓN > RENACER > FIGURITAS > SUERTE).
-- Reporte `docs/balance_v2.md`: chequeos por jugador y semilla, y la tabla de reformas de cada jugador.
+- Reporte `docs/balance_v2.md`: chequeos por jugador y semilla, y una tabla por jugador: reforma → minuto →
+  Credibilidad ganada → nodos comprados con ella → nodos en total.
 - `tools/simulate.gd -- --seeds=1,2,3,4 --qa` termina con código 1 si falla algún chequeo de la sección 1.
 - Hojas de contacto del juego real (`tools/qa_newplayer.ps1`): 0–10 min con el jugador pasivo
   (`docs/qa/v2_0_a_10_min_pasivo.jpg`) y 0–10 / 10–60 min con el activo (`docs/qa/v2_0_a_10_min_activo.jpg`,

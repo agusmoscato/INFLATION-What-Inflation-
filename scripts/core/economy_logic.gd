@@ -417,10 +417,11 @@ static func upgrade_visible(m: GameModel, u: Dictionary) -> bool:
 
 ## Precio × P. Las de precio "en segundos de ingreso" (clic por total de clics, campañas) se ajustan a tu economía.
 static func upgrade_cost(m: GameModel, u: Dictionary) -> BigNumber:
-	var c: BigNumber = u["cost"]
+	var c: BigNumber = (u["cost"] as BigNumber).mul(cost_factor(m))
 	if u.has("cost_s"):
+		# lo que se cobra en segundos de ingreso ya está en plata de hoy: no se infla otra vez (así siempre hay una a tiro)
 		c = BigNumber.max_of(c, steady_income(m).mul_f(float(u["cost_s"])))
-	return c.mul(cost_factor(m))
+	return c
 
 
 ## Ingreso "de todos los días": producción sin frenesí ni eventos más unos clics tranquilos por segundo.
@@ -963,9 +964,15 @@ static func reform_advised(m: GameModel) -> bool:
 		return true
 	if m.reforms == 0:
 		return tutorial_step(m) == 3
+	# cada vuelta dura al menos un par de minutos (el árbol se nota y hay tiempo de comprar); después de estabilizar la
+	# economía, un poco más (los anillos de afuera son el camino al 100 %)
+	var min_s: float = B("advice_min_s_won") if m.won else B("advice_min_s")
+	var long_s: float = B("advice_long_s_won") if m.won else B("advice_long_s")
+	if m.run_time < min_s:
+		return false
 	if not gain_slowing(m):
 		return false
-	return m.run_earned.ge(m.best_run.mul_f(B("advice_beat"))) or m.run_time >= B("advice_long_s")
+	return m.run_earned.ge(m.best_run.mul_f(B("advice_beat"))) or m.run_time >= long_s
 
 
 static func do_reform(m: GameModel) -> Dictionary:
@@ -1156,7 +1163,7 @@ static func stats(m: GameModel) -> Dictionary:
 	return {
 		"clicks": m.clicks, "max_combo": m.max_combo, "crits": m.crits, "buildings": m.total_businesses(),
 		"max_buildings": m.max_buildings, "max_carts": m.max_carts, "max_tier": m.max_tier, "max_upgrades": m.max_upgrades,
-		"remarks": m.remarks, "early_remark": m.early_remark, "max_rate_pct": m.max_rate_pct, "rate_pct": monthly_pct(m),
+		"remarks": m.remarks, "early_remark": m.early_remark, "max_rate_pct": m.max_rate_pct, "rate_pct": 0.0 if frozen(m) else monthly_pct(m),
 		"raw_rate_pct": raw_monthly_pct(m), "max_price_log10": m.max_price_l10, "price_log10": m.ln_p / BigNumber.LN10,
 		"bills": m.bills, "bills_missed": m.bills_missed, "frenzies": m.frenzies, "reforms": m.reforms,
 		"fastest_run": m.fastest_run, "lazy_run": m.lazy_run, "zeros_cut": m.zeros_cut, "cred_total": m.cred_total,

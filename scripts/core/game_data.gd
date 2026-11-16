@@ -226,6 +226,15 @@ static func _load_tree() -> void:
 
 
 static func _add_node(n: Dictionary) -> void:
+	# los anillos de afuera pegan más fuerte: además de su efecto, producción xN (se nota en la vuelta siguiente)
+	var rp: Array = balance.get("tree_ring_prod", [])
+	var ring: int = int(n["ring"])
+	n["ring_prod"] = 1.0
+	if not bool(n["final"]) and ring >= 1 and ring <= rp.size() and float(rp[ring - 1]) > 1.0:
+		n["ring_prod"] = float(rp[ring - 1])
+		var fx: Array = (n["fx"] as Array).duplicate(true)
+		fx.append(["prod_mult", "*", n["ring_prod"]])
+		n["fx"] = fx
 	n["name_key"] = "node." + str(n["id"])
 	n["desc_key"] = "node.%s.d" % n["id"]
 	tree_idx[n["id"]] = tree.size()

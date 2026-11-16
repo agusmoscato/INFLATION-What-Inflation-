@@ -97,6 +97,7 @@ func refresh(m: GameModel) -> void:
 		for row in seals:
 			_owned.append(bool(row["owned"]))
 			tip.append(_seal_text(row))
+		tip.append(_nodes_line(r))
 		tip.append(_summary(r, m))
 		tooltip_text = "\n".join(tip)
 		_compact_text = _compact(r, m)
@@ -117,7 +118,7 @@ func refresh(m: GameModel) -> void:
 	elif bool(r["ready"]):
 		_final_l.text = tr("ui.road.ready") % int(r["final_cost"])
 	else:
-		_final_l.text = tr("ui.road.final") % [int(r["final_cost"]), int(r["need"])]
+		_final_l.text = tr("ui.road.final") % [mini(int(r["nodes_have"]), int(r["nodes_need"])), int(r["nodes_need"]), int(r["final_cost"]), int(r["need"])]
 	_total_l.text = ""
 	_total_l.visible = false
 
@@ -138,6 +139,8 @@ static func _compact(r: Dictionary, m: GameModel) -> String:
 	if bool(r["ready"]):
 		var left: int = maxi(0, int(r["final_cost"]) - m.credibility)
 		return TranslationServer.translate("ui.road.c_ready_now") if left == 0 else TranslationServer.translate("ui.road.c_ready") % left
+	if bool(r["seals_done"]):
+		return TranslationServer.translate("ui.road.c_nodes") % (int(r["nodes_need"]) - int(r["nodes_have"]))
 	return TranslationServer.translate("ui.road.c_next") % TranslationServer.translate(GameData.node(str(r["next_seal"]["id"]))["name_key"])
 
 
@@ -171,6 +174,11 @@ func _draw() -> void:
 	draw_string(font, Vector2(x0, y + float(fs) * 0.35), _compact_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col2)
 
 
+## "Nodos comprados: 32/60" (el centro pide los 6 sellos y esa cantidad de nodos).
+static func _nodes_line(r: Dictionary) -> String:
+	return TranslationServer.translate("ui.road.nodes") % [mini(int(r["nodes_have"]), int(r["nodes_need"])), int(r["nodes_need"])]
+
+
 static func _summary(r: Dictionary, m: GameModel) -> String:
 	if bool(r["final_owned"]):
 		return TranslationServer.translate("ui.road.done")
@@ -179,6 +187,8 @@ static func _summary(r: Dictionary, m: GameModel) -> String:
 		if left == 0:
 			return TranslationServer.translate("ui.road.ready_now")
 		return TranslationServer.translate("ui.road.ready_left") % [int(r["final_cost"]), left]
+	if bool(r["seals_done"]):
+		return TranslationServer.translate("ui.road.c_nodes") % (int(r["nodes_need"]) - int(r["nodes_have"]))
 	var ns: Dictionary = r["next_seal"]
 	var name: String = TranslationServer.translate(GameData.node(str(ns["id"]))["name_key"])
 	var br: String = TranslationServer.translate("ui.branch." + str(ns["branch"]))

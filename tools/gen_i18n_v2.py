@@ -27,7 +27,11 @@ k("ui.road.ready_left", "¡Ya podés estabilizar la economía! Juntá %d de Cred
 k("ui.road.ready_now", "¡Ya podés estabilizar la economía! Tocá acá y comprá el centro del árbol.", "You can stabilize the economy now! Tap here and buy the center of the tree.")
 k("ui.road.ready", "¡Ya podés estabilizar la economía! Juntá %d de Credibilidad", "You can stabilize the economy now! Save up %d Credibility")
 k("ui.road.done", "Economía estabilizada.", "Economy stabilized.")
-k("ui.road.final", "Centro: los 6 sellos y %d. En total faltan ~%d.", "Center: the 6 seals and %d. About %d to go in total.")
+k("ui.road.final", "Centro: los 6 sellos, %d/%d nodos y %d. Faltan ~%d.", "Center: the 6 seals, %d/%d nodes and %d. About %d to go.")
+k("ui.road.nodes", "Nodos comprados: %d/%d", "Nodes bought: %d/%d")
+k("ui.road.c_nodes", "Comprá %d nodos más para el centro", "Buy %d more nodes for the center")
+k("ui.tree.more_nodes", "%d nodos más", "%d more nodes")
+k("ui.tree.ring_prod", "Además: producción x%s.", "Also: production x%s.")
 k("ui.road.total", "En total faltan ~%d de Credibilidad.", "About %d more Credibility needed in total.")
 k("ui.road.seal_owned", "%s: %s ✔", "%s: %s ✔")
 k("ui.road.seal_missing", "%s: %s (~%d)", "%s: %s (~%d)")
@@ -285,7 +289,7 @@ k("hl.ev.turistas", "Turistas felices: \"¡todo es baratísimo!\" (por ahora)", 
 N = []
 def n(nid, es, en, des, den):
     k("node." + nid, es, en); k("node.%s.d" % nid, des, den)
-n("final", "ESTABILIZAR LA ECONOMÍA", "STABILIZE THE ECONOMY", "El final. Inflación de un dígito, gente que ahorra en pesos y producción x2. Pide los 6 sellos. Después se puede seguir hasta el 100 %.", "The ending. Single-digit inflation, people saving in pesos and production x2. Needs the 6 seals. You can keep going to 100% afterwards.")
+n("final", "ESTABILIZAR LA ECONOMÍA", "STABILIZE THE ECONOMY", "El final. Inflación de un dígito, gente que ahorra en pesos y producción x2. Pide los 6 sellos y 60 nodos comprados. Después se puede seguir hasta el 100 %.", "The ending. Single-digit inflation, people saving in pesos and production x2. Needs the 6 seals and 60 nodes bought. You can keep going to 100% afterwards.")
 # EMPANADA
 n("emp_1", "Empanada de horno", "Oven-baked empanada", "Clic x2.", "Click x2.")
 n("emp_2a", "Dedo rápido", "Quick finger", "El combo llega a 30 (más multiplicador).", "The combo goes up to 30 (more multiplier).")
@@ -439,7 +443,7 @@ A = [
 ("first_reform", "Primera reforma", "First reform", "Cortale los ceros a la moneda.", "Cut the zeros off the currency."),
 ("reforms_10", "Cortador de ceros", "Zero cutter", "10 reformas.", "10 reforms."),
 ("reforms_25", "Reformista serial", "Serial reformer", "25 reformas.", "25 reforms."),
-("fast_run", "Vuelta relámpago", "Lightning run", "Reformá en menos de 90 s ganando 10 o más de Credibilidad.", "Reform in under 90 s earning 10+ Credibility."),
+("fast_run", "Vuelta relámpago", "Lightning run", "Reformá en menos de 2 minutos y medio ganando 10 o más de Credibilidad.", "Reform in under 2.5 minutes earning 10+ Credibility."),
 ("no_hands", "Manos en los bolsillos", "Hands in pockets", "Reformá habiendo tocado la empanada 10 veces o menos en la vuelta.", "Reform after poking the empanada 10 times or fewer in the run."),
 ("zeros_100", "Tijera de oro", "Golden scissors", "Cortá 100 ceros en total.", "Cut 100 zeros in total."),
 ("cred_100", "Creíble", "Credible", "Ganá 100 de Credibilidad en total.", "Earn 100 Credibility in total."),

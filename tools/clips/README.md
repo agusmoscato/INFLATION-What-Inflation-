@@ -58,6 +58,12 @@ cada momento se registra como `BEAT <segundo> <qué>` en `export/clips_crudos/<s
 | `sesion_casi_pierdo` | vuelta 4 (partida jugada sin pantalla hasta ahí): tarifazo → "colgarse del poste" y corrida → "aguantar" (opciones reales que suben la inflación) → hiperinflación 23–26 % → remarca y agarra billetes (300 s) |
 | `sesion_progresion` | vuelta ~36 con la imprenta y el holding desbloqueados (el bot prioriza la rama de negocios del árbol): de 3 a 10 negocios en 11 s |
 | `sesion_imprenta` | la misma altura de partida, comprando imprentas sin parar: 500 imprentas en 146 s |
+| `sesion_vuelta10` | vuelta 10 real (60 s): arranca con $42 K y al minuto tiene más de $1 T |
+| `sesion_sobres` | 6 sobres con rarezas reales (el 6.º trae la dorada) y el álbum (34/60) |
+| `sesion_billetes_perdidos` | deja pasar 3 billetes (vuelan 12 s y se van) y agarra el 4.º y el 5.º con frenesí |
+| `sesion_lluvia` | vuelta 8, un billete cada 8 s agarrado con frenesí y el bot comprando todo |
+| `sesion_corrida_remarcar` | igual que `sesion_casi_pierdo` pero en la corrida elige "remarcar" (a los 150 s: $306 B contra $56 B) |
+| `sesion_raspaditas` | 5 raspaditas reales: nada, x2, nada, nada, x10 |
 
 Datos medidos (para saber qué se puede mostrar): la imprenta y el holding se desbloquean recién en la vuelta ~36
 (~2 h de juego, árbol con 105 de 115 nodos); el remarcar automático aparece en la vuelta 14 (desde ahí no hay

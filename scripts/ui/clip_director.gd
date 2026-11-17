@@ -68,6 +68,12 @@ func _ready() -> void:
 		"sesion_progresion": _sesion_progresion()
 		"sesion_imprenta": _sesion_imprenta()
 		"sesion_vuelta1": _sesion_vuelta1()
+		"sesion_vuelta10": _sesion_vuelta10()
+		"sesion_sobres": _sesion_sobres()
+		"sesion_billetes_perdidos": _sesion_billetes_perdidos()
+		"sesion_lluvia": _sesion_lluvia()
+		"sesion_corrida_remarcar": _sesion_corrida_remarcar()
+		"sesion_raspaditas": _sesion_raspaditas()
 		_:
 			push_error("Clip desconocido: " + clip)
 			get_tree().quit(1)
@@ -542,7 +548,7 @@ const ESPINA_NEGOCIOS: Array = ["neg_1", "neg_2", "neg_3", "neg_4", "neg_5", "ne
 ## Juega sin pantalla con el bot hasta tener `reformas` reformas y vuelve con la vuelta nueva recién empezada.
 ## Con `hasta_imprenta`, además prioriza la rama central de negocios del árbol (lo que haría un jugador que va por
 ## la imprenta) y sigue hasta que la imprenta y el holding estén desbloqueados (en la simulación: vuelta ~36).
-func _jugar_offline(reformas: int, perfil: String = "activo", seed_value: int = 11, hasta_imprenta: bool = false) -> void:
+func _jugar_offline(reformas: int, perfil: String = "activo", seed_value: int = 11, hasta_imprenta: bool = false, prioridad: Array = []) -> void:
 	var m: GameModel = _m()
 	m.reforms = 0
 	var bot: BotPolicy = BotPolicy.new(seed_value, perfil)
@@ -550,6 +556,9 @@ func _jugar_offline(reformas: int, perfil: String = "activo", seed_value: int = 
 	var guard: int = 0
 	var reformas_al_desbloquear: int = -1
 	while guard < 2000000:
+		for id in prioridad:              # nodos que un jugador compraría primero (p. ej. el álbum o la raspadita)
+			if not m.tree.has(id) and TreeLogic.can_buy(m, id):
+				TreeLogic.buy(m, id)
 		if hasta_imprenta:
 			for id in ESPINA_NEGOCIOS:
 				if not m.tree.has(id) and TreeLogic.can_buy(m, id):
@@ -726,3 +735,124 @@ func _sesion_imprenta() -> void:
 		if EconomyLogic.business_available(m, GameData.businesses[8]) and int(_t * 30.0) % 15 == 0:
 			Economy.buy_business("imprenta", 1)
 			_mostrar_negocio(7)
+
+
+# =====================================================================
+#  Paso 2 de los clips que atrapan (C, G, F, D, E, H). Mismas reglas: partida real jugada sin pantalla hasta la
+#  vuelta pedida y después el bot en vivo; los momentos "elegidos" son resultados que el juego da de verdad.
+# =====================================================================
+
+## Spawnea un billete volador real (el juego los tira cada 30–90 s; acá se elige cuándo).
+func _billete_en(t0: float) -> void:
+	at(t0, func() -> void:
+		_m().bill_timer = 0.0
+		_beat("billete aparece"))
+
+
+## Agarra el billete que esté volando y elige el premio entre los que el juego da (frenesí, plata, congelar, figurita).
+func _agarrar_billete(t0: float, premio: String) -> void:
+	at(t0, func() -> void:
+		for b in _m().bills_active.duplicate():
+			var id: int = int(b["id"])
+			if _g()._bills.has(id):
+				(_g()._bills[id] as FlyingBill).vanish(true)
+			EconomyLogic.click_bill(_m(), id, premio)
+			_flush()
+			_beat("billete agarrado: %s" % premio)
+			return)
+
+
+# ---- C · vuelta 10 real (se compara con sesion_vuelta1: $26,2 K a los 285 s) ----
+func _sesion_vuelta10() -> void:
+	_duration = 60.0
+	_juice_al_maximo()
+	_jugar_offline(9, "activo", 11)
+	_bot_reforma = false
+	_bot_en_vivo("activo")
+	var hecho: Array = [false]
+	_sesion_extra = func() -> void:
+		if not hecho[0] and _m().run_earned.ge(BigNumber.from_float(26200.0)):
+			hecho[0] = true
+			_beat("PASA LA PLATA DE LA VUELTA 1 ($26,2 K)")
+
+
+# ---- G · seis sobres; el último trae la dorada; después el álbum ----
+func _sesion_sobres() -> void:
+	_duration = 52.0
+	_juice_al_maximo()
+	_jugar_offline(4, "activo", 13, false, ["fig_1"])
+	_bot_reforma = false
+	_bot_en_vivo("activo", {"catch": 0.0})
+	var tandas: Array = [["common", "common", "common", "common", "common"],
+		["common", "common", "rare", "common", "common"],
+		["common", "common", "common", "common", "common"],
+		["common", "rare", "common", "rare", "common"],
+		["common", "common", "common", "common", "rare"],
+		["common", "common", "rare", "golden", "common"]]
+	for i in range(tandas.size()):
+		var forced: Array = tandas[i]
+		var n: int = i + 1
+		at(1.0 + 7.0 * float(i), func() -> void:
+			var res: Array = StickerLogic.gift_pack(_m(), forced)
+			var ov: PackOpening = _g()._open_pack_overlay(res)
+			ov.auto_open(0.8)
+			_beat("sobre %d (%s)" % [n, "DORADA" if forced.has("golden") else ("rara" if forced.has("rare") else "común")]))
+	at(44.0, func() -> void:
+		_g()._open_album()
+		_beat("álbum con %d figuritas" % _m().stickers.size()))
+
+
+# ---- F · deja pasar tres billetes (bronca) y agarra el cuarto y el quinto ----
+func _sesion_billetes_perdidos() -> void:
+	_duration = 80.0
+	_juice_al_maximo()
+	_jugar_offline(3, "activo", 19)
+	_bot_reforma = false
+	_bot_en_vivo("activo", {"catch": 0.0})
+	for t0 in [2.0, 16.0, 30.0]:
+		_billete_en(t0)                         # vuelan 12 s y se van sin que los toque
+	_billete_en(44.0)
+	_agarrar_billete(46.0, "frenzy")
+	_billete_en(60.0)
+	_agarrar_billete(61.5, "frenzy")
+
+
+# ---- D · lluvia: vuelta 8, billetes seguidos, frenesí encadenado y el bot comprando todo ----
+func _sesion_lluvia() -> void:
+	_duration = 90.0
+	_juice_al_maximo()
+	_jugar_offline(8, "activo", 21)
+	_bot_reforma = false
+	_bot_en_vivo("gastador", {"catch": 0.0})
+	for i in range(10):
+		var t0: float = 2.0 + 8.0 * float(i)
+		_billete_en(t0)
+		_agarrar_billete(t0 + 1.2, "frenzy")
+
+
+# ---- E · corrida cambiaria, la otra opción: misma partida que sesion_casi_pierdo pero elige "remarcar" ----
+func _sesion_corrida_remarcar() -> void:
+	_duration = 170.0
+	_juice_al_maximo()
+	_jugar_offline(3, "activo", 11)
+	_bot_reforma = false
+	_bot_en_vivo("activo", {"remark_pct": 1.0e9, "catch": 0.25})
+	_noticia(110.0, "tarifazo", 1)
+	_noticia(125.0, "corrida", 0)          # en casi_pierdo eligió 1 ("aguantar"); acá "remarcar todo"
+
+
+# ---- H · cinco raspaditas: nada, x2, nada, nada... y x10 ----
+func _sesion_raspaditas() -> void:
+	_duration = 42.0
+	_juice_al_maximo()
+	_jugar_offline(4, "activo", 23, false, ["sue_1", "sue_2"])
+	_bot_reforma = false
+	_bot_en_vivo("activo", {"catch": 0.0})
+	var salidas: Array = ["nothing", "x2", "nothing", "nothing", "x10"]
+	for i in range(salidas.size()):
+		var force: String = salidas[i]
+		at(1.0 + 7.0 * float(i), func() -> void:
+			var ov: ScratchOverlay = _g()._open_scratch(force)
+			if ov != null:
+				ov.auto_scratch(2.4)
+			_beat("raspadita: %s" % force))
